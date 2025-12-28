@@ -19,6 +19,7 @@ import { EarnPointsPage } from '@/pages/loyalty/EarnPointsPage';
 import { BurnRulesPage } from '@/pages/loyalty/BurnRulesPage';
 import { VouchersPage } from '@/pages/loyalty/VouchersPage';
 import { ExternalVouchersPage } from '@/pages/loyalty/ExternalVouchersPage';
+import { PushNotificationsPage } from '@/pages/marketing/PushNotificationsPage';
 import { VoucherDetailPage } from '@/pages/loyalty/VoucherDetailPage';
 import { BadgesPage } from '@/pages/loyalty/BadgesPage';
 import { VenuesPage } from '@/pages/ops/VenuesPage';
@@ -75,7 +76,7 @@ const router = createBrowserRouter([
   { path: "/marketing/events", element: <EventsPage />, errorElement: <RouteErrorBoundary /> },
   { path: "/marketing/activities", element: <MarketingHubPage defaultTab="news" />, errorElement: <RouteErrorBoundary /> },
   { path: "/marketing/tickets", element: <MarketingHubPage defaultTab="tickets" />, errorElement: <RouteErrorBoundary /> },
-  { path: "/marketing/push", element: <CampaignsPage />, errorElement: <RouteErrorBoundary /> },
+  { path: "/marketing/push", element: <PushNotificationsPage />, errorElement: <RouteErrorBoundary /> },
   { path: "/marketing/email", element: <CampaignsPage />, errorElement: <RouteErrorBoundary /> },
   { path: "/marketing/videos", element: <MarketingHubPage defaultTab="videos" />, errorElement: <RouteErrorBoundary /> },
   { path: "/marketing/ads", element: <MarketingHubPage defaultTab="ads" />, errorElement: <RouteErrorBoundary /> },

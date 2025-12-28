@@ -6,7 +6,8 @@ import {
   LeaderboardEntity, ApprovalEntity, PartnerEntity, BadgeEntity,
   SystemSettingsEntity, AdEntity, TicketEntity, NewsEntity, GiftCardEntity, FaqEntity,
   ContactSettingsEntity, TermsEntity, PrivacyEntity, WifiEntity, WeatherSettingsEntity,
-  SplashScreenEntity, HeroBannerEntity
+  SplashScreenEntity, HeroBannerEntity,
+  PushCampaignEntity
 } from "./entities";
 import { ok, bad, notFound, Index } from './core-utils';
 import { 
@@ -31,6 +32,7 @@ const ENTITY_MAP: Record<string, any> = {
   tickets: TicketEntity,
   news: NewsEntity,
   'gift-cards': GiftCardEntity,
+  'push-campaigns': PushCampaignEntity,
   faqs: FaqEntity
 };
 export function userRoutes(app: Hono<{ Bindings: Env }>) {

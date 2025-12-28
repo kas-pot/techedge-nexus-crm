@@ -87,10 +87,17 @@ export interface Campaign {
   startDate: string;
   endDate: string;
   channel: 'push' | 'email' | 'sms' | 'video' | 'ads';
-  status: 'scheduled' | 'running' | 'completed';
+  status: 'scheduled' | 'running' | 'completed' | 'sent' | 'draft';
   reach?: number;
   openRate?: number;
   ctr?: number;
+}
+export interface PushCampaign extends Campaign {
+  messageTitle: string;
+  messageBody: string;
+  targetSegment: 'All Members' | 'Gold Tier' | 'Silver Tier' | 'Bronze Tier';
+  scheduledFor: string;
+  sentAt?: string;
 }
 export interface InterestTag {
   id: string;

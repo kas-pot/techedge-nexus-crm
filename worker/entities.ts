@@ -6,6 +6,7 @@ import type {
   GiftCard, FaqItem, Member, ContactSettings, LegalDocument, WifiSettings, WeatherConfig,
   SplashScreenConfig, HeroBannerConfig
 } from "@shared/types";
+import type { PushCampaign } from "@shared/types";
 import {
   MOCK_CHAT_MESSAGES, MOCK_CHATS, MOCK_USERS, MOCK_TIERS,
   MOCK_VOUCHERS, MOCK_VENUES, MOCK_OUTLETS, MOCK_MISSIONS,
@@ -13,7 +14,8 @@ import {
   MOCK_PARTNERS, MOCK_BADGES, MOCK_SYSTEM_SETTINGS,
   MOCK_ADS, MOCK_TICKETS, MOCK_NEWS, MOCK_GIFT_CARDS, MOCK_FAQ, MOCK_MEMBERS,
   MOCK_CONTACT_SETTINGS, MOCK_TERMS_CONTENT, MOCK_PRIVACY_CONTENT, MOCK_WIFI_SETTINGS,
-  MOCK_CAMPAIGNS, MOCK_WEATHER_CONFIG, MOCK_SPLASH_CONFIG, MOCK_HERO_BANNER_CONFIG
+  MOCK_CAMPAIGNS, MOCK_WEATHER_CONFIG, MOCK_SPLASH_CONFIG, MOCK_HERO_BANNER_CONFIG,
+  MOCK_PUSH_CAMPAIGNS
 } from "@shared/mock-data";
 export class UserEntity extends IndexedEntity<Member> {
   static readonly entityName = "member";
@@ -67,6 +69,12 @@ export class CampaignEntity extends IndexedEntity<Campaign> {
   static readonly indexName = "campaigns";
   static readonly initialState: Campaign = { id: "", name: "", startDate: "", endDate: "", channel: "push", status: "scheduled" };
   static seedData = MOCK_CAMPAIGNS;
+}
+export class PushCampaignEntity extends IndexedEntity<PushCampaign> {
+  static readonly entityName = "push_campaign";
+  static readonly indexName = "push_campaigns";
+  static readonly initialState: PushCampaign = { id: "", name: "", startDate: "", endDate: "", channel: "push", status: "draft", messageTitle: "", messageBody: "", targetSegment: "All Members", scheduledFor: "" };
+  static seedData = MOCK_PUSH_CAMPAIGNS;
 }
 export class InterestEntity extends IndexedEntity<InterestTag> {
   static readonly entityName = "interest";

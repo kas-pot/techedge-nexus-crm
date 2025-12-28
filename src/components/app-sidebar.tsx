@@ -81,7 +81,7 @@ const navGroups = [
   {
     label: "Marketing",
     items: [
-      { title: "Campaigns", icon: Megaphone, url: "/marketing/push" },
+      { title: "Push Notifications", icon: Bell, url: "/marketing/push" },
       { title: "Events", icon: Calendar, url: "/marketing/events" },
       { title: "Activities", icon: Newspaper, url: "/marketing/activities" },
       { title: "Tickets", icon: Ticket, url: "/marketing/tickets" },

@@ -4,7 +4,7 @@ import type {
   ApiResponse, Tier, Voucher, Venue, Outlet, Mission, Campaign,
   InterestTag, Leaderboard, ApprovalTask, Partner, Badge,
   SystemSettings, Ad, MarketingTicket, NewsItem, GiftCard, FaqItem, Member,
-  ContactSettings, LegalDocument, WifiSettings, WeatherConfig,
+  ContactSettings, LegalDocument, WifiSettings, WeatherConfig, PushCampaign,
   SplashScreenConfig, HeroBannerConfig
 } from '@shared/types';
 export function useEntities<T>(key: string, path: string, params?: Record<string, string>, limit = 200) {
@@ -159,6 +159,8 @@ export const useTicketMutations = () => useEntityMutation<MarketingTicket>('tick
 export const useNewsMutations = () => useEntityMutation<NewsItem>('news', '/api/news');
 export const useFaqMutations = () => useEntityMutation<FaqItem>('faqs', '/api/faqs');
 export const useInterestMutations = () => useEntityMutation<InterestTag>('interests', '/api/interests');
+export const usePushCampaigns = () => useEntities<PushCampaign>('push-campaigns', '/api/push-campaigns');
+export const usePushCampaignMutations = () => useEntityMutation<PushCampaign>('push-campaigns', '/api/push-campaigns');
 export const useGiftCardMutations = () => useEntityMutation<GiftCard>('gift-cards', '/api/gift-cards');
 export const useGiftCardBatch = () => {
   const queryClient = useQueryClient();
