@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
@@ -10,14 +10,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Shield, Globe, Palette, Cpu, Wifi, Save, AlertTriangle } from 'lucide-react';
 import { useSystemSettings, useSettingsMutation } from '@/lib/api-hooks';
 import { toast } from 'sonner';
-import { useState, useEffect } from 'react';
 export function SettingsPage() {
   const { data: settings, isLoading } = useSystemSettings();
   const mutation = useSettingsMutation();
-  
-  const [formData, setFormData] = React.useState<Record<string, string>>({});
-  
-  React.useEffect(() => {
+  const [formData, setFormData] = useState<Record<string, string>>({});
+  useEffect(() => {
     if (settings) {
       setFormData({
         theme: settings.theme || '',
@@ -29,7 +26,6 @@ export function SettingsPage() {
       });
     }
   }, [settings]);
-
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -38,15 +34,14 @@ export function SettingsPage() {
         ssoEnabled: formData.ssoEnabled === 'on',
       });
       toast.success("Global settings updated");
-    } catch (e) {
+    } catch (err) {
       toast.error("Failed to save settings");
     }
   };
-
   const updateField = (key: string, value: string) => {
     setFormData(prev => ({ ...prev, [key]: value }));
   };
-  if (isLoading) return <AppLayout container><div className="h-96 animate-pulse bg-muted/20" /></AppLayout>;
+  if (isLoading) return <AppLayout container><div className="h-96 animate-pulse bg-muted/20 rounded-xl" /></AppLayout>;
   return (
     <AppLayout container>
       <div className="space-y-8 animate-fade-in">
@@ -83,7 +78,7 @@ export function SettingsPage() {
                     <div className="space-y-2">
                       <Label>Primary Color Mode</Label>
                       <Select value={formData.theme} onValueChange={(v) => updateField('theme', v)}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectTrigger><SelectValue placeholder="Select mode" /></SelectTrigger>
                         <SelectContent>
                           <SelectItem value="light">Light Mode</SelectItem>
                           <SelectItem value="dark">Dark Mode</SelectItem>
@@ -104,7 +99,7 @@ export function SettingsPage() {
                     <div className="space-y-2">
                       <Label>Primary Language</Label>
                       <Select value={formData.language} onValueChange={(v) => updateField('language', v)}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectTrigger><SelectValue placeholder="Select language" /></SelectTrigger>
                         <SelectContent>
                           <SelectItem value="English">English (US)</SelectItem>
                           <SelectItem value="Bahasa">Bahasa Indonesia</SelectItem>
@@ -122,21 +117,22 @@ export function SettingsPage() {
                     <CardDescription>Configure Single Sign-On and data privacy policies.</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-6">
-                      <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-900 rounded-xl border">
-                        <div className="space-y-0.5">
-                          <Label className="text-base">Enable SSO (SAML/OpenID)</Label>
-                          <p className="text-xs text-muted-foreground">Force all admin users to authenticate via corporate identity provider.</p>
-                        </div>
-                        <Switch 
-                          checked={formData.ssoEnabled === 'on'}
-                          onCheckedChange={(checked) => updateField('ssoEnabled', checked ? 'on' : 'off')}
-                        />
+                    <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-900 rounded-xl border">
+                      <div className="space-y-0.5">
+                        <Label className="text-base">Enable SSO (SAML/OpenID)</Label>
+                        <p className="text-xs text-muted-foreground">Force all admin users to authenticate via corporate identity provider.</p>
                       </div>
+                      <Switch
+                        checked={formData.ssoEnabled === 'on'}
+                        onCheckedChange={(checked) => updateField('ssoEnabled', checked ? 'on' : 'off')}
+                      />
+                    </div>
                     <div className="space-y-2">
                       <Label>Admin Notification Email</Label>
-                      <Input 
-                        value={formData.notificationEmail || ''} 
+                      <Input
+                        value={formData.notificationEmail || ''}
                         onChange={(e) => updateField('notificationEmail', e.target.value)}
+                        placeholder="admin@nexus-crm.com"
                       />
                     </div>
                   </CardContent>
@@ -152,7 +148,7 @@ export function SettingsPage() {
                     <div className="space-y-2">
                       <Label>OCR Processing Precision</Label>
                       <Select value={formData.ocrPrecision} onValueChange={(v) => updateField('ocrPrecision', v)}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectTrigger><SelectValue placeholder="Select precision" /></SelectTrigger>
                         <SelectContent>
                           <SelectItem value="high">High (Maximum accuracy, slower)</SelectItem>
                           <SelectItem value="medium">Balanced</SelectItem>
@@ -163,23 +159,24 @@ export function SettingsPage() {
                     <div className="space-y-2">
                       <Label>In-Venue WiFi SSID</Label>
                       <div className="flex gap-2">
-                        <div className="bg-slate-100 p-2 rounded-lg text-slate-500"><Wifi className="h-5 w-5" /></div>
-                        <Input 
+                        <div className="bg-slate-100 dark:bg-slate-800 p-2 rounded-lg text-slate-500"><Wifi className="h-5 w-5" /></div>
+                        <Input
                           value={formData.wifiSsid || ''}
                           onChange={(e) => updateField('wifiSsid', e.target.value)}
+                          placeholder="Nexus_Guest_WiFi"
                         />
                       </div>
                     </div>
                   </CardContent>
                 </Card>
-                <div className="p-4 rounded-xl bg-rose-50 border border-rose-100 flex gap-3 text-rose-700">
+                <div className="p-4 rounded-xl bg-rose-50 border border-rose-100 flex gap-3 text-rose-700 dark:bg-rose-900/10 dark:border-rose-900/20">
                   <AlertTriangle className="h-5 w-5 shrink-0" />
                   <div className="text-xs font-medium">Warning: Changing advanced operational settings may affect the performance of real-time point claims and member authentication.</div>
                 </div>
               </TabsContent>
               <div className="flex justify-end pt-4 border-t">
-                <Button 
-                  type="submit" 
+                <Button
+                  type="submit"
                   disabled={mutation.isPending}
                   className="bg-indigo-600 hover:bg-indigo-700 h-11 px-8 shadow-indigo-200 disabled:opacity-50"
                 >
@@ -195,7 +192,7 @@ export function SettingsPage() {
                 </Button>
               </div>
             </div>
-          </div>
+          </Tabs>
         </form>
       </div>
     </AppLayout>
