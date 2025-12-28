@@ -5,11 +5,12 @@ import type {
   InterestTag, Leaderboard, ApprovalTask, Partner, Badge,
   SystemSettings, Ad, MarketingTicket, NewsItem, GiftCard, FaqItem, Member
 } from '@shared/types';
-export function useEntities<T>(key: string, path: string, params?: Record<string, string>) {
-  const queryParams = params ? new URLSearchParams(params).toString() : '';
-  const fullPath = queryParams ? `${path}?${queryParams}` : path;
+export function useEntities<T>(key: string, path: string, params?: Record<string, string>, limit = 200) {
+  const queryParams = new URLSearchParams(params);
+  if (limit) queryParams.append('limit', limit.toString());
+  const fullPath = `${path}?${queryParams.toString()}`;
   return useQuery({
-    queryKey: [key, params],
+    queryKey: [key, params, limit],
     queryFn: () => api<{ items: T[]; next: string | null }>(fullPath),
     refetchOnWindowFocus: false,
     staleTime: 5 * 60 * 1000,

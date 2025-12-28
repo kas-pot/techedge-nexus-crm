@@ -1,16 +1,17 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Search, Filter, MoreVertical, Download, UserPlus, Mail, Edit, Trash2 } from 'lucide-react';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Search, Download, UserPlus, Mail, Edit, Trash2, MoreVertical } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from '@/components/ui/sheet';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { useMembers, useMemberMutations } from '@/lib/api-hooks';
 import { toast } from 'sonner';
 import { useForm } from 'react-hook-form';
@@ -43,11 +44,13 @@ export function MemberListPage() {
     }
   }, [editingMember, form]);
   const members = data?.items || [];
-  const filteredMembers = members.filter(m =>
-    m.name.toLowerCase().includes(search.toLowerCase()) ||
-    m.email.toLowerCase().includes(search.toLowerCase()) ||
-    m.id.toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredMembers = useMemo(() => {
+    return members.filter(m =>
+      m.name.toLowerCase().includes(search.toLowerCase()) ||
+      m.email.toLowerCase().includes(search.toLowerCase()) ||
+      m.id.toLowerCase().includes(search.toLowerCase())
+    );
+  }, [members, search]);
   const handleCreate = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
@@ -82,7 +85,9 @@ export function MemberListPage() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Member Registry</h1>
-            <p className="text-muted-foreground">Manage and audit the 5,050 members in your ecosystem.</p>
+            <p className="text-muted-foreground flex items-center gap-2">
+              Manage and audit the <Badge variant="secondary" className="font-bold">{filteredMembers.length}</Badge> members in your active view.
+            </p>
           </div>
           <div className="flex gap-2">
             <Button variant="outline" className="shadow-sm">
@@ -93,7 +98,7 @@ export function MemberListPage() {
             </Button>
           </div>
         </div>
-        <Card className="border-none shadow-soft overflow-hidden">
+        <Card className="border-none shadow-soft overflow-hidden flex flex-col h-[700px]">
           <CardHeader className="pb-4 bg-slate-50/50 border-b">
             <div className="flex items-center gap-3">
               <div className="relative w-full max-w-sm">
@@ -107,78 +112,86 @@ export function MemberListPage() {
               </div>
             </div>
           </CardHeader>
-          <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-slate-50/30">
-                  <TableHead className="pl-6 font-bold uppercase text-[10px] tracking-widest text-muted-foreground">ID</TableHead>
-                  <TableHead className="font-bold uppercase text-[10px] tracking-widest text-muted-foreground">Profile</TableHead>
-                  <TableHead className="font-bold uppercase text-[10px] tracking-widest text-muted-foreground">Tier</TableHead>
-                  <TableHead className="font-bold uppercase text-[10px] tracking-widest text-muted-foreground">Points</TableHead>
-                  <TableHead className="font-bold uppercase text-[10px] tracking-widest text-muted-foreground">Status</TableHead>
-                  <TableHead className="pr-6 text-right font-bold uppercase text-[10px] tracking-widest text-muted-foreground">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {isLoading ? (
-                  Array.from({ length: 5 }).map((_, i) => (
-                    <TableRow key={i}><TableCell colSpan={6} className="h-16 animate-pulse" /></TableRow>
-                  ))
-                ) : filteredMembers.map((member) => (
-                  <TableRow key={member.id} className="group hover:bg-indigo-50/30">
-                    <TableCell className="pl-6 font-mono text-[11px]">{member.id}</TableCell>
-                    <TableCell>
-                      <div className="flex flex-col">
-                        <span className="font-bold text-sm">{member.name}</span>
-                        <span className="text-xs text-muted-foreground">{member.email}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge className={member.tier === 'Gold' ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-700'}>{member.tier}</Badge>
-                    </TableCell>
-                    <TableCell className="font-bold">{member.points.toLocaleString()}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <div className={`h-2 w-2 rounded-full ${member.status === 'Active' ? 'bg-emerald-500' : 'bg-slate-400'}`} />
-                        <span className="text-sm">{member.status}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="pr-6 text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon"><MoreVertical className="h-4 w-4" /></Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => setEditingMember(member)}><Edit className="mr-2 h-4 w-4" /> Edit Profile</DropdownMenuItem>
-                          <DropdownMenuItem><Mail className="mr-2 h-4 w-4" /> Message</DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <DropdownMenuItem className="text-destructive" onSelect={(e) => e.preventDefault()}>
-                                <Trash2 className="mr-2 h-4 w-4" /> Remove Account
-                              </DropdownMenuItem>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Delete Member?</AlertDialogTitle>
-                                <AlertDialogDescription>This action will permanently remove {member.name} from the CRM database.</AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction className="bg-destructive" onClick={() => remove.mutate(member.id)}>Confirm Delete</AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
+          <CardContent className="p-0 flex-1 overflow-hidden">
+            <ScrollArea className="h-full">
+              <Table>
+                <TableHeader className="sticky top-0 bg-slate-50/95 backdrop-blur-sm z-10">
+                  <TableRow>
+                    <TableHead className="pl-6 font-bold uppercase text-[10px] tracking-widest text-muted-foreground h-12">ID</TableHead>
+                    <TableHead className="font-bold uppercase text-[10px] tracking-widest text-muted-foreground h-12">Profile</TableHead>
+                    <TableHead className="font-bold uppercase text-[10px] tracking-widest text-muted-foreground h-12">Tier</TableHead>
+                    <TableHead className="font-bold uppercase text-[10px] tracking-widest text-muted-foreground h-12">Points</TableHead>
+                    <TableHead className="font-bold uppercase text-[10px] tracking-widest text-muted-foreground h-12">Status</TableHead>
+                    <TableHead className="pr-6 text-right font-bold uppercase text-[10px] tracking-widest text-muted-foreground h-12">Actions</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {isLoading ? (
+                    Array.from({ length: 10 }).map((_, i) => (
+                      <TableRow key={i}><TableCell colSpan={6} className="h-16 animate-pulse" /></TableRow>
+                    ))
+                  ) : filteredMembers.map((member) => (
+                    <TableRow key={member.id} className="group hover:bg-indigo-50/30 transition-colors border-b">
+                      <TableCell className="pl-6 font-mono text-[11px]">{member.id}</TableCell>
+                      <TableCell>
+                        <div className="flex flex-col">
+                          <span className="font-bold text-sm">{member.name}</span>
+                          <span className="text-xs text-muted-foreground">{member.email}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge className={member.tier === 'Gold' ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-700'}>{member.tier}</Badge>
+                      </TableCell>
+                      <TableCell className="font-bold">{member.points.toLocaleString()}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <div className={`h-2 w-2 rounded-full ${member.status === 'Active' ? 'bg-emerald-500' : 'bg-slate-400'}`} />
+                          <span className="text-sm">{member.status}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="pr-6 text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon"><MoreVertical className="h-4 w-4" /></Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-48">
+                            <DropdownMenuItem onClick={() => setEditingMember(member)}><Edit className="mr-2 h-4 w-4" /> Edit Profile</DropdownMenuItem>
+                            <DropdownMenuItem><Mail className="mr-2 h-4 w-4" /> Message</DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <DropdownMenuItem className="text-destructive" onSelect={(e) => e.preventDefault()}>
+                                  <Trash2 className="mr-2 h-4 w-4" /> Remove Account
+                                </DropdownMenuItem>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Delete Member?</AlertDialogTitle>
+                                  <AlertDialogDescription>This action will permanently remove {member.name} from the CRM database.</AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction className="bg-destructive" onClick={() => remove.mutate(member.id)}>Confirm Delete</AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {filteredMembers.length === 0 && !isLoading && (
+                    <TableRow>
+                      <TableCell colSpan={6} className="h-64 text-center text-muted-foreground">
+                        No members found matching your search criteria.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </ScrollArea>
           </CardContent>
         </Card>
-        {/* Edit Member Sheet */}
         <Sheet open={!!editingMember} onOpenChange={(o) => !o && setEditingMember(null)}>
           <SheetContent className="sm:max-w-md">
             <SheetHeader>

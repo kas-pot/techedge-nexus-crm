@@ -1,22 +1,22 @@
 import { IndexedEntity, Entity } from "./core-utils";
-import type { 
-  User, Chat, ChatMessage, Tier, Voucher, Venue, Outlet, 
-  Mission, Campaign, InterestTag, Leaderboard, ApprovalTask, 
-  Partner, Badge, SystemSettings, Ad, MarketingTicket, NewsItem, 
-  GiftCard, FaqItem 
+import type {
+  User, Chat, ChatMessage, Tier, Voucher, Venue, Outlet,
+  Mission, Campaign, InterestTag, Leaderboard, ApprovalTask,
+  Partner, Badge, SystemSettings, Ad, MarketingTicket, NewsItem,
+  GiftCard, FaqItem, Member
 } from "@shared/types";
-import { 
-  MOCK_CHAT_MESSAGES, MOCK_CHATS, MOCK_USERS, MOCK_TIERS, 
-  MOCK_VOUCHERS, MOCK_VENUES, MOCK_OUTLETS, MOCK_MISSIONS, 
-  MOCK_INTERESTS, MOCK_LEADERBOARDS, MOCK_APPROVALS, 
+import {
+  MOCK_CHAT_MESSAGES, MOCK_CHATS, MOCK_USERS, MOCK_TIERS,
+  MOCK_VOUCHERS, MOCK_VENUES, MOCK_OUTLETS, MOCK_MISSIONS,
+  MOCK_INTERESTS, MOCK_LEADERBOARDS, MOCK_APPROVALS,
   MOCK_PARTNERS, MOCK_BADGES, MOCK_SYSTEM_SETTINGS,
-  MOCK_ADS, MOCK_TICKETS, MOCK_NEWS, MOCK_GIFT_CARDS, MOCK_FAQ
+  MOCK_ADS, MOCK_TICKETS, MOCK_NEWS, MOCK_GIFT_CARDS, MOCK_FAQ, MOCK_MEMBERS
 } from "@shared/mock-data";
-export class UserEntity extends IndexedEntity<User> {
-  static readonly entityName = "user";
-  static readonly indexName = "users";
-  static readonly initialState: User = { id: "", name: "" };
-  static seedData = MOCK_USERS;
+export class UserEntity extends IndexedEntity<Member> {
+  static readonly entityName = "member";
+  static readonly indexName = "members";
+  static readonly initialState: Member = { id: "", name: "", email: "", tier: "Bronze", points: 0, status: "Active", joinedDate: "" };
+  static seedData = MOCK_MEMBERS;
 }
 export type ChatBoardState = Chat & { messages: ChatMessage[] };
 const SEED_CHAT_BOARDS: ChatBoardState[] = MOCK_CHATS.map(c => ({
@@ -95,7 +95,6 @@ export class BadgeEntity extends IndexedEntity<Badge> {
   static readonly initialState: Badge = { id: "", name: "", description: "", icon: "star", color: "#ccc", requirementPoints: 0, earnedCount: 0 };
   static seedData = MOCK_BADGES;
 }
-// Phase 7 Entities
 export class AdEntity extends IndexedEntity<Ad> {
   static readonly entityName = "ad";
   static readonly indexName = "ads";
