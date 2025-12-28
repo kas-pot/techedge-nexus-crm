@@ -43,14 +43,14 @@ export function MemberListPage() {
       });
     }
   }, [editingMember, form]);
-  const members = data?.items || [];
   const filteredMembers = useMemo(() => {
-    return members.filter(m =>
+    const items = data?.items ?? [];
+    return items.filter(m =>
       m.name.toLowerCase().includes(search.toLowerCase()) ||
       m.email.toLowerCase().includes(search.toLowerCase()) ||
       m.id.toLowerCase().includes(search.toLowerCase())
     );
-  }, [members, search]);
+  }, [data?.items, search]);
   const handleCreate = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
@@ -71,6 +71,7 @@ export function MemberListPage() {
     }
   };
   const handleUpdate = async (values: z.infer<typeof memberSchema>) => {
+    if (!editingMember?.id) return;
     try {
       await update.mutateAsync({ id: editingMember.id, ...values });
       setEditingMember(null);
@@ -85,9 +86,9 @@ export function MemberListPage() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Member Registry</h1>
-            <p className="text-muted-foreground flex items-center gap-2">
+            <div className="text-muted-foreground flex items-center gap-2 mt-1">
               Manage and audit the <Badge variant="secondary" className="font-bold">{filteredMembers.length}</Badge> members in your active view.
-            </p>
+            </div>
           </div>
           <div className="flex gap-2">
             <Button variant="outline" className="shadow-sm">
