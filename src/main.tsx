@@ -14,14 +14,20 @@ import { MemberListPage } from '@/pages/members/MemberListPage';
 import { TiersPage } from '@/pages/members/TiersPage';
 import { LeaderboardsPage } from '@/pages/members/LeaderboardsPage';
 import { InterestsPage } from '@/pages/members/InterestsPage';
+import { ManualApprovalPage } from '@/pages/members/ManualApprovalPage';
 import { EarnPointsPage } from '@/pages/loyalty/EarnPointsPage';
+import { BurnRulesPage } from '@/pages/loyalty/BurnRulesPage';
 import { VouchersPage } from '@/pages/loyalty/VouchersPage';
+import { BadgesPage } from '@/pages/loyalty/BadgesPage';
 import { VenuesPage } from '@/pages/ops/VenuesPage';
 import { OutletsPage } from '@/pages/ops/OutletsPage';
+import { MapsPage } from '@/pages/ops/MapsPage';
 import { CampaignsPage } from '@/pages/marketing/CampaignsPage';
 import { EventsPage } from '@/pages/marketing/EventsPage';
 import { MissionsPage } from '@/pages/missions/MissionsPage';
 import { MemberInsightsPage } from '@/pages/insights/MemberInsightsPage';
+import { PartnershipsPage } from '@/pages/partnerships/PartnershipsPage';
+import { SettingsPage } from '@/pages/system/SettingsPage';
 import { PlaceholderPage } from '@/components/ui/placeholder-page';
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -38,14 +44,14 @@ const router = createBrowserRouter([
   { path: "/tiers", element: <TiersPage />, errorElement: <RouteErrorBoundary /> },
   { path: "/leaderboards", element: <LeaderboardsPage />, errorElement: <RouteErrorBoundary /> },
   { path: "/interests", element: <InterestsPage />, errorElement: <RouteErrorBoundary /> },
-  { path: "/manual-approval", element: <PlaceholderPage title="Manual Approval" category="Member Management" /> },
+  { path: "/manual-approval", element: <ManualApprovalPage />, errorElement: <RouteErrorBoundary /> },
   { path: "/loyalty/earn-points", element: <EarnPointsPage />, errorElement: <RouteErrorBoundary /> },
-  { path: "/loyalty/burn-rules", element: <PlaceholderPage title="Burn Rules" category="Loyalty Engine" /> },
+  { path: "/loyalty/burn-rules", element: <BurnRulesPage />, errorElement: <RouteErrorBoundary /> },
   { path: "/loyalty/vouchers", element: <VouchersPage />, errorElement: <RouteErrorBoundary /> },
-  { path: "/loyalty/external-vouchers", element: <PlaceholderPage title="External Vouchers" category="Loyalty Engine" /> },
-  { path: "/loyalty/gift-cards", element: <PlaceholderPage title="Gift Cards" category="Loyalty Engine" /> },
-  { path: "/loyalty/badges", element: <PlaceholderPage title="Badges" category="Loyalty Engine" /> },
-  { path: "/loyalty/tags", element: <PlaceholderPage title="Master Tags" category="Loyalty Engine" /> },
+  { path: "/loyalty/external-vouchers", element: <VouchersPage />, errorElement: <RouteErrorBoundary /> },
+  { path: "/loyalty/gift-cards", element: <VouchersPage />, errorElement: <RouteErrorBoundary /> },
+  { path: "/loyalty/badges", element: <BadgesPage />, errorElement: <RouteErrorBoundary /> },
+  { path: "/loyalty/tags", element: <InterestsPage />, errorElement: <RouteErrorBoundary /> },
   // Missions Unified Routing
   { path: "/missions", element: <MissionsPage />, errorElement: <RouteErrorBoundary /> },
   { path: "/missions/onboarding", element: <MissionsPage />, errorElement: <RouteErrorBoundary /> },
@@ -53,7 +59,7 @@ const router = createBrowserRouter([
   { path: "/missions/tier", element: <MissionsPage />, errorElement: <RouteErrorBoundary /> },
   { path: "/ops/venues", element: <VenuesPage />, errorElement: <RouteErrorBoundary /> },
   { path: "/ops/outlets", element: <OutletsPage />, errorElement: <RouteErrorBoundary /> },
-  { path: "/ops/maps", element: <PlaceholderPage title="Isometric Maps" category="Rewards & Ops" /> },
+  { path: "/ops/maps", element: <MapsPage />, errorElement: <RouteErrorBoundary /> },
   // Marketing & Communications
   { path: "/marketing/events", element: <EventsPage />, errorElement: <RouteErrorBoundary /> },
   { path: "/marketing/activities", element: <PlaceholderPage title="Activities" category="Marketing" /> },
@@ -63,15 +69,16 @@ const router = createBrowserRouter([
   { path: "/marketing/videos", element: <PlaceholderPage title="Video Promotions" category="Marketing" /> },
   { path: "/marketing/ads", element: <PlaceholderPage title="Ads Management" category="Marketing" /> },
   { path: "/marketing/news", element: <PlaceholderPage title="News & Promo" category="Marketing" /> },
-  { path: "/partnerships/list", element: <PlaceholderPage title="Partnership List" category="Partnerships" /> },
-  { path: "/partnerships/banks", element: <PlaceholderPage title="Bank Partnerships" category="Partnerships" /> },
-  { path: "/system/themes", element: <PlaceholderPage title="Themes" category="System" /> },
-  { path: "/system/languages", element: <PlaceholderPage title="Languages" category="System" /> },
-  { path: "/system/splash", element: <PlaceholderPage title="Splash Screen" category="System" /> },
-  { path: "/system/sso", element: <PlaceholderPage title="SSO Config" category="System" /> },
-  { path: "/system/ai", element: <PlaceholderPage title="OCR/AI" category="System" /> },
-  { path: "/system/privacy", element: <PlaceholderPage title="Privacy Policy" category="System" /> },
-  { path: "/system/wifi", element: <PlaceholderPage title="Wifi Password" category="System" /> },
+  { path: "/partnerships/list", element: <PartnershipsPage />, errorElement: <RouteErrorBoundary /> },
+  { path: "/partnerships/banks", element: <PartnershipsPage />, errorElement: <RouteErrorBoundary /> },
+  { path: "/system", element: <SettingsPage />, errorElement: <RouteErrorBoundary /> },
+  { path: "/system/themes", element: <SettingsPage />, errorElement: <RouteErrorBoundary /> },
+  { path: "/system/languages", element: <SettingsPage />, errorElement: <RouteErrorBoundary /> },
+  { path: "/system/splash", element: <SettingsPage />, errorElement: <RouteErrorBoundary /> },
+  { path: "/system/sso", element: <SettingsPage />, errorElement: <RouteErrorBoundary /> },
+  { path: "/system/ai", element: <SettingsPage />, errorElement: <RouteErrorBoundary /> },
+  { path: "/system/privacy", element: <SettingsPage />, errorElement: <RouteErrorBoundary /> },
+  { path: "/system/wifi", element: <SettingsPage />, errorElement: <RouteErrorBoundary /> },
 ]);
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

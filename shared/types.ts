@@ -34,6 +34,7 @@ export interface Voucher {
   value: number;
   expiryDate: string;
   status: 'active' | 'expired' | 'draft';
+  isExternal?: boolean;
 }
 export interface Venue {
   id: string;
@@ -98,4 +99,43 @@ export interface TransactionInsight {
   date: string;
   transactions: number;
   revenueIdr: number;
+}
+// Phase 5: New Operational Entities
+export interface ApprovalTask {
+  id: string;
+  type: 'points_claim' | 'membership' | 'voucher_redeem';
+  memberName: string;
+  amount: number;
+  status: 'pending' | 'approved' | 'rejected';
+  date: string;
+  proofUrl?: string;
+  description?: string;
+}
+export interface Partner {
+  id: string;
+  name: string;
+  type: 'bank' | 'retail' | 'service';
+  logo?: string;
+  status: 'active' | 'inactive';
+  contactEmail: string;
+  agreementLevel: 'Platinum' | 'Gold' | 'Standard';
+  joinedDate: string;
+}
+export interface Badge {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  color: string;
+  requirementPoints: number;
+  earnedCount: number;
+}
+export interface SystemSettings {
+  id: string; // usually 'global'
+  theme: 'light' | 'dark' | 'system';
+  language: string;
+  ssoEnabled: boolean;
+  ocrPrecision: 'high' | 'medium' | 'low';
+  wifiSsid: string;
+  notificationEmail: string;
 }

@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from './api-client';
-import type { ApiResponse, Tier, Voucher, Venue, Outlet, Mission, Campaign, InterestTag, Leaderboard } from '@shared/types';
+import type { ApiResponse, Tier, Voucher, Venue, Outlet, Mission, Campaign, InterestTag, Leaderboard, ApprovalTask, Partner, Badge, SystemSettings } from '@shared/types';
 // Generic hook for listing entities
 export function useEntities<T>(key: string, path: string, params?: Record<string, string>) {
   const queryParams = params ? new URLSearchParams(params).toString() : '';
@@ -26,17 +26,28 @@ export const useCampaigns = (channel?: string) =>
 // Gamification Hooks
 export const useInterests = () => useEntities<InterestTag>('interests', '/api/interests');
 export const useLeaderboards = () => useEntities<Leaderboard>('leaderboards', '/api/leaderboards');
-// Mutation helper
-export function useCreateEntity<T>(key: string, path: string) {
+// Phase 5 Hooks
+export const useApprovals = (status?: string) => 
+  useEntities<ApprovalTask>('approvals', '/api/approvals', status ? { status } : undefined);
+export const usePartners = () => useEntities<Partner>('partners', '/api/partners');
+export const useBadges = () => useEntities<Badge>('badges', '/api/badges');
+export const useSystemSettings = () => useQuery({
+  queryKey: ['system-settings'],
+  queryFn: () => api<SystemSettings>('/api/system/settings')
+});
+// Mutations
+export function useGenericMutation<TInput, TOutput>(path: string, method: 'POST' | 'PUT' = 'POST', invalidationKeys: string[]) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (data: Partial<T>) => api<T>(path, {
-      method: 'POST',
+    mutationFn: (data: TInput) => api<TOutput>(path, {
+      method,
       body: JSON.stringify(data),
     }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [key] });
+      invalidationKeys.forEach(key => queryClient.invalidateQueries({ queryKey: [key] }));
     },
   });
 }
-export const useMissionMutation = () => useCreateEntity<Mission>('missions', '/api/missions');
+export const useApprovalMutation = (id: string) => useGenericMutation<{ status: 'approved' | 'rejected' }, ApprovalTask>(`/api/approvals/${id}/decide`, 'POST', ['approvals']);
+export const useSettingsMutation = () => useGenericMutation<Partial<SystemSettings>, SystemSettings>('/api/system/settings', 'PUT', ['system-settings']);
+export const useMissionMutation = () => useGenericMutation<Partial<Mission>, Mission>('/api/missions', 'POST', ['missions']);

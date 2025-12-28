@@ -1,6 +1,6 @@
-import { IndexedEntity } from "./core-utils";
-import type { User, Chat, ChatMessage, Tier, Voucher, Venue, Outlet, Mission, Campaign, InterestTag, Leaderboard } from "@shared/types";
-import { MOCK_CHAT_MESSAGES, MOCK_CHATS, MOCK_USERS, MOCK_TIERS, MOCK_VOUCHERS, MOCK_VENUES, MOCK_OUTLETS, MOCK_MISSIONS, MOCK_INTERESTS, MOCK_LEADERBOARDS } from "@shared/mock-data";
+import { IndexedEntity, Entity } from "./core-utils";
+import type { User, Chat, ChatMessage, Tier, Voucher, Venue, Outlet, Mission, Campaign, InterestTag, Leaderboard, ApprovalTask, Partner, Badge, SystemSettings } from "@shared/types";
+import { MOCK_CHAT_MESSAGES, MOCK_CHATS, MOCK_USERS, MOCK_TIERS, MOCK_VOUCHERS, MOCK_VENUES, MOCK_OUTLETS, MOCK_MISSIONS, MOCK_INTERESTS, MOCK_LEADERBOARDS, MOCK_APPROVALS, MOCK_PARTNERS, MOCK_BADGES, MOCK_SYSTEM_SETTINGS } from "@shared/mock-data";
 export class UserEntity extends IndexedEntity<User> {
   static readonly entityName = "user";
   static readonly indexName = "users";
@@ -20,11 +20,6 @@ export class ChatBoardEntity extends IndexedEntity<ChatBoardState> {
   async listMessages(): Promise<ChatMessage[]> {
     const { messages } = await this.getState();
     return messages;
-  }
-  async sendMessage(userId: string, text: string): Promise<ChatMessage> {
-    const msg: ChatMessage = { id: crypto.randomUUID(), chatId: this.id, userId, text, ts: Date.now() };
-    await this.mutate(s => ({ ...s, messages: [...s.messages, msg] }));
-    return msg;
   }
 }
 export class TierEntity extends IndexedEntity<Tier> {
@@ -74,4 +69,31 @@ export class LeaderboardEntity extends IndexedEntity<Leaderboard> {
   static readonly indexName = "leaderboards";
   static readonly initialState: Leaderboard = { id: "", title: "", period: "weekly", entries: [] };
   static seedData = MOCK_LEADERBOARDS;
+}
+// Phase 5 Entities
+export class ApprovalEntity extends IndexedEntity<ApprovalTask> {
+  static readonly entityName = "approval";
+  static readonly indexName = "approvals";
+  static readonly initialState: ApprovalTask = { id: "", type: "points_claim", memberName: "", amount: 0, status: "pending", date: "" };
+  static seedData = MOCK_APPROVALS;
+}
+export class PartnerEntity extends IndexedEntity<Partner> {
+  static readonly entityName = "partner";
+  static readonly indexName = "partners";
+  static readonly initialState: Partner = { id: "", name: "", type: "retail", status: "inactive", contactEmail: "", agreementLevel: "Standard", joinedDate: "" };
+  static seedData = MOCK_PARTNERS;
+}
+export class BadgeEntity extends IndexedEntity<Badge> {
+  static readonly entityName = "badge";
+  static readonly indexName = "badges";
+  static readonly initialState: Badge = { id: "", name: "", description: "", icon: "star", color: "#ccc", requirementPoints: 0, earnedCount: 0 };
+  static seedData = MOCK_BADGES;
+}
+export class SystemSettingsEntity extends Entity<SystemSettings> {
+  static readonly entityName = "system_settings";
+  static readonly initialState: SystemSettings = MOCK_SYSTEM_SETTINGS;
+  static async getGlobal(env: any): Promise<SystemSettings> {
+    const inst = new SystemSettingsEntity(env, "global");
+    return inst.getState();
+  }
 }
