@@ -2,7 +2,8 @@ import type {
   User, Chat, ChatMessage, TransactionInsight, Tier, Voucher,
   Venue, Outlet, Mission, InterestTag, Leaderboard, ApprovalTask,
   Partner, Badge, SystemSettings, Ad, MarketingTicket, NewsItem, GiftCard, FaqItem, Member,
-  ContactSettings, LegalDocument, WifiSettings, Campaign, WeatherConfig, WeatherRecommendation
+  ContactSettings, LegalDocument, WifiSettings, Campaign, WeatherConfig, WeatherRecommendation,
+  SplashScreenConfig, HeroBannerConfig
 } from './types';
 const FIRST_NAMES = ["James", "Sarah", "Michael", "Elena", "David", "Ahmad", "Siti", "Budi", "Dewi", "Kevin", "Rina", "Aditya", "Jessica", "Robert", "Linda", "Maya", "Oscar", "Zoe", "Liam", "Hana"];
 const LAST_NAMES = ["Wilson", "Chen", "Scott", "Rodriguez", "Kim", "Pratama", "Sari", "Wijaya", "Kusuma", "Tan", "Lau", "Nguyen", "Murphy", "Santoso", "Hidayat", "Zhuang", "Lee", "Miller", "Garcia", "Wong"];
@@ -95,6 +96,22 @@ export const WEATHER_PRESETS: Record<string, WeatherRecommendation> = {
     tips: ["Cool off with 20% off all cold drinks", "Air-conditioned lounges are available", "Visit our indoor F&B outlets"],
     icon: 'Droplets'
   }
+};
+export const MOCK_SPLASH_CONFIG: SplashScreenConfig = {
+  id: 'global',
+  imageUrl: 'https://images.unsplash.com/photo-1549212628-971c26f02213?q=80&w=800',
+  backgroundColor: '#4F46E5',
+  displayDuration: 3000
+};
+export const MOCK_HERO_BANNER_CONFIG: HeroBannerConfig = {
+  id: 'global',
+  isEnabled: true,
+  autoRotationSpeed: 5000,
+  banners: [
+    { id: 'h1', title: 'Summer Festival 2024', subtitle: 'Exclusive rewards await you at PIK Avenue.', imageUrl: 'https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?q=80&w=1200', actionUrl: '/marketing/events', order: 1 },
+    { id: 'h2', title: 'Double Points Weekend', subtitle: 'Earn 2x XP on all F&B Dining this weekend only.', imageUrl: 'https://images.unsplash.com/photo-1550966841-3ee5ad6070d8?q=80&w=1200', actionUrl: '/loyalty/earn-points', order: 2 },
+    { id: 'h3', title: 'VIP Lounge Access', subtitle: 'New Gold Tier benefit unlocked. Visit Nexus Tower.', imageUrl: 'https://images.unsplash.com/photo-1560624052-449f5ddf0c31?q=80&w=1200', actionUrl: '/tiers', order: 3 },
+  ]
 };
 export const MOCK_TIERS: Tier[] = [
   { id: 't1', name: 'Bronze', minPoints: 0, benefits: ['Standard support', 'Birthday treat'], color: '#CD7F32' },

@@ -3,7 +3,8 @@ import type {
   User, Chat, ChatMessage, Tier, Voucher, Venue, Outlet,
   Mission, Campaign, InterestTag, Leaderboard, ApprovalTask,
   Partner, Badge, SystemSettings, Ad, MarketingTicket, NewsItem,
-  GiftCard, FaqItem, Member, ContactSettings, LegalDocument, WifiSettings, WeatherConfig
+  GiftCard, FaqItem, Member, ContactSettings, LegalDocument, WifiSettings, WeatherConfig,
+  SplashScreenConfig, HeroBannerConfig
 } from "@shared/types";
 import {
   MOCK_CHAT_MESSAGES, MOCK_CHATS, MOCK_USERS, MOCK_TIERS,
@@ -12,7 +13,7 @@ import {
   MOCK_PARTNERS, MOCK_BADGES, MOCK_SYSTEM_SETTINGS,
   MOCK_ADS, MOCK_TICKETS, MOCK_NEWS, MOCK_GIFT_CARDS, MOCK_FAQ, MOCK_MEMBERS,
   MOCK_CONTACT_SETTINGS, MOCK_TERMS_CONTENT, MOCK_PRIVACY_CONTENT, MOCK_WIFI_SETTINGS,
-  MOCK_CAMPAIGNS, MOCK_WEATHER_CONFIG
+  MOCK_CAMPAIGNS, MOCK_WEATHER_CONFIG, MOCK_SPLASH_CONFIG, MOCK_HERO_BANNER_CONFIG
 } from "@shared/mock-data";
 export class UserEntity extends IndexedEntity<Member> {
   static readonly entityName = "member";
@@ -173,6 +174,22 @@ export class WeatherSettingsEntity extends Entity<WeatherConfig> {
   static readonly initialState: WeatherConfig = MOCK_WEATHER_CONFIG;
   static async getGlobal(env: any): Promise<WeatherConfig> {
     const inst = new WeatherSettingsEntity(env, "global");
+    return inst.getState();
+  }
+}
+export class SplashScreenEntity extends Entity<SplashScreenConfig> {
+  static readonly entityName = "splash_screen_config";
+  static readonly initialState: SplashScreenConfig = MOCK_SPLASH_CONFIG;
+  static async getGlobal(env: any): Promise<SplashScreenConfig> {
+    const inst = new SplashScreenEntity(env, "global");
+    return inst.getState();
+  }
+}
+export class HeroBannerEntity extends Entity<HeroBannerConfig> {
+  static readonly entityName = "hero_banner_config";
+  static readonly initialState: HeroBannerConfig = MOCK_HERO_BANNER_CONFIG;
+  static async getGlobal(env: any): Promise<HeroBannerConfig> {
+    const inst = new HeroBannerEntity(env, "global");
     return inst.getState();
   }
 }

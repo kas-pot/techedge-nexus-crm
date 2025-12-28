@@ -3,10 +3,11 @@ import {
   LayoutDashboard, Users, Trophy, Coins, Gift,
   Store, Building2, Megaphone, Calendar,
   Bell, Settings, ShieldCheck, ChevronRight,
-  TrendingUp, Star, UserPlus, Map, Ticket,
+  TrendingUp, Star, Map, Ticket,
   Mail, Video, MonitorPlay, Newspaper, Languages,
   Palette, Smartphone, Fingerprint, ScanEye,
-  ShieldAlert, BookOpen, HelpCircle, Wifi, Users2, Landmark, CheckSquare, CloudSun
+  ShieldAlert, BookOpen, HelpCircle, Wifi, Users2, Landmark, CheckSquare, CloudSun,
+  Image as ImageIcon, UserCheck, Cpu, Layout
 } from "lucide-react";
 import {
   Sidebar,
@@ -105,15 +106,18 @@ const navGroups = [
         icon: Settings,
         url: "/system",
         sub: [
-          { title: "Global Config", url: "/system" },
+          { title: "Global Config", url: "/system/appearance" },
           { title: "Weather Config", url: "/system/weather" },
-          { title: "Themes", url: "/system/themes" },
-          { title: "Languages", url: "/system/languages" },
+          { title: "Theme Presets", url: "/system/appearance" },
+          { title: "Languages", url: "/system/localization" },
           { title: "Splash Screen", url: "/system/splash" },
-          { title: "SSO Config", url: "/system/sso" },
-          { title: "OCR/AI", url: "/system/ai" },
+          { title: "Hero Banners", url: "/system/banner" },
+          { title: "Contact Info", url: "/system/contact" },
+          { title: "Sedayu SSO", url: "/system/security" },
+          { title: "OCR/AI Config", url: "/system/advanced" },
           { title: "Privacy Policy", url: "/system/privacy" },
-          { title: "Wifi", url: "/system/wifi" },
+          { title: "Terms & Conditions", url: "/system/terms" },
+          { title: "Wifi Password", url: "/system/wifi" },
           { title: "FAQ", url: "/system/faq" },
         ]
       }

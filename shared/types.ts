@@ -208,6 +208,26 @@ export interface WifiSettings {
   password?: string;
   isVisible: boolean;
 }
+export interface SplashScreenConfig {
+  id: string;
+  imageUrl: string;
+  backgroundColor: string;
+  displayDuration: number; // in milliseconds
+}
+export interface HeroBannerItem {
+  id: string;
+  title: string;
+  subtitle: string;
+  imageUrl: string;
+  actionUrl: string;
+  order: number;
+}
+export interface HeroBannerConfig {
+  id: string;
+  isEnabled: boolean;
+  banners: HeroBannerItem[];
+  autoRotationSpeed: number; // in milliseconds
+}
 export interface WeatherConfig {
   id: string;
   isEnabled: boolean;

@@ -5,7 +5,8 @@ import {
   OutletEntity, MissionEntity, CampaignEntity, InterestEntity,
   LeaderboardEntity, ApprovalEntity, PartnerEntity, BadgeEntity,
   SystemSettingsEntity, AdEntity, TicketEntity, NewsEntity, GiftCardEntity, FaqEntity,
-  ContactSettingsEntity, TermsEntity, PrivacyEntity, WifiEntity, WeatherSettingsEntity
+  ContactSettingsEntity, TermsEntity, PrivacyEntity, WifiEntity, WeatherSettingsEntity,
+  SplashScreenEntity, HeroBannerEntity
 } from "./entities";
 import { ok, bad, notFound, Index } from './core-utils';
 const ENTITY_MAP: Record<string, any> = {
@@ -171,6 +172,20 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     await inst.patch(data);
     return ok(c, await inst.getState());
   });
+  app.get('/api/system/splash', async (c) => ok(c, await SplashScreenEntity.getGlobal(c.env)));
+  app.put('/api/system/splash', async (c) => {
+    const data = await c.req.json();
+    const inst = new SplashScreenEntity(c.env, "global");
+    await inst.patch(data);
+    return ok(c, await inst.getState());
+  });
+  app.get('/api/system/banner', async (c) => ok(c, await HeroBannerEntity.getGlobal(c.env)));
+  app.put('/api/system/banner', async (c) => {
+    const data = await c.req.json();
+    const inst = new HeroBannerEntity(c.env, "global");
+    await inst.patch(data);
+    return ok(c, await inst.getState());
+  });
   app.get('/api/reseed-all', async (c) => {
     let count = 0;
     for (const [type, EntityClass] of Object.entries(ENTITY_MAP)) {
@@ -182,6 +197,10 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         count++;
       }
     }
+    // Reseed singletons
+    await new SplashScreenEntity(c.env, "global").save(MOCK_SPLASH_CONFIG);
+    await new HeroBannerEntity(c.env, "global").save(MOCK_HERO_BANNER_CONFIG);
+    await new WifiEntity(c.env, "global").save(MOCK_WIFI_SETTINGS);
     return ok(c, { reseeded: count, message: 'All mock entities force-reseeded' });
   });
 }

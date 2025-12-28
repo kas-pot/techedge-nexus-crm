@@ -4,7 +4,8 @@ import type {
   ApiResponse, Tier, Voucher, Venue, Outlet, Mission, Campaign,
   InterestTag, Leaderboard, ApprovalTask, Partner, Badge,
   SystemSettings, Ad, MarketingTicket, NewsItem, GiftCard, FaqItem, Member,
-  ContactSettings, LegalDocument, WifiSettings, WeatherConfig
+  ContactSettings, LegalDocument, WifiSettings, WeatherConfig,
+  SplashScreenConfig, HeroBannerConfig
 } from '@shared/types';
 export function useEntities<T>(key: string, path: string, params?: Record<string, string>, limit = 200) {
   const queryParams = new URLSearchParams(params);
@@ -79,6 +80,14 @@ export const useWeatherSettings = () => useQuery({
   queryKey: ['weather-settings'],
   queryFn: () => api<WeatherConfig>('/api/system/weather')
 });
+export const useSplashScreen = () => useQuery({
+  queryKey: ['splash-screen'],
+  queryFn: () => api<SplashScreenConfig>('/api/system/splash')
+});
+export const useHeroBanner = () => useQuery({
+  queryKey: ['hero-banner'],
+  queryFn: () => api<HeroBannerConfig>('/api/system/banner')
+});
 // System Mutation Hooks
 export const useSettingsMutation = () => {
   const queryClient = useQueryClient();
@@ -120,6 +129,20 @@ export const useWeatherMutation = () => {
   return useMutation({
     mutationFn: (data: Partial<WeatherConfig>) => api<WeatherConfig>('/api/system/weather', { method: 'PUT', body: JSON.stringify(data) }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['weather-settings'] }),
+  });
+};
+export const useSplashMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: Partial<SplashScreenConfig>) => api<SplashScreenConfig>('/api/system/splash', { method: 'PUT', body: JSON.stringify(data) }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['splash-screen'] }),
+  });
+};
+export const useBannerMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: Partial<HeroBannerConfig>) => api<HeroBannerConfig>('/api/system/banner', { method: 'PUT', body: JSON.stringify(data) }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['hero-banner'] }),
   });
 };
 // Common Mutations
