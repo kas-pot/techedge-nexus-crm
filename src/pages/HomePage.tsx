@@ -6,14 +6,15 @@ import { MOCK_DASHBOARD_STATS, WEATHER_PRESETS } from '@shared/mock-data';
 import { Users, TrendingUp, Award, DollarSign, Zap, CreditCard, ChevronRight, Download, Sun, CloudRain, Cloud, Droplets, ArrowRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Link } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useWeatherSettings } from '@/lib/api-hooks';
 const stats = [
-  { label: 'Total Members', value: '10,050', change: '+12%', icon: Users, color: 'text-blue-600', bg: 'bg-blue-50' },
+  { label: 'Total Members', value: '10,050', change: '+12%', icon: Users, color: 'text-indigo-600', bg: 'bg-indigo-50' },
   { label: 'Total Revenue (IDR)', value: '6.8B', change: '+15%', icon: DollarSign, color: 'text-indigo-600', bg: 'bg-indigo-50' },
-  { label: 'Active Campaigns', value: '24', change: '+2', icon: TrendingUp, color: 'text-amber-600', bg: 'bg-amber-50' },
-  { label: 'Redemptions', value: '2,842', change: '+18%', icon: Award, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+  { label: 'Active Campaigns', value: '24', change: '+2', icon: TrendingUp, color: 'text-indigo-600', bg: 'bg-indigo-50' },
+  { label: 'Redemptions', value: '2,842', change: '+18%', icon: Award, color: 'text-indigo-600', bg: 'bg-indigo-50' },
 ];
 const WeatherIcons = {
   sunny: Sun,
@@ -63,17 +64,17 @@ export function HomePage() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
             <h1 className="text-4xl font-extrabold tracking-tight text-foreground">Executive Dashboard</h1>
-            <p className="text-muted-foreground text-lg font-medium">Nexus Intelligence Hub • PIK Enterprise Operations</p>
+            <p className="text-indigo-600 text-lg font-semibold tracking-tight">Nexus Intelligence Hub • PIK Enterprise Operations</p>
           </motion.div>
           <div className="flex gap-3">
             <Button variant="outline" className="h-11 shadow-sm"><Download className="mr-2 h-4 w-4" /> Export Report</Button>
-            <Button className="bg-indigo-600 h-11 px-6 shadow-indigo-100">Live Insights</Button>
+            <Button className="bg-indigo-600 hover:bg-indigo-700 h-11 px-6 shadow-md transition-all">Live Insights</Button>
           </div>
         </div>
         {/* Weather Intelligence Widget */}
         {weather?.isEnabled && (
-          <motion.div 
-            initial={{ opacity: 0, scale: 0.95 }} 
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             className={cn(
               "relative overflow-hidden rounded-3xl p-6 text-white shadow-xl bg-gradient-to-r",
@@ -88,7 +89,7 @@ export function HomePage() {
                 <div>
                   <div className="flex items-center gap-2 mb-0.5">
                     <span className="text-sm font-bold uppercase tracking-widest opacity-80">{weather.locationName}</span>
-                    <Badge className="bg-white/20 text-white border-none text-[10px]">REAL-TIME</Badge>
+                    <Badge className="bg-white/20 text-white border-none text-[10px] font-bold">REAL-TIME</Badge>
                   </div>
                   <h2 className="text-3xl font-black">{currentPreset.condition}</h2>
                 </div>
@@ -98,7 +99,7 @@ export function HomePage() {
                   <Zap className="h-3 w-3" /> Operational Recommendation
                 </div>
                 <AnimatePresence mode="wait">
-                  <motion.p 
+                  <motion.p
                     key={recIndex}
                     initial={{ opacity: 0, y: 5 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -115,7 +116,6 @@ export function HomePage() {
                 </Link>
               </Button>
             </div>
-            {/* Background Decorative Element */}
             <div className="absolute top-[-20px] right-[-20px] h-64 w-64 bg-white/10 rounded-full blur-3xl pointer-events-none" />
           </motion.div>
         )}
