@@ -3,7 +3,7 @@ import type {
   Venue, Outlet, Mission, InterestTag, Leaderboard, ApprovalTask,
   Partner, Badge, SystemSettings, Ad, MarketingTicket, NewsItem, GiftCard, FaqItem, Member,
   ContactSettings, LegalDocument, WifiSettings, Campaign, WeatherConfig, WeatherRecommendation,
-  SplashScreenConfig, HeroBannerConfig, PushCampaign
+  SplashScreenConfig, HeroBannerConfig, PushCampaign, ActivityLog
 } from './types';
 const FIRST_NAMES = ["James", "Sarah", "Michael", "Elena", "David", "Ahmad", "Siti", "Budi", "Dewi", "Kevin", "Rina", "Aditya", "Jessica", "Robert", "Linda", "Maya", "Oscar", "Zoe", "Liam", "Hana"];
 const LAST_NAMES = ["Wilson", "Chen", "Scott", "Rodriguez", "Kim", "Pratama", "Sari", "Wijaya", "Kusuma", "Tan", "Lau", "Nguyen", "Murphy", "Santoso", "Hidayat", "Zhuang", "Lee", "Miller", "Garcia", "Wong"];
@@ -180,7 +180,23 @@ export const MOCK_APPROVALS: ApprovalTask[] = Array.from({ length: 30 }, (_, i) 
   amount: i % 2 === 0 ? 500 : 0,
   status: i < 5 ? 'pending' : i < 20 ? 'approved' : 'rejected',
   date: '2024-06-' + ((i % 15) + 1).toString().padStart(2, '0'),
-  description: i % 2 === 0 ? 'Receipt Scan Claim' : 'Tier Upgrade Request'
+  description: i % 2 === 0 ? 'Receipt Scan Claim' : 'Tier Upgrade Request',
+  ocrResult: i % 2 === 0 ? {
+    mallName: 'Sedayu Mall A',
+    totalAmount: 500,
+    receiptDate: '2024-06-' + ((i % 15) + 1).toString().padStart(2, '0'),
+    receiptId: `REC-${10000 + i}`,
+    confidenceScore: i % 4 === 0 ? 0.98 : 0.65
+  } : undefined
+}));
+export const MOCK_ACTIVITY_LOGS: ActivityLog[] = Array.from({ length: 25 }, (_, i) => ({
+  id: `log-${i + 1}`,
+  action: (['Created', 'Updated', 'Redeemed', 'Sent', 'Approved', 'Joined'] as const)[i % 6],
+  entityType: (['member', 'voucher', 'campaign', 'approval'] as const)[i % 4],
+  entityId: `id-${i}`,
+  userName: FIRST_NAMES[i % FIRST_NAMES.length],
+  timestamp: new Date(Date.now() - (i * 3600000)).toISOString(),
+  details: `System event related to ${(['member', 'voucher', 'campaign', 'approval'] as const)[i % 4]} entity processing.`
 }));
 export const MOCK_PARTNERS: Partner[] = [
   { id: 'p1', name: 'Global Bank Inc', type: 'bank', status: 'active', contactEmail: 'partnerships@globalbank.com', agreementLevel: 'Platinum', joinedDate: '2022-01-15' },
@@ -295,9 +311,9 @@ export const MOCK_PUSH_CAMPAIGNS: PushCampaign[] = [
   },
   {
     id: "push-2", name: "Gold Tier Exclusive", channel: "push", status: "sent", reach: 850, openRate: 58.2, ctr: 14.5,
-    category: "Announcement", startDate: "2024-05-15", endDate: "2024-05-15", messageTitle: "Private Lounge Access ���", messageBody: "As a Gold Member, enjoy complimentary snacks at the VIP Lounge today.",
+    category: "Announcement", startDate: "2024-05-15", endDate: "2024-05-15", messageTitle: "Private Lounge Access ", messageBody: "As a Gold Member, enjoy complimentary snacks at the VIP Lounge today.",
     targetSegment: "Gold Tier", targetingType: "Segmented", triggerType: "Manual", scheduledFor: "2024-05-15T14:00:00Z", sentAt: "2024-05-15T14:00:02Z",
-    imageUrl: "https://images.unsplash.com/photo-1560624052-449f5ddf0c31?q=80&w=800"
+    imageUrl: "https://images.unsplash.com/photo-1560624052-449f5ddf0c31?q=80&w=1200"
   },
   {
     id: "push-3", name: "Birthday Shoutout", channel: "push", status: "scheduled", reach: 120, openRate: 0, ctr: 0,
@@ -315,25 +331,7 @@ export const MOCK_PUSH_CAMPAIGNS: PushCampaign[] = [
     id: "push-5", name: "Points Claim Approved", channel: "push", status: "sent", reach: 1, openRate: 100, ctr: 85,
     category: "Approval", startDate: "2024-05-20", endDate: "2024-05-20", messageTitle: "Claim Approved! ✅", messageBody: "Your receipt scan from Sedayu Mall has been verified. 250 XP added.",
     targetSegment: "All Members", targetingType: "Segmented", triggerType: "Event-Based", scheduledFor: "2024-05-20T12:00:00Z", sentAt: "2024-05-20T12:00:01Z"
-  },
-  ...Array.from({ length: 10 }, (_, i) => ({
-    id: `push-extra-${i}`,
-    name: `Enterprise Update ${i + 6}`,
-    channel: "push" as const,
-    status: i % 3 === 0 ? "sent" as const : "scheduled" as const,
-    category: (["Announcement", "Reminder", "Congrats", "Tenant"] as const)[i % 4],
-    reach: 2000 + i * 150,
-    openRate: 15 + Math.random() * 25,
-    ctr: 2 + Math.random() * 5,
-    startDate: "2024-05-25",
-    endDate: "2024-05-26",
-    messageTitle: `Special Offer ${i + 6}`,
-    messageBody: `This is a sample message for campaign ${i + 6}. Click to redeem your rewards immediately.`,
-    targetSegment: "All Members" as const,
-    targetingType: "Global Broadcast" as const,
-    triggerType: "Scheduled" as const,
-    scheduledFor: "2024-06-20T10:00:00Z"
-  }))
+  }
 ];
 export const PUSH_ANALYTICS_DATA = Array.from({ length: 30 }, (_, i) => ({
   day: i + 1,

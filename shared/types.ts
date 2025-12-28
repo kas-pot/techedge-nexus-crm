@@ -92,16 +92,16 @@ export interface Campaign {
   openRate?: number;
   ctr?: number;
 }
-export type PushNotificationCategory = 
-  | 'General' 
-  | 'Event' 
-  | 'Mission' 
-  | 'Points' 
-  | 'Birthday' 
-  | 'Tenant' 
-  | 'Approval' 
-  | 'Reminder' 
-  | 'Announcement' 
+export type PushNotificationCategory =
+  | 'General'
+  | 'Event'
+  | 'Mission'
+  | 'Points'
+  | 'Birthday'
+  | 'Tenant'
+  | 'Approval'
+  | 'Reminder'
+  | 'Announcement'
   | 'Congrats';
 export interface PushCampaign extends Campaign {
   category: PushNotificationCategory;
@@ -139,6 +139,15 @@ export interface TransactionInsight {
   transactions: number;
   revenueIdr: number;
 }
+export interface ActivityLog {
+  id: string;
+  action: 'Created' | 'Updated' | 'Redeemed' | 'Deleted' | 'Sent' | 'Approved' | 'Rejected' | 'Joined';
+  entityType: string;
+  entityId: string;
+  userName: string;
+  timestamp: string;
+  details?: string;
+}
 export interface ApprovalTask {
   id: string;
   type: 'points_claim' | 'membership' | 'voucher_redeem';
@@ -148,6 +157,13 @@ export interface ApprovalTask {
   date: string;
   proofUrl?: string;
   description?: string;
+  ocrResult?: {
+    mallName: string;
+    totalAmount: number;
+    receiptDate: string;
+    receiptId: string;
+    confidenceScore: number;
+  };
 }
 export interface Partner {
   id: string;

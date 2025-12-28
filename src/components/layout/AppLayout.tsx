@@ -8,7 +8,7 @@ import { Bell, Search, User, Settings, HelpCircle, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
+import { CommandPalette } from "@/components/CommandPalette";
 type AppLayoutProps = {
   children: React.ReactNode;
   container?: boolean;
@@ -26,6 +26,7 @@ export function AppLayout({ children, container = false, className, contentClass
   return (
     <SidebarProvider defaultOpen={true}>
       <AppSidebar />
+      <CommandPalette />
       <SidebarInset className={`bg-slate-50/30 dark:bg-background ${className || ""}`}>
         <header className="flex h-16 shrink-0 items-center justify-between gap-2 border-b px-6 bg-white/70 dark:bg-card/70 backdrop-blur-xl sticky top-0 z-40">
           <div className="flex items-center gap-3">
@@ -35,7 +36,7 @@ export function AppLayout({ children, container = false, className, contentClass
               <BreadcrumbList>
                 <BreadcrumbItem>
                   <BreadcrumbLink asChild>
-                    <Link to="/" className="font-semibold text-foreground hover:text-indigo-600 transition-colors">Nexus CRM</Link>
+                    <Link to="/" className="font-bold text-indigo-600">Nexus CRM</Link>
                   </BreadcrumbLink>
                 </BreadcrumbItem>
                 {pathSegments.map((segment, index) => {
@@ -47,7 +48,7 @@ export function AppLayout({ children, container = false, className, contentClass
                       <BreadcrumbSeparator className="opacity-40" />
                       <BreadcrumbItem>
                         {isLast ? (
-                          <BreadcrumbPage className="font-bold text-indigo-600">{label}</BreadcrumbPage>
+                          <BreadcrumbPage className="font-bold text-foreground">{label}</BreadcrumbPage>
                         ) : (
                           <BreadcrumbLink asChild>
                             <Link to={url} className="hover:text-foreground transition-colors">{label}</Link>
@@ -61,14 +62,20 @@ export function AppLayout({ children, container = false, className, contentClass
             </Breadcrumb>
           </div>
           <div className="flex items-center gap-4">
-            <div className="hidden lg:flex relative w-64">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <input 
-                type="text" 
-                placeholder="Global search..." 
-                className="w-full bg-slate-100 dark:bg-slate-800 border-none rounded-full py-1.5 pl-9 pr-4 text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
-              />
-            </div>
+            <Button 
+              variant="outline" 
+              className="hidden lg:flex items-center gap-4 bg-slate-100/50 hover:bg-slate-200/50 border-none rounded-full h-9 px-4 text-muted-foreground font-medium transition-all"
+              onClick={() => {
+                const e = new KeyboardEvent('keydown', { key: 'k', metaKey: true });
+                document.dispatchEvent(e);
+              }}
+            >
+              <div className="flex items-center gap-2">
+                <Search className="h-4 w-4" />
+                <span className="text-xs">Omnisearch...</span>
+              </div>
+              <kbd className="bg-white px-1.5 py-0.5 rounded border text-[10px] font-bold shadow-sm">⌘K</kbd>
+            </Button>
             <Button variant="ghost" size="icon" className="relative h-9 w-9 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800">
               <Bell className="h-5 w-5 text-muted-foreground" />
               <span className="absolute top-1 right-1 h-2 w-2 bg-indigo-500 rounded-full border-2 border-white dark:border-slate-900" />

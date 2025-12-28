@@ -4,7 +4,7 @@ import type {
   Mission, Campaign, InterestTag, Leaderboard, ApprovalTask,
   Partner, Badge, SystemSettings, Ad, MarketingTicket, NewsItem,
   GiftCard, FaqItem, Member, ContactSettings, LegalDocument, WifiSettings, WeatherConfig,
-  SplashScreenConfig, HeroBannerConfig
+  SplashScreenConfig, HeroBannerConfig, ActivityLog
 } from "@shared/types";
 import type { PushCampaign } from "@shared/types";
 import {
@@ -15,7 +15,7 @@ import {
   MOCK_ADS, MOCK_TICKETS, MOCK_NEWS, MOCK_GIFT_CARDS, MOCK_FAQ, MOCK_MEMBERS,
   MOCK_CONTACT_SETTINGS, MOCK_TERMS_CONTENT, MOCK_PRIVACY_CONTENT, MOCK_WIFI_SETTINGS,
   MOCK_CAMPAIGNS, MOCK_WEATHER_CONFIG, MOCK_SPLASH_CONFIG, MOCK_HERO_BANNER_CONFIG,
-  MOCK_PUSH_CAMPAIGNS
+  MOCK_PUSH_CAMPAIGNS, MOCK_ACTIVITY_LOGS
 } from "@shared/mock-data";
 export class UserEntity extends IndexedEntity<Member> {
   static readonly entityName = "member";
@@ -93,6 +93,12 @@ export class ApprovalEntity extends IndexedEntity<ApprovalTask> {
   static readonly indexName = "approvals";
   static readonly initialState: ApprovalTask = { id: "", type: "points_claim", memberName: "", amount: 0, status: "pending", date: "" };
   static seedData = MOCK_APPROVALS;
+}
+export class ActivityLogEntity extends IndexedEntity<ActivityLog> {
+  static readonly entityName = "activity_log";
+  static readonly indexName = "activity_logs";
+  static readonly initialState: ActivityLog = { id: "", action: "Joined", entityType: "system", entityId: "", userName: "System", timestamp: "" };
+  static seedData = MOCK_ACTIVITY_LOGS;
 }
 export class PartnerEntity extends IndexedEntity<Partner> {
   static readonly indexName = "partners";

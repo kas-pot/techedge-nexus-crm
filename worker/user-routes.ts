@@ -7,13 +7,13 @@ import {
   SystemSettingsEntity, AdEntity, TicketEntity, NewsEntity, GiftCardEntity, FaqEntity,
   ContactSettingsEntity, TermsEntity, PrivacyEntity, WifiEntity, WeatherSettingsEntity,
   SplashScreenEntity, HeroBannerEntity,
-  PushCampaignEntity
+  PushCampaignEntity, ActivityLogEntity
 } from "./entities";
 import { ok, bad, notFound, Index } from './core-utils';
-import { 
-  MOCK_SPLASH_CONFIG, 
-  MOCK_HERO_BANNER_CONFIG, 
-  MOCK_WIFI_SETTINGS 
+import {
+  MOCK_SPLASH_CONFIG,
+  MOCK_HERO_BANNER_CONFIG,
+  MOCK_WIFI_SETTINGS
 } from '@shared/mock-data';
 const ENTITY_MAP: Record<string, any> = {
   users: UserEntity,
@@ -33,10 +33,26 @@ const ENTITY_MAP: Record<string, any> = {
   news: NewsEntity,
   'gift-cards': GiftCardEntity,
   'push-campaigns': PushCampaignEntity,
+  'activity-logs': ActivityLogEntity,
   faqs: FaqEntity
 };
+async function logActivity(env: Env, action: any, type: string, id: string) {
+  try {
+    await ActivityLogEntity.create(env, {
+      id: crypto.randomUUID(),
+      action,
+      entityType: type,
+      entityId: id,
+      userName: "Nexus Admin",
+      timestamp: new Date().toISOString(),
+      details: `Automatic audit for ${action} event on ${type}:${id}`
+    });
+  } catch (e) {
+    console.error("Logging failed", e);
+  }
+}
 export function userRoutes(app: Hono<{ Bindings: Env }>) {
-  // 1. Specialized Batch Gift Card Generation
+  // Specialized Batch Gift Card Generation
   app.post('/api/gift-cards/batch', async (c) => {
     const { count, value, expiryDate } = await c.req.json();
     if (!count || count <= 0) return bad(c, 'Invalid count');
@@ -54,33 +70,8 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       });
       results.push(card);
     }
+    await logActivity(c.env, 'Created', 'gift_card_batch', 'batch_mint');
     return ok(c, results);
-  });
-  // 2. Specialized External Voucher Synchronization
-  app.post('/api/vouchers/sync-external', async (c) => {
-    const { partnerId, count } = await c.req.json();
-    if (!partnerId) return bad(c, 'Partner ID required');
-    const partnerInst = new PartnerEntity(c.env, partnerId);
-    if (!await partnerInst.exists()) return notFound(c, 'Partner not found');
-    const syncResults = [];
-    const syncDate = new Date().toISOString();
-    for (let i = 0; i < (count || 5); i++) {
-      const id = crypto.randomUUID();
-      const voucher = await VoucherEntity.create(c.env, {
-        id,
-        title: `Partner Reward ${i + 1}`,
-        code: `EXT-${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
-        discountType: i % 2 === 0 ? 'percentage' : 'fixed',
-        value: i % 2 === 0 ? 15 : 50000,
-        expiryDate: '2025-12-31',
-        status: 'active',
-        isExternal: true,
-        sourcePartnerId: partnerId,
-        syncDate
-      });
-      syncResults.push(voucher);
-    }
-    return ok(c, { synced: syncResults.length, items: syncResults });
   });
   // Generic Entity Routes
   app.get('/api/:entityType', async (c) => {
@@ -93,20 +84,10 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     const limitParam = c.req.query('limit');
     const limit = limitParam ? Math.max(1, (Number(limitParam) | 0)) : undefined;
     const page = await EntityClass.list(c.env, cursor ?? null, limit);
-    // Filter if channel is provided (for campaigns)
     if (channel && type === 'campaigns') {
       page.items = page.items.filter((item: any) => item.channel === channel);
     }
     return ok(c, page);
-  });
-  app.get('/api/:entityType/:id', async (c) => {
-    const type = c.req.param('entityType');
-    const id = c.req.param('id');
-    const EntityClass = ENTITY_MAP[type];
-    if (!EntityClass) return notFound(c);
-    const inst = new EntityClass(c.env, id);
-    if (!await inst.exists()) return notFound(c);
-    return ok(c, await inst.getState());
   });
   app.post('/api/:entityType', async (c) => {
     const type = c.req.param('entityType');
@@ -115,6 +96,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     if (!EntityClass) return notFound(c);
     const id = data.id || crypto.randomUUID();
     const result = await EntityClass.create(c.env, { ...data, id });
+    await logActivity(c.env, 'Created', type, id);
     return ok(c, result);
   });
   app.put('/api/:entityType/:id', async (c) => {
@@ -126,6 +108,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     const inst = new EntityClass(c.env, id);
     if (!await inst.exists()) return notFound(c);
     await inst.patch(data);
+    await logActivity(c.env, 'Updated', type, id);
     return ok(c, await inst.getState());
   });
   app.delete('/api/:entityType/:id', async (c) => {
@@ -134,9 +117,10 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     const EntityClass = ENTITY_MAP[type];
     if (!EntityClass) return notFound(c);
     const deleted = await EntityClass.delete(c.env, id);
+    if (deleted) await logActivity(c.env, 'Deleted', type, id);
     return deleted ? ok(c, { success: true }) : notFound(c);
   });
-  // Specialized System Routes
+  // System Singleton Routes
   app.get('/api/system/settings', async (c) => ok(c, await SystemSettingsEntity.getGlobal(c.env)));
   app.put('/api/system/settings', async (c) => {
     const data = await c.req.json();
@@ -144,52 +128,10 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     await inst.patch(data);
     return ok(c, await inst.getState());
   });
-  app.get('/api/system/contact', async (c) => ok(c, await ContactSettingsEntity.getGlobal(c.env)));
-  app.put('/api/system/contact', async (c) => {
-    const data = await c.req.json();
-    const inst = new ContactSettingsEntity(c.env, "global");
-    await inst.patch(data);
-    return ok(c, await inst.getState());
-  });
-  app.get('/api/system/terms', async (c) => ok(c, await TermsEntity.getGlobal(c.env)));
-  app.put('/api/system/terms', async (c) => {
-    const data = await c.req.json();
-    const inst = new TermsEntity(c.env, "global");
-    await inst.patch(data);
-    return ok(c, await inst.getState());
-  });
-  app.get('/api/system/privacy', async (c) => ok(c, await PrivacyEntity.getGlobal(c.env)));
-  app.put('/api/system/privacy', async (c) => {
-    const data = await c.req.json();
-    const inst = new PrivacyEntity(c.env, "global");
-    await inst.patch(data);
-    return ok(c, await inst.getState());
-  });
-  app.get('/api/system/wifi', async (c) => ok(c, await WifiEntity.getGlobal(c.env)));
-  app.put('/api/system/wifi', async (c) => {
-    const data = await c.req.json();
-    const inst = new WifiEntity(c.env, "global");
-    await inst.patch(data);
-    return ok(c, await inst.getState());
-  });
   app.get('/api/system/weather', async (c) => ok(c, await WeatherSettingsEntity.getGlobal(c.env)));
   app.put('/api/system/weather', async (c) => {
     const data = await c.req.json();
     const inst = new WeatherSettingsEntity(c.env, "global");
-    await inst.patch(data);
-    return ok(c, await inst.getState());
-  });
-  app.get('/api/system/splash', async (c) => ok(c, await SplashScreenEntity.getGlobal(c.env)));
-  app.put('/api/system/splash', async (c) => {
-    const data = await c.req.json();
-    const inst = new SplashScreenEntity(c.env, "global");
-    await inst.patch(data);
-    return ok(c, await inst.getState());
-  });
-  app.get('/api/system/banner', async (c) => ok(c, await HeroBannerEntity.getGlobal(c.env)));
-  app.put('/api/system/banner', async (c) => {
-    const data = await c.req.json();
-    const inst = new HeroBannerEntity(c.env, "global");
     await inst.patch(data);
     return ok(c, await inst.getState());
   });
@@ -204,7 +146,6 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         count++;
       }
     }
-    // Reseed singletons with imported constants
     await new SplashScreenEntity(c.env, "global").save(MOCK_SPLASH_CONFIG);
     await new HeroBannerEntity(c.env, "global").save(MOCK_HERO_BANNER_CONFIG);
     await new WifiEntity(c.env, "global").save(MOCK_WIFI_SETTINGS);
