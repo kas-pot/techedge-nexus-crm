@@ -9,7 +9,7 @@ import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { RouteErrorBoundary } from '@/components/RouteErrorBoundary';
 import '@/index.css'
 // Pages
-import { DashboardPage } from '@/pages/DashboardPage';
+import { HomePage } from '@/pages/HomePage';
 import { MemberListPage } from '@/pages/members/MemberListPage';
 import { TiersPage } from '@/pages/members/TiersPage';
 import { LeaderboardsPage } from '@/pages/members/LeaderboardsPage';
@@ -31,7 +31,6 @@ import { SettingsPage } from '@/pages/system/SettingsPage';
 import { MarketingHubPage } from '@/pages/marketing/MarketingHubPage';
 import { GiftCardsPage } from '@/pages/loyalty/GiftCardsPage';
 import { HelpFAQPage } from '@/pages/system/HelpFAQPage';
-import { PlaceholderPage } from '@/components/ui/placeholder-page';
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -41,15 +40,15 @@ const queryClient = new QueryClient({
   },
 });
 const router = createBrowserRouter([
-  { 
-    path: "/", 
+  {
+    path: "/",
     element: (
       <>
         <ScrollRestoration />
-        <DashboardPage />
+        <HomePage />
       </>
-    ), 
-    errorElement: <RouteErrorBoundary /> 
+    ),
+    errorElement: <RouteErrorBoundary />
   },
   { path: "/insights", element: <MemberInsightsPage />, errorElement: <RouteErrorBoundary /> },
   { path: "/members", element: <MemberListPage />, errorElement: <RouteErrorBoundary /> },
@@ -65,9 +64,7 @@ const router = createBrowserRouter([
   { path: "/loyalty/badges", element: <BadgesPage />, errorElement: <RouteErrorBoundary /> },
   { path: "/loyalty/tags", element: <InterestsPage />, errorElement: <RouteErrorBoundary /> },
   { path: "/missions", element: <MissionsPage />, errorElement: <RouteErrorBoundary /> },
-  { path: "/missions/onboarding", element: <MissionsPage />, errorElement: <RouteErrorBoundary /> },
-  { path: "/missions/general", element: <MissionsPage />, errorElement: <RouteErrorBoundary /> },
-  { path: "/missions/tier", element: <MissionsPage />, errorElement: <RouteErrorBoundary /> },
+  { path: "/missions/:tab", element: <MissionsPage />, errorElement: <RouteErrorBoundary /> },
   { path: "/ops/venues", element: <VenuesPage />, errorElement: <RouteErrorBoundary /> },
   { path: "/ops/outlets", element: <OutletsPage />, errorElement: <RouteErrorBoundary /> },
   { path: "/ops/maps", element: <MapsPage />, errorElement: <RouteErrorBoundary /> },
@@ -82,13 +79,7 @@ const router = createBrowserRouter([
   { path: "/partnerships/list", element: <PartnershipsPage />, errorElement: <RouteErrorBoundary /> },
   { path: "/partnerships/banks", element: <PartnershipsPage />, errorElement: <RouteErrorBoundary /> },
   { path: "/system", element: <SettingsPage />, errorElement: <RouteErrorBoundary /> },
-  { path: "/system/themes", element: <SettingsPage />, errorElement: <RouteErrorBoundary /> },
-  { path: "/system/languages", element: <SettingsPage />, errorElement: <RouteErrorBoundary /> },
-  { path: "/system/splash", element: <SettingsPage />, errorElement: <RouteErrorBoundary /> },
-  { path: "/system/sso", element: <SettingsPage />, errorElement: <RouteErrorBoundary /> },
-  { path: "/system/ai", element: <SettingsPage />, errorElement: <RouteErrorBoundary /> },
-  { path: "/system/privacy", element: <SettingsPage />, errorElement: <RouteErrorBoundary /> },
-  { path: "/system/wifi", element: <SettingsPage />, errorElement: <RouteErrorBoundary /> },
+  { path: "/system/:tab", element: <SettingsPage />, errorElement: <RouteErrorBoundary /> },
   { path: "/system/faq", element: <HelpFAQPage />, errorElement: <RouteErrorBoundary /> },
 ]);
 createRoot(document.getElementById('root')!).render(
