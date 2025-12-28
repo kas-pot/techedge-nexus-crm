@@ -3,7 +3,7 @@ import { enableMapSet } from "immer";
 enableMapSet();
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import { createBrowserRouter, RouterProvider } from "react-router-dom";
+import { createBrowserRouter, RouterProvider, ScrollRestoration } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { RouteErrorBoundary } from '@/components/RouteErrorBoundary';
@@ -28,6 +28,9 @@ import { MissionsPage } from '@/pages/missions/MissionsPage';
 import { MemberInsightsPage } from '@/pages/insights/MemberInsightsPage';
 import { PartnershipsPage } from '@/pages/partnerships/PartnershipsPage';
 import { SettingsPage } from '@/pages/system/SettingsPage';
+import { MarketingHubPage } from '@/pages/marketing/MarketingHubPage';
+import { GiftCardsPage } from '@/pages/loyalty/GiftCardsPage';
+import { HelpFAQPage } from '@/pages/system/HelpFAQPage';
 import { PlaceholderPage } from '@/components/ui/placeholder-page';
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -38,7 +41,16 @@ const queryClient = new QueryClient({
   },
 });
 const router = createBrowserRouter([
-  { path: "/", element: <DashboardPage />, errorElement: <RouteErrorBoundary /> },
+  { 
+    path: "/", 
+    element: (
+      <>
+        <ScrollRestoration />
+        <DashboardPage />
+      </>
+    ), 
+    errorElement: <RouteErrorBoundary /> 
+  },
   { path: "/insights", element: <MemberInsightsPage />, errorElement: <RouteErrorBoundary /> },
   { path: "/members", element: <MemberListPage />, errorElement: <RouteErrorBoundary /> },
   { path: "/tiers", element: <TiersPage />, errorElement: <RouteErrorBoundary /> },
@@ -49,10 +61,9 @@ const router = createBrowserRouter([
   { path: "/loyalty/burn-rules", element: <BurnRulesPage />, errorElement: <RouteErrorBoundary /> },
   { path: "/loyalty/vouchers", element: <VouchersPage />, errorElement: <RouteErrorBoundary /> },
   { path: "/loyalty/external-vouchers", element: <VouchersPage />, errorElement: <RouteErrorBoundary /> },
-  { path: "/loyalty/gift-cards", element: <VouchersPage />, errorElement: <RouteErrorBoundary /> },
+  { path: "/loyalty/gift-cards", element: <GiftCardsPage />, errorElement: <RouteErrorBoundary /> },
   { path: "/loyalty/badges", element: <BadgesPage />, errorElement: <RouteErrorBoundary /> },
   { path: "/loyalty/tags", element: <InterestsPage />, errorElement: <RouteErrorBoundary /> },
-  // Missions Unified Routing
   { path: "/missions", element: <MissionsPage />, errorElement: <RouteErrorBoundary /> },
   { path: "/missions/onboarding", element: <MissionsPage />, errorElement: <RouteErrorBoundary /> },
   { path: "/missions/general", element: <MissionsPage />, errorElement: <RouteErrorBoundary /> },
@@ -60,15 +71,14 @@ const router = createBrowserRouter([
   { path: "/ops/venues", element: <VenuesPage />, errorElement: <RouteErrorBoundary /> },
   { path: "/ops/outlets", element: <OutletsPage />, errorElement: <RouteErrorBoundary /> },
   { path: "/ops/maps", element: <MapsPage />, errorElement: <RouteErrorBoundary /> },
-  // Marketing & Communications
   { path: "/marketing/events", element: <EventsPage />, errorElement: <RouteErrorBoundary /> },
-  { path: "/marketing/activities", element: <PlaceholderPage title="Activities" category="Marketing" /> },
-  { path: "/marketing/tickets", element: <PlaceholderPage title="Tickets" category="Marketing" /> },
+  { path: "/marketing/activities", element: <MarketingHubPage defaultTab="news" />, errorElement: <RouteErrorBoundary /> },
+  { path: "/marketing/tickets", element: <MarketingHubPage defaultTab="tickets" />, errorElement: <RouteErrorBoundary /> },
   { path: "/marketing/push", element: <CampaignsPage />, errorElement: <RouteErrorBoundary /> },
   { path: "/marketing/email", element: <CampaignsPage />, errorElement: <RouteErrorBoundary /> },
-  { path: "/marketing/videos", element: <PlaceholderPage title="Video Promotions" category="Marketing" /> },
-  { path: "/marketing/ads", element: <PlaceholderPage title="Ads Management" category="Marketing" /> },
-  { path: "/marketing/news", element: <PlaceholderPage title="News & Promo" category="Marketing" /> },
+  { path: "/marketing/videos", element: <MarketingHubPage defaultTab="videos" />, errorElement: <RouteErrorBoundary /> },
+  { path: "/marketing/ads", element: <MarketingHubPage defaultTab="ads" />, errorElement: <RouteErrorBoundary /> },
+  { path: "/marketing/news", element: <MarketingHubPage defaultTab="news" />, errorElement: <RouteErrorBoundary /> },
   { path: "/partnerships/list", element: <PartnershipsPage />, errorElement: <RouteErrorBoundary /> },
   { path: "/partnerships/banks", element: <PartnershipsPage />, errorElement: <RouteErrorBoundary /> },
   { path: "/system", element: <SettingsPage />, errorElement: <RouteErrorBoundary /> },
@@ -79,6 +89,7 @@ const router = createBrowserRouter([
   { path: "/system/ai", element: <SettingsPage />, errorElement: <RouteErrorBoundary /> },
   { path: "/system/privacy", element: <SettingsPage />, errorElement: <RouteErrorBoundary /> },
   { path: "/system/wifi", element: <SettingsPage />, errorElement: <RouteErrorBoundary /> },
+  { path: "/system/faq", element: <HelpFAQPage />, errorElement: <RouteErrorBoundary /> },
 ]);
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

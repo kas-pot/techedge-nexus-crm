@@ -1,4 +1,8 @@
-import type { User, Chat, ChatMessage, TransactionInsight, Tier, Voucher, Venue, Outlet, Mission, InterestTag, Leaderboard, ApprovalTask, Partner, Badge, SystemSettings } from './types';
+import type { 
+  User, Chat, ChatMessage, TransactionInsight, Tier, Voucher, 
+  Venue, Outlet, Mission, InterestTag, Leaderboard, ApprovalTask, 
+  Partner, Badge, SystemSettings, Ad, MarketingTicket, NewsItem, GiftCard, FaqItem 
+} from './types';
 export const MOCK_USERS: User[] = [
   { id: 'u1', name: 'James Wilson' },
   { id: 'u2', name: 'Sarah Chen' },
@@ -101,28 +105,47 @@ export const MOCK_CATEGORIES = [
   "Home & Living",
   "Entertainment"
 ];
-// New Phase 5 Mocks
 export const MOCK_APPROVALS: ApprovalTask[] = [
   { id: 'apr-1', type: 'points_claim', memberName: 'James Wilson', amount: 500, status: 'pending', date: '2024-06-12', description: 'Coffee Lab Receipt Claim' },
   { id: 'apr-2', type: 'membership', memberName: 'Sarah Chen', amount: 0, status: 'pending', date: '2024-06-11', description: 'Elite Membership Upgrade Request' },
-  { id: 'apr-3', type: 'voucher_redeem', memberName: 'David Kim', amount: 1000, status: 'approved', date: '2024-06-10', description: 'Point Redemption for Mall Voucher' },
 ];
 export const MOCK_PARTNERS: Partner[] = [
   { id: 'p1', name: 'Global Bank Inc', type: 'bank', status: 'active', contactEmail: 'partnerships@globalbank.com', agreementLevel: 'Platinum', joinedDate: '2022-01-15' },
   { id: 'p2', name: 'Retail Union', type: 'retail', status: 'active', contactEmail: 'ops@retailunion.net', agreementLevel: 'Gold', joinedDate: '2023-05-20' },
-  { id: 'p3', name: 'Sky Services', type: 'service', status: 'inactive', contactEmail: 'support@sky.co', agreementLevel: 'Standard', joinedDate: '2024-02-10' },
 ];
 export const MOCK_BADGES: Badge[] = [
   { id: 'b1', name: 'Early Bird', description: 'Joined in the first month of launch', icon: 'zap', color: '#4F46E5', requirementPoints: 0, earnedCount: 1240 },
   { id: 'b2', name: 'High Spender', description: 'Spent over $10,000 in a year', icon: 'trending-up', color: '#F59E0B', requirementPoints: 10000, earnedCount: 85 },
-  { id: 'b3', name: 'Tech Enthusiast', description: 'Completed 5 tech-related missions', icon: 'monitor', color: '#10B981', requirementPoints: 500, earnedCount: 450 },
+];
+export const MOCK_ADS: Ad[] = [
+  { id: 'ad1', name: 'Summer Fashion Gala', imageUrl: 'https://images.unsplash.com/photo-1483985988355-763728e1935b?q=80&w=800', placement: 'banner', targetTier: 'Gold', targetCategory: 'Fashion', status: 'active' },
+  { id: 'ad2', name: 'Exclusive Watch Launch', imageUrl: 'https://images.unsplash.com/photo-1524592094714-0f0654e20314?q=80&w=800', placement: 'popup', targetTier: 'Silver', targetCategory: 'Accessories', status: 'active' },
+];
+export const MOCK_TICKETS: MarketingTicket[] = [
+  { id: 'tk1', eventName: 'VIP Networking Night', memberName: 'James Wilson', ticketCode: 'V-10294-A', status: 'valid', issueDate: '2024-06-01' },
+  { id: 'tk2', eventName: 'Gourmet Food Tour', memberName: 'Sarah Chen', ticketCode: 'G-99201-B', status: 'used', issueDate: '2024-05-15' },
+];
+export const MOCK_NEWS: NewsItem[] = [
+  { id: 'nw1', title: 'New Mall Annex Opening', content: 'We are excited to announce the opening of the Sedayu Mall North Wing...', category: 'Announcement', publishDate: '2024-06-20', status: 'published' },
+  { id: 'nw2', title: 'Point System Maintenance', content: 'Our point systems will be down for scheduled upgrades on July 1st...', category: 'Maintenance', publishDate: '2024-07-01', status: 'draft' },
+];
+export const MOCK_GIFT_CARDS: GiftCard[] = [
+  { id: 'gc1', serial: 'NXS-2024-9182', value: 1000000, balance: 1000000, status: 'active', expiryDate: '2025-12-31' },
+  { id: 'gc2', serial: 'NXS-2024-4412', value: 500000, balance: 0, status: 'redeemed', expiryDate: '2024-12-31' },
+];
+export const MOCK_FAQ: FaqItem[] = [
+  { id: 'fq1', question: 'How do I earn points?', answer: 'You can earn points by shopping at any registered outlet and scanning your receipt.', category: 'Points' },
+  { id: 'fq2', question: 'What are membership tiers?', answer: 'Tiers are levels based on your annual spend. Higher tiers unlock exclusive benefits.', category: 'Membership' },
 ];
 export const MOCK_SYSTEM_SETTINGS: SystemSettings = {
   id: 'global',
   theme: 'system',
   language: 'English',
   ssoEnabled: true,
+  ssoEntityId: 'nexus-crm-main-id',
+  ssoMetadataUrl: 'https://idp.nexus.com/metadata',
   ocrPrecision: 'high',
   wifiSsid: 'Nexus_Guest_WiFi',
-  notificationEmail: 'admin@nexus-crm.com'
+  notificationEmail: 'admin@nexus-crm.com',
+  splashBgColor: '#4F46E5'
 };

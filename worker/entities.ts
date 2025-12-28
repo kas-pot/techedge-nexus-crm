@@ -1,6 +1,17 @@
 import { IndexedEntity, Entity } from "./core-utils";
-import type { User, Chat, ChatMessage, Tier, Voucher, Venue, Outlet, Mission, Campaign, InterestTag, Leaderboard, ApprovalTask, Partner, Badge, SystemSettings } from "@shared/types";
-import { MOCK_CHAT_MESSAGES, MOCK_CHATS, MOCK_USERS, MOCK_TIERS, MOCK_VOUCHERS, MOCK_VENUES, MOCK_OUTLETS, MOCK_MISSIONS, MOCK_INTERESTS, MOCK_LEADERBOARDS, MOCK_APPROVALS, MOCK_PARTNERS, MOCK_BADGES, MOCK_SYSTEM_SETTINGS } from "@shared/mock-data";
+import type { 
+  User, Chat, ChatMessage, Tier, Voucher, Venue, Outlet, 
+  Mission, Campaign, InterestTag, Leaderboard, ApprovalTask, 
+  Partner, Badge, SystemSettings, Ad, MarketingTicket, NewsItem, 
+  GiftCard, FaqItem 
+} from "@shared/types";
+import { 
+  MOCK_CHAT_MESSAGES, MOCK_CHATS, MOCK_USERS, MOCK_TIERS, 
+  MOCK_VOUCHERS, MOCK_VENUES, MOCK_OUTLETS, MOCK_MISSIONS, 
+  MOCK_INTERESTS, MOCK_LEADERBOARDS, MOCK_APPROVALS, 
+  MOCK_PARTNERS, MOCK_BADGES, MOCK_SYSTEM_SETTINGS,
+  MOCK_ADS, MOCK_TICKETS, MOCK_NEWS, MOCK_GIFT_CARDS, MOCK_FAQ
+} from "@shared/mock-data";
 export class UserEntity extends IndexedEntity<User> {
   static readonly entityName = "user";
   static readonly indexName = "users";
@@ -17,10 +28,6 @@ export class ChatBoardEntity extends IndexedEntity<ChatBoardState> {
   static readonly indexName = "chats";
   static readonly initialState: ChatBoardState = { id: "", title: "", messages: [] };
   static seedData = SEED_CHAT_BOARDS;
-  async listMessages(): Promise<ChatMessage[]> {
-    const { messages } = await this.getState();
-    return messages;
-  }
 }
 export class TierEntity extends IndexedEntity<Tier> {
   static readonly entityName = "tier";
@@ -70,7 +77,6 @@ export class LeaderboardEntity extends IndexedEntity<Leaderboard> {
   static readonly initialState: Leaderboard = { id: "", title: "", period: "weekly", entries: [] };
   static seedData = MOCK_LEADERBOARDS;
 }
-// Phase 5 Entities
 export class ApprovalEntity extends IndexedEntity<ApprovalTask> {
   static readonly entityName = "approval";
   static readonly indexName = "approvals";
@@ -88,6 +94,37 @@ export class BadgeEntity extends IndexedEntity<Badge> {
   static readonly indexName = "badges";
   static readonly initialState: Badge = { id: "", name: "", description: "", icon: "star", color: "#ccc", requirementPoints: 0, earnedCount: 0 };
   static seedData = MOCK_BADGES;
+}
+// Phase 7 Entities
+export class AdEntity extends IndexedEntity<Ad> {
+  static readonly entityName = "ad";
+  static readonly indexName = "ads";
+  static readonly initialState: Ad = { id: "", name: "", imageUrl: "", placement: "banner", targetTier: "Bronze", targetCategory: "", status: "inactive" };
+  static seedData = MOCK_ADS;
+}
+export class TicketEntity extends IndexedEntity<MarketingTicket> {
+  static readonly entityName = "ticket";
+  static readonly indexName = "tickets";
+  static readonly initialState: MarketingTicket = { id: "", eventName: "", memberName: "", ticketCode: "", status: "valid", issueDate: "" };
+  static seedData = MOCK_TICKETS;
+}
+export class NewsEntity extends IndexedEntity<NewsItem> {
+  static readonly entityName = "news";
+  static readonly indexName = "news_list";
+  static readonly initialState: NewsItem = { id: "", title: "", content: "", category: "Announcement", publishDate: "", status: "draft" };
+  static seedData = MOCK_NEWS;
+}
+export class GiftCardEntity extends IndexedEntity<GiftCard> {
+  static readonly entityName = "gift_card";
+  static readonly indexName = "gift_cards";
+  static readonly initialState: GiftCard = { id: "", serial: "", value: 0, balance: 0, status: "active", expiryDate: "" };
+  static seedData = MOCK_GIFT_CARDS;
+}
+export class FaqEntity extends IndexedEntity<FaqItem> {
+  static readonly entityName = "faq";
+  static readonly indexName = "faqs";
+  static readonly initialState: FaqItem = { id: "", question: "", answer: "", category: "Points" };
+  static seedData = MOCK_FAQ;
 }
 export class SystemSettingsEntity extends Entity<SystemSettings> {
   static readonly entityName = "system_settings";

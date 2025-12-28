@@ -46,7 +46,7 @@ const navGroups = [
     label: "Loyalty Engine",
     items: [
       { title: "Earn Points", icon: Coins, url: "/loyalty/earn-points" },
-      { title: "Burn Rules", icon: Flame, url: "/loyalty/burn-rules" },
+      { title: "Burn Rules", icon: TrendingUp, url: "/loyalty/burn-rules" },
       { title: "Vouchers", icon: Ticket, url: "/loyalty/vouchers" },
       { title: "External Vouchers", icon: Star, url: "/loyalty/external-vouchers" },
       { title: "Gift Cards", icon: Gift, url: "/loyalty/gift-cards" },
@@ -59,7 +59,7 @@ const navGroups = [
     items: [
       {
         title: "Mission Builder",
-        icon: Target,
+        icon: Star,
         url: "/missions",
         sub: [
           { title: "Onboarding", url: "/missions/onboarding" },
@@ -81,7 +81,7 @@ const navGroups = [
     label: "Marketing",
     items: [
       { title: "Events", icon: Calendar, url: "/marketing/events" },
-      { title: "Activities", icon: Target, url: "/marketing/activities" },
+      { title: "Activities", icon: Newspaper, url: "/marketing/activities" },
       { title: "Tickets", icon: Ticket, url: "/marketing/tickets" },
       { title: "Push Notifications", icon: Bell, url: "/marketing/push" },
       { title: "Email Campaigns", icon: Mail, url: "/marketing/email" },
@@ -105,6 +105,7 @@ const navGroups = [
         icon: Settings,
         url: "/system",
         sub: [
+          { title: "Global Config", url: "/system" },
           { title: "Themes", url: "/system/themes" },
           { title: "Languages", url: "/system/languages" },
           { title: "Splash Screen", url: "/system/splash" },
@@ -112,28 +113,26 @@ const navGroups = [
           { title: "OCR/AI", url: "/system/ai" },
           { title: "Privacy Policy", url: "/system/privacy" },
           { title: "Wifi", url: "/system/wifi" },
+          { title: "FAQ", url: "/system/faq" },
         ]
       }
     ]
   }
 ];
-// Helper components for icons that might be missing from direct lucide import above
-function Target(props: any) { return <Star {...props} /> }
-function Flame(props: any) { return <TrendingUp {...props} /> }
 export function AppSidebar(): JSX.Element {
   const location = useLocation();
   return (
     <Sidebar variant="sidebar" collapsible="icon">
       <SidebarHeader className="h-16 flex items-center px-4">
         <div className="flex items-center gap-3">
-          <div className="h-8 w-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white font-bold">N</div>
-          <span className="font-bold text-lg tracking-tight group-data-[collapsible=icon]:hidden">Nexus <span className="text-indigo-600">CRM</span></span>
+          <div className="h-8 w-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white font-bold shrink-0">N</div>
+          <span className="font-bold text-lg tracking-tight group-data-[collapsible=icon]:hidden whitespace-nowrap">Nexus <span className="text-indigo-600">CRM</span></span>
         </div>
       </SidebarHeader>
       <SidebarContent>
         {navGroups.map((group) => (
           <SidebarGroup key={group.label}>
-            <SidebarGroupLabel className="px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">{group.label}</SidebarGroupLabel>
+            <SidebarGroupLabel className="px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider group-data-[collapsible=icon]:hidden">{group.label}</SidebarGroupLabel>
             <SidebarMenu>
               {group.items.map((item) => {
                 const isActive = location.pathname === item.url || (item.sub && item.sub.some(s => location.pathname === s.url));
@@ -142,7 +141,7 @@ export function AppSidebar(): JSX.Element {
                     <Collapsible key={item.title} defaultOpen={isActive} className="group/collapsible">
                       <SidebarMenuItem>
                         <CollapsibleTrigger asChild>
-                          <SidebarMenuButton tooltip={item.title}>
+                          <SidebarMenuButton tooltip={item.title} isActive={isActive}>
                             <item.icon className="h-4 w-4" />
                             <span>{item.title}</span>
                             <ChevronRight className="ml-auto h-4 w-4 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
@@ -180,7 +179,7 @@ export function AppSidebar(): JSX.Element {
       </SidebarContent>
       <SidebarFooter className="border-t p-4">
         <div className="flex items-center gap-3 px-2">
-          <div className="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 text-xs font-bold">JD</div>
+          <div className="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 text-xs font-bold shrink-0">JD</div>
           <div className="flex flex-col group-data-[collapsible=icon]:hidden overflow-hidden">
             <span className="text-sm font-medium leading-none">Jane Doe</span>
             <span className="text-xs text-muted-foreground truncate">Admin Portal</span>

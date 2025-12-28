@@ -10,6 +10,7 @@ import { Separator } from '@/components/ui/separator';
 import { Plus, Trash2, Save, ArrowLeft } from 'lucide-react';
 import { MOCK_CATEGORIES } from '@shared/mock-data';
 import { toast } from 'sonner';
+import { Link } from 'react-router-dom';
 interface RuleRow {
   id: string;
   category: string;
@@ -34,11 +35,11 @@ export function EarnPointsPage() {
   };
   return (
     <AppLayout container>
-      <div className="space-y-6">
+      <div className="space-y-6 animate-fade-in">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Button variant="outline" size="icon" asChild>
-              <a href="/"><ArrowLeft className="h-4 w-4" /></a>
+              <Link to="/"><ArrowLeft className="h-4 w-4" /></Link>
             </Button>
             <div>
               <h1 className="text-2xl font-bold">Edit Specific Rule</h1>
@@ -68,7 +69,7 @@ export function EarnPointsPage() {
           </CardContent>
         </Card>
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
+          <CardHeader className="flex flex-row items-center justify-between border-b pb-4">
             <div>
               <CardTitle>Rule Definitions</CardTitle>
               <CardDescription>Define the point multipliers for each selection.</CardDescription>
@@ -77,7 +78,7 @@ export function EarnPointsPage() {
               <Plus className="mr-2 h-4 w-4" /> Add Row
             </Button>
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-6">
             <div className="space-y-4">
               <div className="grid grid-cols-12 gap-4 px-2 text-xs font-semibold text-muted-foreground uppercase">
                 <div className="col-span-4">Category / Venue</div>
@@ -102,24 +103,24 @@ export function EarnPointsPage() {
                     </Select>
                   </div>
                   <div className="col-span-2">
-                    <Input type="number" defaultValue={row.points} />
+                    <Input type="number" defaultValue={row.points} className="focus:ring-2 focus:ring-indigo-500" />
                   </div>
                   <div className="col-span-3">
-                    <Input type="number" defaultValue={row.amount} />
+                    <Input type="number" defaultValue={row.amount} className="focus:ring-2 focus:ring-indigo-500" />
                   </div>
                   <div className="col-span-2">
-                    <Input defaultValue={row.reserveRate} readOnly className="bg-slate-50" />
+                    <Input defaultValue={row.reserveRate} readOnly className="bg-slate-50 border-slate-100" />
                   </div>
                   <div className="col-span-1 flex justify-end">
-                    <Button variant="ghost" size="icon" onClick={() => removeRow(row.id)} className="text-destructive">
+                    <Button variant="ghost" size="icon" onClick={() => removeRow(row.id)} className="text-destructive hover:bg-destructive/10">
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
                 </div>
               ))}
               {rows.length === 0 && (
-                <div className="text-center py-8 text-muted-foreground border-2 border-dashed rounded-lg">
-                  No rules defined. Click "Add Row" to start.
+                <div className="text-center py-12 text-muted-foreground border-2 border-dashed rounded-lg">
+                  No rules defined. Click "Add Row" to start configuring loyalty rewards.
                 </div>
               )}
             </div>

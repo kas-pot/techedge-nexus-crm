@@ -1,6 +1,10 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from './api-client';
-import type { ApiResponse, Tier, Voucher, Venue, Outlet, Mission, Campaign, InterestTag, Leaderboard, ApprovalTask, Partner, Badge, SystemSettings } from '@shared/types';
+import type { 
+  ApiResponse, Tier, Voucher, Venue, Outlet, Mission, Campaign, 
+  InterestTag, Leaderboard, ApprovalTask, Partner, Badge, 
+  SystemSettings, Ad, MarketingTicket, NewsItem, GiftCard, FaqItem 
+} from '@shared/types';
 // Generic hook for listing entities
 export function useEntities<T>(key: string, path: string, params?: Record<string, string>) {
   const queryParams = params ? new URLSearchParams(params).toString() : '';
@@ -26,8 +30,13 @@ export const useCampaigns = (channel?: string) =>
 // Gamification Hooks
 export const useInterests = () => useEntities<InterestTag>('interests', '/api/interests');
 export const useLeaderboards = () => useEntities<Leaderboard>('leaderboards', '/api/leaderboards');
-// Phase 5 Hooks
-export const useApprovals = (status?: string) => 
+// Phase 7 Enterprise Hooks
+export const useAds = () => useEntities<Ad>('ads', '/api/ads');
+export const useTickets = () => useEntities<MarketingTicket>('tickets', '/api/tickets');
+export const useNews = () => useEntities<NewsItem>('news', '/api/news');
+export const useGiftCards = () => useEntities<GiftCard>('gift-cards', '/api/gift-cards');
+export const useFaq = () => useEntities<FaqItem>('faqs', '/api/faqs');
+export const useApprovals = (status?: string) =>
   useEntities<ApprovalTask>('approvals', '/api/approvals', status ? { status } : undefined);
 export const usePartners = () => useEntities<Partner>('partners', '/api/partners');
 export const useBadges = () => useEntities<Badge>('badges', '/api/badges');
@@ -51,3 +60,4 @@ export function useGenericMutation<TInput, TOutput>(path: string, method: 'POST'
 export const useApprovalMutation = (id: string) => useGenericMutation<{ status: 'approved' | 'rejected' }, ApprovalTask>(`/api/approvals/${id}/decide`, 'POST', ['approvals']);
 export const useSettingsMutation = () => useGenericMutation<Partial<SystemSettings>, SystemSettings>('/api/system/settings', 'PUT', ['system-settings']);
 export const useMissionMutation = () => useGenericMutation<Partial<Mission>, Mission>('/api/missions', 'POST', ['missions']);
+export const useGiftCardGeneration = () => useGenericMutation<{ count: number; value: number; expiryDate: string }, { generated: number }>('/api/gift-cards/generate', 'POST', ['gift-cards']);

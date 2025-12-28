@@ -1,6 +1,11 @@
 import { Hono } from "hono";
 import type { Env } from './core-utils';
-import { UserEntity, ChatBoardEntity, TierEntity, VoucherEntity, VenueEntity, OutletEntity, MissionEntity, CampaignEntity, InterestEntity, LeaderboardEntity, ApprovalEntity, PartnerEntity, BadgeEntity, SystemSettingsEntity } from "./entities";
+import { 
+  UserEntity, ChatBoardEntity, TierEntity, VoucherEntity, VenueEntity, 
+  OutletEntity, MissionEntity, CampaignEntity, InterestEntity, 
+  LeaderboardEntity, ApprovalEntity, PartnerEntity, BadgeEntity, 
+  SystemSettingsEntity, AdEntity, TicketEntity, NewsEntity, GiftCardEntity, FaqEntity 
+} from "./entities";
 import { ok, bad, notFound, isStr } from './core-utils';
 export function userRoutes(app: Hono<{ Bindings: Env }>) {
   app.get('/api/test', (c) => c.json({ success: true, data: { name: 'Nexus CRM API' }}));
@@ -26,6 +31,12 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
   createListRoute('/api/approvals', ApprovalEntity);
   createListRoute('/api/partners', PartnerEntity);
   createListRoute('/api/badges', BadgeEntity);
+  // Phase 7 Routes
+  createListRoute('/api/ads', AdEntity);
+  createListRoute('/api/tickets', TicketEntity);
+  createListRoute('/api/news', NewsEntity);
+  createListRoute('/api/gift-cards', GiftCardEntity);
+  createListRoute('/api/faqs', FaqEntity);
   // System Settings Singleton
   app.get('/api/system/settings', async (c) => ok(c, await SystemSettingsEntity.getGlobal(c.env)));
   app.put('/api/system/settings', async (c) => {
@@ -41,6 +52,31 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     if (!await inst.exists()) return notFound(c);
     await inst.patch({ status });
     return ok(c, await inst.getState());
+  });
+  app.post('/api/gift-cards/generate', async (c) => {
+    const { count, value, expiryDate } = await c.req.json();
+    for(let i = 0; i < count; i++) {
+      const serial = `NXS-${Math.floor(1000 + Math.random() * 9000)}-${Math.floor(1000 + Math.random() * 9000)}`;
+      await GiftCardEntity.create(c.env, {
+        id: crypto.randomUUID(),
+        serial,
+        value: Number(value),
+        balance: Number(value),
+        status: 'active',
+        expiryDate
+      });
+    }
+    return ok(c, { generated: count });
+  });
+  app.post('/api/tickets/issue', async (c) => {
+    const data = await c.req.json();
+    const ticket = await TicketEntity.create(c.env, {
+      ...data,
+      id: crypto.randomUUID(),
+      status: 'valid',
+      issueDate: new Date().toISOString()
+    });
+    return ok(c, ticket);
   });
   app.post('/api/missions', async (c) => {
     const data = await c.req.json();

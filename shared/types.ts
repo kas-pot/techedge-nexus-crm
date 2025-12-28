@@ -72,7 +72,7 @@ export interface Campaign {
   name: string;
   startDate: string;
   endDate: string;
-  channel: 'push' | 'email' | 'sms';
+  channel: 'push' | 'email' | 'sms' | 'video' | 'ads';
   status: 'scheduled' | 'running' | 'completed';
 }
 export interface InterestTag {
@@ -100,7 +100,7 @@ export interface TransactionInsight {
   transactions: number;
   revenueIdr: number;
 }
-// Phase 5: New Operational Entities
+// Phase 5 & 7: New Operational Entities
 export interface ApprovalTask {
   id: string;
   type: 'points_claim' | 'membership' | 'voucher_redeem';
@@ -130,12 +130,55 @@ export interface Badge {
   requirementPoints: number;
   earnedCount: number;
 }
+export interface Ad {
+  id: string;
+  name: string;
+  imageUrl: string;
+  placement: 'banner' | 'popup' | 'sidebar';
+  targetTier: string;
+  targetCategory: string;
+  status: 'active' | 'inactive';
+}
+export interface MarketingTicket {
+  id: string;
+  eventName: string;
+  memberName: string;
+  ticketCode: string;
+  status: 'valid' | 'used' | 'cancelled';
+  issueDate: string;
+}
+export interface NewsItem {
+  id: string;
+  title: string;
+  content: string;
+  category: 'Promotion' | 'Announcement' | 'Maintenance';
+  publishDate: string;
+  status: 'published' | 'draft';
+}
+export interface GiftCard {
+  id: string;
+  serial: string;
+  value: number;
+  balance: number;
+  status: 'active' | 'redeemed' | 'expired';
+  expiryDate: string;
+}
+export interface FaqItem {
+  id: string;
+  question: string;
+  answer: string;
+  category: 'Points' | 'Membership' | 'Technical' | 'Security';
+}
 export interface SystemSettings {
-  id: string; // usually 'global'
+  id: string;
   theme: 'light' | 'dark' | 'system';
   language: string;
   ssoEnabled: boolean;
+  ssoEntityId?: string;
+  ssoMetadataUrl?: string;
   ocrPrecision: 'high' | 'medium' | 'low';
   wifiSsid: string;
   notificationEmail: string;
+  splashImageUrl?: string;
+  splashBgColor?: string;
 }
