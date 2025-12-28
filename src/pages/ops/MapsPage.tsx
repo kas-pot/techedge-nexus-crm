@@ -5,8 +5,9 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Map, MapPin, Maximize2, MousePointer2, Layers, Plus, Store, Coffee, ShoppingBag, Utensils } from 'lucide-react';
 import { useVenues } from '@/lib/api-hooks';
+import { cn } from '@/lib/utils';
 const MapLegend = () => (
-  <Card className="absolute bottom-4 left-4 z-20 bg-white/90 backdrop-blur-md border border-slate-200 shadow-xl p-4 w-48">
+  <Card className="absolute bottom-4 left-4 z-20 bg-white/90 backdrop-blur-md border border-slate-200 shadow-xl p-4 w-48 rounded-2xl">
     <h4 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-3">Map Legend</h4>
     <div className="space-y-2">
       <div className="flex items-center gap-2 text-xs">
@@ -37,11 +38,11 @@ export function MapsPage() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Isometric Maps & POIs</h1>
-            <p className="text-muted-foreground">Orchestrate digital floorplans and interactive retail positioning.</p>
+            <p className="text-muted-foreground font-medium">Orchestrate digital floorplans and interactive retail positioning.</p>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" className="h-11 px-6"><Layers className="mr-2 h-4 w-4" /> Management Layers</Button>
-            <Button className="bg-indigo-600 hover:bg-indigo-700 h-11 px-6 shadow-md"><Plus className="mr-2 h-4 w-4" /> Upload Architecture</Button>
+            <Button variant="outline" className="h-11 px-6 rounded-xl"><Layers className="mr-2 h-4 w-4" /> Management Layers</Button>
+            <Button className="bg-indigo-600 hover:bg-indigo-700 h-11 px-6 shadow-md rounded-xl"><Plus className="mr-2 h-4 w-4" /> Upload Architecture</Button>
           </div>
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
@@ -52,8 +53,8 @@ export function MapsPage() {
                 <Badge variant="outline" className="bg-white/80 backdrop-blur-md border-slate-200 text-indigo-700 font-bold px-4 py-1.5">Operational: 42 Active POIs</Badge>
               </div>
               <div className="absolute top-6 right-6 z-10 flex flex-col gap-3">
-                <Button size="icon" variant="secondary" className="bg-white/90 backdrop-blur-md shadow-xl border border-slate-200 hover:bg-white"><Maximize2 className="h-5 w-5" /></Button>
-                <Button size="icon" variant="secondary" className="bg-white/90 backdrop-blur-md shadow-xl border border-slate-200 hover:bg-white"><MousePointer2 className="h-5 w-5" /></Button>
+                <Button size="icon" variant="secondary" className="bg-white/90 backdrop-blur-md shadow-xl border border-slate-200 hover:bg-white rounded-xl"><Maximize2 className="h-5 w-5" /></Button>
+                <Button size="icon" variant="secondary" className="bg-white/90 backdrop-blur-md shadow-xl border border-slate-200 hover:bg-white rounded-xl"><MousePointer2 className="h-5 w-5" /></Button>
               </div>
               <MapLegend />
               <div className="w-full h-full bg-[#f8fafc] relative overflow-hidden flex items-center justify-center">
@@ -108,8 +109,8 @@ export function MapsPage() {
                       </div>
                       <Badge variant="outline" className={cn(
                         "text-[9px] uppercase font-bold border-none px-2",
-                        poi.status === 'Open' ? "bg-emerald-100 text-emerald-700" : 
-                        poi.status === 'Closed' ? "bg-rose-100 text-rose-700" : 
+                        poi.status === 'Open' ? "bg-emerald-100 text-emerald-700" :
+                        poi.status === 'Closed' ? "bg-rose-100 text-rose-700" :
                         "bg-amber-100 text-amber-700"
                       )}>
                         {poi.status}
@@ -119,7 +120,7 @@ export function MapsPage() {
                 </div>
               </CardContent>
               <div className="p-6 border-t bg-slate-50/50">
-                <Button className="w-full h-11 bg-white hover:bg-slate-100 text-indigo-600 border border-indigo-100 shadow-sm font-bold">
+                <Button className="w-full h-11 bg-white hover:bg-slate-100 text-indigo-600 border border-indigo-100 shadow-sm font-bold rounded-xl">
                   <Plus className="mr-2 h-4 w-4" /> Add Interactive POI
                 </Button>
               </div>
