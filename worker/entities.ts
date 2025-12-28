@@ -1,41 +1,65 @@
-/**
- * Minimal real-world demo: One Durable Object instance per entity (User, ChatBoard), with Indexes for listing.
- */
 import { IndexedEntity } from "./core-utils";
-import type { User, Chat, ChatMessage } from "@shared/types";
-import { MOCK_CHAT_MESSAGES, MOCK_CHATS, MOCK_USERS } from "@shared/mock-data";
-
-// USER ENTITY: one DO instance per user
+import type { User, Chat, ChatMessage, Tier, Voucher, Venue, Outlet, Mission, Campaign } from "@shared/types";
+import { MOCK_CHAT_MESSAGES, MOCK_CHATS, MOCK_USERS, MOCK_TIERS, MOCK_VOUCHERS, MOCK_VENUES, MOCK_OUTLETS, MOCK_MISSIONS } from "@shared/mock-data";
 export class UserEntity extends IndexedEntity<User> {
   static readonly entityName = "user";
   static readonly indexName = "users";
   static readonly initialState: User = { id: "", name: "" };
   static seedData = MOCK_USERS;
 }
-
-// CHAT BOARD ENTITY: one DO instance per chat board, stores its own messages
 export type ChatBoardState = Chat & { messages: ChatMessage[] };
-
 const SEED_CHAT_BOARDS: ChatBoardState[] = MOCK_CHATS.map(c => ({
   ...c,
   messages: MOCK_CHAT_MESSAGES.filter(m => m.chatId === c.id),
 }));
-
 export class ChatBoardEntity extends IndexedEntity<ChatBoardState> {
   static readonly entityName = "chat";
   static readonly indexName = "chats";
   static readonly initialState: ChatBoardState = { id: "", title: "", messages: [] };
   static seedData = SEED_CHAT_BOARDS;
-
   async listMessages(): Promise<ChatMessage[]> {
     const { messages } = await this.getState();
     return messages;
   }
-
   async sendMessage(userId: string, text: string): Promise<ChatMessage> {
     const msg: ChatMessage = { id: crypto.randomUUID(), chatId: this.id, userId, text, ts: Date.now() };
     await this.mutate(s => ({ ...s, messages: [...s.messages, msg] }));
     return msg;
   }
 }
-
+export class TierEntity extends IndexedEntity<Tier> {
+  static readonly entityName = "tier";
+  static readonly indexName = "tiers";
+  static readonly initialState: Tier = { id: "", name: "", minPoints: 0, benefits: [], color: "" };
+  static seedData = MOCK_TIERS;
+}
+export class VoucherEntity extends IndexedEntity<Voucher> {
+  static readonly entityName = "voucher";
+  static readonly indexName = "vouchers";
+  static readonly initialState: Voucher = { id: "", title: "", code: "", discountType: "fixed", value: 0, expiryDate: "", status: "draft" };
+  static seedData = MOCK_VOUCHERS;
+}
+export class VenueEntity extends IndexedEntity<Venue> {
+  static readonly entityName = "venue";
+  static readonly indexName = "venues";
+  static readonly initialState: Venue = { id: "", name: "", location: "", type: "Mall" };
+  static seedData = MOCK_VENUES;
+}
+export class OutletEntity extends IndexedEntity<Outlet> {
+  static readonly entityName = "outlet";
+  static readonly indexName = "outlets";
+  static readonly initialState: Outlet = { id: "", venueId: "", name: "", category: "", tenantName: "", floor: "" };
+  static seedData = MOCK_OUTLETS;
+}
+export class MissionEntity extends IndexedEntity<Mission> {
+  static readonly entityName = "mission";
+  static readonly indexName = "missions";
+  static readonly initialState: Mission = { id: "", title: "", type: "general", pointsReward: 0, status: "inactive" };
+  static seedData = MOCK_MISSIONS;
+}
+export class CampaignEntity extends IndexedEntity<Campaign> {
+  static readonly entityName = "campaign";
+  static readonly indexName = "campaigns";
+  static readonly initialState: Campaign = { id: "", name: "", startDate: "", endDate: "", channel: "push", status: "scheduled" };
+  static seedData = [];
+}

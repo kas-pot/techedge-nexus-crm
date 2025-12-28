@@ -1,4 +1,4 @@
-import type { User, Chat, ChatMessage } from './types';
+import type { User, Chat, ChatMessage, TransactionInsight, Tier, Voucher, Venue, Outlet, Mission } from './types';
 export const MOCK_USERS: User[] = [
   { id: 'u1', name: 'James Wilson' },
   { id: 'u2', name: 'Sarah Chen' },
@@ -11,6 +11,14 @@ export const MOCK_CHATS: Chat[] = [
 ];
 export const MOCK_CHAT_MESSAGES: ChatMessage[] = [
   { id: 'm1', chatId: 'c1', userId: 'u1', text: 'Hello, I need help with my points.', ts: Date.now() },
+];
+export const MOCK_TRANSACTION_INSIGHTS: TransactionInsight[] = [
+  { date: 'Jan', transactions: 1200, revenueIdr: 450000000 },
+  { date: 'Feb', transactions: 1500, revenueIdr: 520000000 },
+  { date: 'Mar', transactions: 1100, revenueIdr: 390000000 },
+  { date: 'Apr', transactions: 1800, revenueIdr: 610000000 },
+  { date: 'May', transactions: 2100, revenueIdr: 750000000 },
+  { date: 'Jun', transactions: 1900, revenueIdr: 680000000 },
 ];
 export const MOCK_DASHBOARD_STATS = {
   totalMembers: [
@@ -34,8 +42,30 @@ export const MOCK_DASHBOARD_STATS = {
     { date: 'Fri', earned: 5900, burnt: 4100 },
     { date: 'Sat', earned: 8200, burnt: 5500 },
     { date: 'Sun', earned: 7500, burnt: 4800 },
-  ]
+  ],
+  insights: MOCK_TRANSACTION_INSIGHTS
 };
+export const MOCK_TIERS: Tier[] = [
+  { id: 't1', name: 'Bronze', minPoints: 0, benefits: ['Standard support'], color: '#CD7F32' },
+  { id: 't2', name: 'Silver', minPoints: 5000, benefits: ['Standard support', '5% discount'], color: '#C0C0C0' },
+  { id: 't3', name: 'Gold', minPoints: 15000, benefits: ['Priority support', '10% discount', 'Lounge access'], color: '#FFD700' },
+];
+export const MOCK_VOUCHERS: Voucher[] = [
+  { id: 'v1', title: 'Welcome Gift', code: 'WELCOME10', discountType: 'fixed', value: 10, expiryDate: '2025-12-31', status: 'active' },
+  { id: 'v2', title: 'Flash Sale', code: 'FLASH20', discountType: 'percentage', value: 20, expiryDate: '2025-06-30', status: 'active' },
+];
+export const MOCK_VENUES: Venue[] = [
+  { id: 'ven1', name: 'Sedayu Mall A', location: 'Jakarta North', type: 'Mall' },
+  { id: 'ven2', name: 'Nexus Tower', location: 'Jakarta CBD', type: 'Office' },
+];
+export const MOCK_OUTLETS: Outlet[] = [
+  { id: 'out1', venueId: 'ven1', name: 'Coffee Lab', category: 'F&B Dining', tenantName: 'Coffee Lab Ltd', floor: 'G' },
+  { id: 'out2', venueId: 'ven1', name: 'Urban Fashion', category: 'Fashion & Accessories', tenantName: 'Urban Group', floor: '1st' },
+];
+export const MOCK_MISSIONS: Mission[] = [
+  { id: 'm1', title: 'Complete Profile', type: 'onboarding', pointsReward: 100, status: 'active' },
+  { id: 'm2', title: 'Spend $500 in Fashion', type: 'general', pointsReward: 500, status: 'active' },
+];
 export const MOCK_MEMBERS = Array.from({ length: 25 }, (_, i) => ({
   id: `MEM-${1000 + i}`,
   name: `Member ${i + 1}`,

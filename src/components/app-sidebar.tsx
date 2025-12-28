@@ -1,9 +1,12 @@
 import React from "react";
-import { 
-  LayoutDashboard, Users, Trophy, Coins, Gift, 
-  Store, Building2, Megaphone, Calendar, 
+import {
+  LayoutDashboard, Users, Trophy, Coins, Gift,
+  Store, Building2, Megaphone, Calendar,
   Bell, Settings, ShieldCheck, ChevronRight,
-  TrendingUp, Star, UserPlus
+  TrendingUp, Star, UserPlus, Map, Ticket,
+  Mail, Video, MonitorPlay, Newspaper, Languages,
+  Palette, Smartphone, Fingerprint, ScanEye,
+  ShieldAlert, BookOpen, HelpCircle, Wifi, Users2, Landmark, CheckSquare
 } from "lucide-react";
 import {
   Sidebar,
@@ -36,73 +39,107 @@ const navGroups = [
       { title: "Membership Tiers", icon: ShieldCheck, url: "/tiers" },
       { title: "Leaderboards", icon: Trophy, url: "/leaderboards" },
       { title: "Interests", icon: Star, url: "/interests" },
+      { title: "Manual Approval", icon: CheckSquare, url: "/manual-approval" },
     ]
   },
   {
     label: "Loyalty Engine",
     items: [
-      { 
-        title: "Point Rules", 
-        icon: Coins, 
-        url: "/loyalty/earn-points",
-        sub: [
-          { title: "Earn Points", url: "/loyalty/earn-points" },
-          { title: "Burn Rules", url: "/loyalty/burn-rules" },
-        ]
-      },
-      { title: "Rewards Catalog", icon: Gift, url: "/loyalty/rewards" },
-      { title: "Vouchers", icon: Star, url: "/loyalty/vouchers" },
+      { title: "Earn Points", icon: Coins, url: "/loyalty/earn-points" },
+      { title: "Burn Rules", icon: Flame, url: "/loyalty/burn-rules" },
+      { title: "Vouchers", icon: Ticket, url: "/loyalty/vouchers" },
+      { title: "External Vouchers", icon: Star, url: "/loyalty/external-vouchers" },
+      { title: "Gift Cards", icon: Gift, url: "/loyalty/gift-cards" },
+      { title: "Badges", icon: ShieldCheck, url: "/loyalty/badges" },
+      { title: "Master Tags", icon: Star, url: "/loyalty/tags" },
     ]
   },
   {
-    label: "Operations Hub",
+    label: "Missions",
+    items: [
+      {
+        title: "Mission Builder",
+        icon: Target,
+        url: "/missions",
+        sub: [
+          { title: "Onboarding", url: "/missions/onboarding" },
+          { title: "General", url: "/missions/general" },
+          { title: "Tier Missions", url: "/missions/tier" },
+        ]
+      }
+    ]
+  },
+  {
+    label: "Rewards & Ops",
     items: [
       { title: "Venues", icon: Building2, url: "/ops/venues" },
       { title: "Outlets", icon: Store, url: "/ops/outlets" },
-      { title: "Tenants", icon: UserPlus, url: "/ops/tenants" },
+      { title: "Isometric Maps", icon: Map, url: "/ops/maps" },
     ]
   },
   {
     label: "Marketing",
     items: [
-      { title: "Campaigns", icon: Megaphone, url: "/marketing/campaigns" },
       { title: "Events", icon: Calendar, url: "/marketing/events" },
+      { title: "Activities", icon: Target, url: "/marketing/activities" },
+      { title: "Tickets", icon: Ticket, url: "/marketing/tickets" },
       { title: "Push Notifications", icon: Bell, url: "/marketing/push" },
+      { title: "Email Campaigns", icon: Mail, url: "/marketing/email" },
+      { title: "Video Promotions", icon: Video, url: "/marketing/videos" },
+      { title: "Ads Management", icon: MonitorPlay, url: "/marketing/ads" },
+      { title: "News & Promo", icon: Newspaper, url: "/marketing/news" },
+    ]
+  },
+  {
+    label: "Partnerships",
+    items: [
+      { title: "Partnership List", icon: Users2, url: "/partnerships/list" },
+      { title: "Bank Partnerships", icon: Landmark, url: "/partnerships/banks" },
     ]
   },
   {
     label: "System",
     items: [
-      { title: "Settings", icon: Settings, url: "/settings" },
+      {
+        title: "Settings",
+        icon: Settings,
+        url: "/system",
+        sub: [
+          { title: "Themes", url: "/system/themes" },
+          { title: "Languages", url: "/system/languages" },
+          { title: "Splash Screen", url: "/system/splash" },
+          { title: "SSO Config", url: "/system/sso" },
+          { title: "OCR/AI", url: "/system/ai" },
+          { title: "Privacy Policy", url: "/system/privacy" },
+          { title: "Wifi", url: "/system/wifi" },
+        ]
+      }
     ]
   }
 ];
+// Helper components for icons that might be missing from direct lucide import above
+function Target(props: any) { return <Star {...props} /> }
+function Flame(props: any) { return <TrendingUp {...props} /> }
 export function AppSidebar(): JSX.Element {
   const location = useLocation();
   return (
     <Sidebar variant="sidebar" collapsible="icon">
       <SidebarHeader className="h-16 flex items-center px-4">
         <div className="flex items-center gap-3">
-          <div className="h-8 w-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white font-bold">
-            N
-          </div>
-          <span className="font-bold text-lg tracking-tight group-data-[collapsible=icon]:hidden">
-            Nexus <span className="text-indigo-600">CRM</span>
-          </span>
+          <div className="h-8 w-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white font-bold">N</div>
+          <span className="font-bold text-lg tracking-tight group-data-[collapsible=icon]:hidden">Nexus <span className="text-indigo-600">CRM</span></span>
         </div>
       </SidebarHeader>
       <SidebarContent>
         {navGroups.map((group) => (
           <SidebarGroup key={group.label}>
-            <SidebarGroupLabel className="px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-              {group.label}
-            </SidebarGroupLabel>
+            <SidebarGroupLabel className="px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">{group.label}</SidebarGroupLabel>
             <SidebarMenu>
               {group.items.map((item) => {
-                const isActive = location.pathname === item.url;
+                const isActive = location.pathname === item.url || (item.sub && item.sub.some(s => location.pathname === s.url));
                 if (item.sub) {
                   return (
-                    <Collapsible key={item.title} defaultOpen={isActive || location.pathname.startsWith(item.url)} className="group/collapsible">
+                    <Collapsible key={item.title} defaultOpen={isActive} className="group/collapsible">
                       <SidebarMenuItem>
                         <CollapsibleTrigger asChild>
                           <SidebarMenuButton tooltip={item.title}>
@@ -128,7 +165,7 @@ export function AppSidebar(): JSX.Element {
                 }
                 return (
                   <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton asChild isActive={isActive} tooltip={item.title}>
+                    <SidebarMenuButton asChild isActive={location.pathname === item.url} tooltip={item.title}>
                       <Link to={item.url}>
                         <item.icon className="h-4 w-4" />
                         <span>{item.title}</span>
@@ -143,9 +180,7 @@ export function AppSidebar(): JSX.Element {
       </SidebarContent>
       <SidebarFooter className="border-t p-4">
         <div className="flex items-center gap-3 px-2">
-          <div className="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 text-xs font-bold">
-            JD
-          </div>
+          <div className="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 text-xs font-bold">JD</div>
           <div className="flex flex-col group-data-[collapsible=icon]:hidden overflow-hidden">
             <span className="text-sm font-medium leading-none">Jane Doe</span>
             <span className="text-xs text-muted-foreground truncate">Admin Portal</span>
