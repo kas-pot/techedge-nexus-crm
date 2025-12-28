@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Separator } from '@/components/ui/separator';
 import { Gift, Copy, Plus, Search, RefreshCcw, Landmark } from 'lucide-react';
 import { useGiftCards, useGiftCardBatch, useGiftCardMutations } from '@/lib/api-hooks';
 import { toast } from 'sonner';
@@ -44,10 +45,10 @@ export function GiftCardsPage() {
   const handleRedeem = async () => {
     if (!foundCard) return;
     try {
-      await updateMutation.mutateAsync({ 
-        id: foundCard.id, 
-        balance: 0, 
-        status: 'redeemed' 
+      await updateMutation.mutateAsync({
+        id: foundCard.id,
+        balance: 0,
+        status: 'redeemed'
       });
       toast.success("Redemption successful!");
       setIsRedeemOpen(false);
@@ -112,20 +113,24 @@ export function GiftCardsPage() {
                 <TableBody>
                   {isLoading ? (
                     <TableRow><TableCell colSpan={4} className="h-12 animate-pulse" /></TableRow>
-                  ) : giftCards.map((gc) => (
-                    <TableRow key={gc.id}>
-                      <TableCell className="pl-6 font-mono text-xs">{gc.serial}</TableCell>
-                      <TableCell>Rp {gc.value.toLocaleString()}</TableCell>
-                      <TableCell>
-                        <Badge variant={gc.status === 'active' ? 'default' : 'secondary'} className={gc.status === 'active' ? 'bg-emerald-600' : ''}>
-                          {gc.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right pr-6">
-                        <Button variant="ghost" size="sm">History</Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  ) : giftCards.length === 0 ? (
+                    <TableRow><TableCell colSpan={4} className="h-24 text-center text-muted-foreground italic">No gift cards found.</TableCell></TableRow>
+                  ) : (
+                    giftCards.map((gc) => (
+                      <TableRow key={gc.id}>
+                        <TableCell className="pl-6 font-mono text-xs">{gc.serial}</TableCell>
+                        <TableCell>Rp {gc.value.toLocaleString()}</TableCell>
+                        <TableCell>
+                          <Badge variant={gc.status === 'active' ? 'default' : 'secondary'} className={gc.status === 'active' ? 'bg-emerald-600' : ''}>
+                            {gc.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right pr-6">
+                          <Button variant="ghost" size="sm">History</Button>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
                 </TableBody>
               </Table>
             </CardContent>
@@ -139,9 +144,9 @@ export function GiftCardsPage() {
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="flex gap-2">
-                <Input 
-                  placeholder="NXS-XXXXXXXX" 
-                  value={redeemSerial} 
+                <Input
+                  placeholder="NXS-XXXXXXXX"
+                  value={redeemSerial}
                   onChange={(e) => setRedeemSerial(e.target.value.toUpperCase())}
                   className="h-12 text-lg font-mono"
                 />
@@ -158,8 +163,8 @@ export function GiftCardsPage() {
                     <span className="text-sm font-medium">{foundCard.status}</span>
                   </div>
                   <Separator />
-                  <Button 
-                    className="w-full bg-indigo-600 h-11" 
+                  <Button
+                    className="w-full bg-indigo-600 h-11"
                     onClick={handleRedeem}
                     disabled={foundCard.status !== 'active' || updateMutation.isPending}
                   >
