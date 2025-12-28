@@ -3,7 +3,8 @@ import { api } from './api-client';
 import type {
   ApiResponse, Tier, Voucher, Venue, Outlet, Mission, Campaign,
   InterestTag, Leaderboard, ApprovalTask, Partner, Badge,
-  SystemSettings, Ad, MarketingTicket, NewsItem, GiftCard, FaqItem, Member
+  SystemSettings, Ad, MarketingTicket, NewsItem, GiftCard, FaqItem, Member,
+  ContactSettings, LegalDocument, WifiSettings
 } from '@shared/types';
 export function useEntities<T>(key: string, path: string, params?: Record<string, string>, limit = 200) {
   const queryParams = new URLSearchParams(params);
@@ -53,10 +54,64 @@ export const useApprovals = (status?: string) => useEntities<ApprovalTask>('appr
 export const usePartners = () => useEntities<Partner>('partners', '/api/partners');
 export const useBadges = () => useEntities<Badge>('badges', '/api/badges');
 export const useMembers = (search?: string) => useEntities<Member>('members', '/api/users', search ? { search } : undefined);
+// System Management Hooks
 export const useSystemSettings = () => useQuery({
   queryKey: ['system-settings'],
   queryFn: () => api<SystemSettings>('/api/system/settings')
 });
+export const useContactSettings = () => useQuery({
+  queryKey: ['contact-settings'],
+  queryFn: () => api<ContactSettings>('/api/system/contact')
+});
+export const useTermsContent = () => useQuery({
+  queryKey: ['terms-content'],
+  queryFn: () => api<LegalDocument>('/api/system/terms')
+});
+export const usePrivacyContent = () => useQuery({
+  queryKey: ['privacy-content'],
+  queryFn: () => api<LegalDocument>('/api/system/privacy')
+});
+export const useWifiSettings = () => useQuery({
+  queryKey: ['wifi-settings'],
+  queryFn: () => api<WifiSettings>('/api/system/wifi')
+});
+// System Mutation Hooks
+export const useSettingsMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: Partial<SystemSettings>) => api<SystemSettings>('/api/system/settings', { method: 'PUT', body: JSON.stringify(data) }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['system-settings'] }),
+  });
+};
+export const useContactMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: Partial<ContactSettings>) => api<ContactSettings>('/api/system/contact', { method: 'PUT', body: JSON.stringify(data) }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['contact-settings'] }),
+  });
+};
+export const useTermsMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: Partial<LegalDocument>) => api<LegalDocument>('/api/system/terms', { method: 'PUT', body: JSON.stringify(data) }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['terms-content'] }),
+  });
+};
+export const usePrivacyMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: Partial<LegalDocument>) => api<LegalDocument>('/api/system/privacy', { method: 'PUT', body: JSON.stringify(data) }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['privacy-content'] }),
+  });
+};
+export const useWifiMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: Partial<WifiSettings>) => api<WifiSettings>('/api/system/wifi', { method: 'PUT', body: JSON.stringify(data) }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['wifi-settings'] }),
+  });
+};
+// Common Mutations
 export const useVoucherMutations = () => useEntityMutation<Voucher>('vouchers', '/api/vouchers');
 export const useMemberMutations = () => useEntityMutation<Member>('members', '/api/users');
 export const useVenueMutations = () => useEntityMutation<Venue>('venues', '/api/venues');
@@ -84,12 +139,5 @@ export const usePartnerSync = () => {
     mutationFn: (data: { partnerId: string, count: number }) =>
       api<{ synced: number, items: Voucher[] }>('/api/vouchers/sync-external', { method: 'POST', body: JSON.stringify(data) }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['vouchers'] }),
-  });
-};
-export const useSettingsMutation = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (data: Partial<SystemSettings>) => api<SystemSettings>('/api/system/settings', { method: 'PUT', body: JSON.stringify(data) }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['system-settings'] }),
   });
 };

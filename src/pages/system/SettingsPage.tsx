@@ -6,79 +6,136 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Shield, Globe, Palette, Cpu, Wifi, Save, AlertTriangle, Monitor, Upload, Image as ImageIcon } from 'lucide-react';
-import { useSystemSettings, useSettingsMutation } from '@/lib/api-hooks';
+import { Shield, Globe, Palette, Cpu, Wifi, Save, AlertTriangle, Monitor, Upload, Mail, Phone, MessageSquare, BookOpen, UserCheck, Eye, EyeOff } from 'lucide-react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { 
+  useSystemSettings, useSettingsMutation, 
+  useContactSettings, useContactMutation,
+  useTermsContent, useTermsMutation,
+  usePrivacyContent, usePrivacyMutation,
+  useWifiSettings, useWifiMutation 
+} from '@/lib/api-hooks';
 import { toast } from 'sonner';
 export function SettingsPage() {
-  const { data: settings, isLoading } = useSystemSettings();
-  const mutation = useSettingsMutation();
+  const { tab } = useParams();
+  const navigate = useNavigate();
+  const currentTab = tab || 'appearance';
+  const { data: settings, isLoading: loadingSettings } = useSystemSettings();
+  const { data: contact, isLoading: loadingContact } = useContactSettings();
+  const { data: terms, isLoading: loadingTerms } = useTermsContent();
+  const { data: privacy, isLoading: loadingPrivacy } = usePrivacyContent();
+  const { data: wifi, isLoading: loadingWifi } = useWifiSettings();
+  const settingsMutation = useSettingsMutation();
+  const contactMutation = useContactMutation();
+  const termsMutation = useTermsMutation();
+  const privacyMutation = usePrivacyMutation();
+  const wifiMutation = useWifiMutation();
   const [formData, setFormData] = useState<Record<string, any>>({});
+  const [showWifiPass, setShowWifiPass] = useState(false);
   useEffect(() => {
-    if (settings) {
+    if (settings && contact && terms && privacy && wifi) {
       setFormData({
-        theme: settings.theme || 'system',
+        ...settings,
+        ...contact,
+        termsContent: terms.content,
+        privacyContent: privacy.content,
+        wifiPassword: wifi.password,
+        wifiIsVisible: wifi.isVisible,
+        // Critical: Ensure fallbacks for select components to avoid uncontrolled/controlled warning
         language: settings.language || 'English',
-        ssoEnabled: settings.ssoEnabled || false,
-        ssoEntityId: settings.ssoEntityId || '',
-        ssoMetadataUrl: settings.ssoMetadataUrl || '',
-        notificationEmail: settings.notificationEmail || '',
+        theme: settings.theme || 'system',
         ocrPrecision: settings.ocrPrecision || 'high',
-        wifiSsid: settings.wifiSsid || '',
-        splashBgColor: settings.splashBgColor || '#4F46E5',
       });
     }
-  }, [settings]);
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault();
+  }, [settings, contact, terms, privacy, wifi]);
+  const handleSave = async (section: string) => {
     try {
-      await mutation.mutateAsync(formData);
-      toast.success("Global configuration updated successfully");
+      if (section === 'appearance' || section === 'localization' || section === 'advanced') {
+        await settingsMutation.mutateAsync(formData as any);
+      } else if (section === 'contact') {
+        await contactMutation.mutateAsync(formData as any);
+      } else if (section === 'terms') {
+        await termsMutation.mutateAsync({ content: formData.termsContent } as any);
+      } else if (section === 'privacy') {
+        await privacyMutation.mutateAsync({ content: formData.privacyContent } as any);
+      } else if (section === 'wifi') {
+        await wifiMutation.mutateAsync({ password: formData.wifiPassword, isVisible: formData.wifiIsVisible } as any);
+      }
+      toast.success(`${section.charAt(0).toUpperCase() + section.slice(1)} settings updated`);
     } catch (err) {
-      toast.error("Failed to save settings");
+      toast.error("Failed to save changes");
     }
   };
   const updateField = (key: string, value: any) => {
     setFormData(prev => ({ ...prev, [key]: value }));
   };
-  if (isLoading) return <AppLayout container><div className="h-96 animate-pulse bg-muted/20 rounded-xl" /></AppLayout>;
+  if (loadingSettings || loadingContact || loadingTerms || loadingPrivacy || loadingWifi) {
+    return (
+      <AppLayout container>
+        <div className="space-y-6">
+          <div className="h-20 w-full bg-muted/20 animate-pulse rounded-xl" />
+          <div className="flex gap-8">
+            <div className="w-64 h-96 bg-muted/20 animate-pulse rounded-xl" />
+            <div className="flex-1 h-96 bg-muted/20 animate-pulse rounded-xl" />
+          </div>
+        </div>
+      </AppLayout>
+    );
+  }
   return (
     <AppLayout container>
       <div className="space-y-8 animate-fade-in">
         <div className="flex justify-between items-center border-b pb-6">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight text-foreground">Global System Settings</h1>
-            <p className="text-muted-foreground">Master configuration for the Nexus CRM enterprise environment.</p>
+            <h1 className="text-3xl font-bold tracking-tight text-foreground">Global Configuration</h1>
+            <p className="text-muted-foreground">Master environment controls for the Nexus CRM ecosystem.</p>
           </div>
-          <Button onClick={handleSave} disabled={mutation.isPending} className="bg-indigo-600 h-11 px-8 shadow-indigo-200">
-            {mutation.isPending ? "Saving..." : <><Save className="mr-2 h-4 w-4" /> Save Global Config</>}
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => navigate('/system/faq')}>View Documentation</Button>
+            <Button className="bg-indigo-600 shadow-indigo-200" onClick={() => handleSave(currentTab)}>
+              <Save className="mr-2 h-4 w-4" /> Save Configuration
+            </Button>
+          </div>
         </div>
-        <Tabs defaultValue="appearance" className="flex flex-col md:flex-row gap-8">
-          <TabsList className="md:w-64 flex flex-col h-auto bg-transparent border-r rounded-none p-0 gap-1">
+        <Tabs value={currentTab} onValueChange={(v) => navigate(`/system/${v}`)} className="flex flex-col md:flex-row gap-8">
+          <TabsList className="md:w-64 flex flex-col h-auto bg-transparent border-r rounded-none p-0 gap-1 shrink-0">
             <TabsTrigger value="appearance" className="w-full justify-start px-4 h-11 data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-600 rounded-lg">
               <Palette className="mr-2 h-4 w-4" /> Appearance
             </TabsTrigger>
             <TabsTrigger value="localization" className="w-full justify-start px-4 h-11 data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-600 rounded-lg">
               <Globe className="mr-2 h-4 w-4" /> Localization
             </TabsTrigger>
+            <TabsTrigger value="contact" className="w-full justify-start px-4 h-11 data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-600 rounded-lg">
+              <Mail className="mr-2 h-4 w-4" /> Contact Channels
+            </TabsTrigger>
             <TabsTrigger value="security" className="w-full justify-start px-4 h-11 data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-600 rounded-lg">
               <Shield className="mr-2 h-4 w-4" /> Security & SSO
             </TabsTrigger>
-            <TabsTrigger value="splash" className="w-full justify-start px-4 h-11 data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-600 rounded-lg">
-              <Monitor className="mr-2 h-4 w-4" /> Splash Screen
+            <TabsTrigger value="terms" className="w-full justify-start px-4 h-11 data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-600 rounded-lg">
+              <BookOpen className="mr-2 h-4 w-4" /> Terms & Conditions
+            </TabsTrigger>
+            <TabsTrigger value="privacy" className="w-full justify-start px-4 h-11 data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-600 rounded-lg">
+              <UserCheck className="mr-2 h-4 w-4" /> Privacy Policy
+            </TabsTrigger>
+            <TabsTrigger value="wifi" className="w-full justify-start px-4 h-11 data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-600 rounded-lg">
+              <Wifi className="mr-2 h-4 w-4" /> Wifi Config
             </TabsTrigger>
             <TabsTrigger value="advanced" className="w-full justify-start px-4 h-11 data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-600 rounded-lg">
-              <Cpu className="mr-2 h-4 w-4" /> AI & OCR Ops
+              <Cpu className="mr-2 h-4 w-4" /> AI & Operations
             </TabsTrigger>
           </TabsList>
-          <div className="flex-1 space-y-6">
+          <div className="flex-1 min-w-0">
             <TabsContent value="appearance" className="m-0 space-y-6 animate-slide-up">
               <Card>
-                <CardHeader><CardTitle>Theme Configuration</CardTitle></CardHeader>
-                <CardContent className="space-y-4">
+                <CardHeader>
+                  <CardTitle>Theme & Branding</CardTitle>
+                  <CardDescription>Configure the visual experience for administrators.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
                   <div className="space-y-2">
-                    <Label>Primary Color Mode</Label>
+                    <Label>UI Theme Mode</Label>
                     <Select value={formData.theme} onValueChange={(v) => updateField('theme', v)}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
@@ -88,15 +145,25 @@ export function SettingsPage() {
                       </SelectContent>
                     </Select>
                   </div>
+                  <div className="space-y-2">
+                    <Label>Splash Background Color</Label>
+                    <div className="flex gap-3">
+                      <Input type="color" className="w-12 h-10 p-1" value={formData.splashBgColor} onChange={(e) => updateField('splashBgColor', e.target.value)} />
+                      <Input value={formData.splashBgColor} onChange={(e) => updateField('splashBgColor', e.target.value)} placeholder="#HEX" />
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
             </TabsContent>
             <TabsContent value="localization" className="m-0 space-y-6 animate-slide-up">
               <Card>
-                <CardHeader><CardTitle>Language & Region</CardTitle></CardHeader>
+                <CardHeader>
+                  <CardTitle>Regional Settings</CardTitle>
+                  <CardDescription>Configure primary language and localization parameters.</CardDescription>
+                </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="space-y-2">
-                    <Label>Primary System Language</Label>
+                    <Label>System Language</Label>
                     <Select value={formData.language} onValueChange={(v) => updateField('language', v)}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
@@ -109,68 +176,143 @@ export function SettingsPage() {
                 </CardContent>
               </Card>
             </TabsContent>
-            <TabsContent value="security" className="m-0 space-y-6 animate-slide-up">
+            <TabsContent value="contact" className="m-0 space-y-6 animate-slide-up">
               <Card>
-                <CardHeader><CardTitle>Access Control & SSO</CardTitle></CardHeader>
+                <CardHeader>
+                  <CardTitle>Corporate Contact Channels</CardTitle>
+                  <CardDescription>Public contact details displayed in the member application.</CardDescription>
+                </CardHeader>
                 <CardContent className="space-y-6">
-                  <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-900 rounded-xl border">
-                    <div className="space-y-0.5">
-                      <Label className="text-base">Enable SAML Single Sign-On</Label>
-                      <p className="text-xs text-muted-foreground">Force administrative users through corporate IDP.</p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <Label className="flex items-center gap-2"><Mail className="h-3.5 w-3.5" /> Support Email</Label>
+                      <Input value={formData.email} onChange={(e) => updateField('email', e.target.value)} placeholder="pik.experience@agungsedyu.com" />
                     </div>
-                    <Switch checked={formData.ssoEnabled} onCheckedChange={(v) => updateField('ssoEnabled', v)} />
-                  </div>
-                  {formData.ssoEnabled && (
-                    <div className="space-y-4 animate-in fade-in slide-in-from-top-2">
-                      <div className="space-y-2">
-                        <Label>Entity ID (Issuer)</Label>
-                        <Input value={formData.ssoEntityId} onChange={(e) => updateField('ssoEntityId', e.target.value)} placeholder="nexus-crm-idp" />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Identity Provider Metadata URL</Label>
-                        <Input value={formData.ssoMetadataUrl} onChange={(e) => updateField('ssoMetadataUrl', e.target.value)} placeholder="https://idp.enterprise.com/metadata" />
-                      </div>
+                    <div className="space-y-2">
+                      <Label className="flex items-center gap-2"><Phone className="h-3.5 w-3.5" /> Hotline Number</Label>
+                      <Input value={formData.phone} onChange={(e) => updateField('phone', e.target.value)} placeholder="+62..." />
                     </div>
-                  )}
-                  <div className="space-y-2">
-                    <Label>Security Notification Email</Label>
-                    <Input value={formData.notificationEmail} onChange={(e) => updateField('notificationEmail', e.target.value)} />
+                    <div className="space-y-2">
+                      <Label className="flex items-center gap-2"><MessageSquare className="h-3.5 w-3.5" /> WhatsApp Business</Label>
+                      <Input value={formData.whatsapp} onChange={(e) => updateField('whatsapp', e.target.value)} placeholder="+62..." />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="flex items-center gap-2"><Globe className="h-3.5 w-3.5" /> Website URL</Label>
+                      <Input value={formData.websiteUrl} onChange={(e) => updateField('websiteUrl', e.target.value)} placeholder="https://..." />
+                    </div>
                   </div>
                 </CardContent>
               </Card>
             </TabsContent>
-            <TabsContent value="splash" className="m-0 space-y-6 animate-slide-up">
+            <TabsContent value="security" className="m-0 space-y-6 animate-slide-up">
               <Card>
-                <CardHeader><CardTitle>Member App Splash Screen</CardTitle></CardHeader>
+                <CardHeader>
+                  <CardTitle>Access & Authentication</CardTitle>
+                  <CardDescription>Manage SSO and administrative security notifications.</CardDescription>
+                </CardHeader>
                 <CardContent className="space-y-6">
-                  <div className="grid grid-cols-2 gap-8">
-                    <div className="space-y-4">
+                  <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-900 rounded-xl border">
+                    <div className="space-y-1">
+                      <Label className="text-base">Force SAML Single Sign-On</Label>
+                      <p className="text-xs text-muted-foreground">Restrict login to corporate IDP authorized users.</p>
+                    </div>
+                    <Switch checked={formData.ssoEnabled} onCheckedChange={(v) => updateField('ssoEnabled', v)} />
+                  </div>
+                  {formData.ssoEnabled && (
+                    <div className="space-y-4 pt-2 border-t">
                       <div className="space-y-2">
-                        <Label>Background Color</Label>
-                        <div className="flex gap-2">
-                          <Input type="color" className="w-12 h-10 p-1" value={formData.splashBgColor} onChange={(e) => updateField('splashBgColor', e.target.value)} />
-                          <Input value={formData.splashBgColor} onChange={(e) => updateField('splashBgColor', e.target.value)} />
-                        </div>
+                        <Label>SAML Entity ID</Label>
+                        <Input value={formData.ssoEntityId} onChange={(e) => updateField('ssoEntityId', e.target.value)} />
                       </div>
                       <div className="space-y-2">
-                        <Label>Branding Image</Label>
-                        <div className="border-2 border-dashed rounded-xl p-8 flex flex-col items-center gap-2 hover:bg-slate-50 cursor-pointer">
-                          <Upload className="h-8 w-8 text-muted-foreground" />
-                          <span className="text-xs text-muted-foreground">PNG, SVG (Max 2MB)</span>
-                        </div>
+                        <Label>Metadata URL</Label>
+                        <Input value={formData.ssoMetadataUrl} onChange={(e) => updateField('ssoMetadataUrl', e.target.value)} />
                       </div>
                     </div>
-                    <div className="bg-slate-100 rounded-3xl p-8 flex items-center justify-center relative overflow-hidden aspect-[9/16] shadow-inner max-w-[240px] mx-auto border-8 border-slate-900">
-                      <div className="absolute inset-0" style={{ backgroundColor: formData.splashBgColor }} />
-                      <div className="z-10 text-white font-bold text-4xl italic">NEXUS</div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+            <TabsContent value="terms" className="m-0 space-y-6 animate-slide-up">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Program Terms & Conditions</CardTitle>
+                  <CardDescription>Legally binding membership agreement text.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <Textarea 
+                    className="min-h-[500px] font-mono text-sm leading-relaxed" 
+                    value={formData.termsContent} 
+                    onChange={(e) => updateField('termsContent', e.target.value)}
+                  />
+                  <div className="p-4 rounded-lg bg-indigo-50 border border-indigo-100 flex items-start gap-3">
+                    <AlertTriangle className="h-5 w-5 text-indigo-600 mt-0.5" />
+                    <p className="text-xs text-indigo-700">Changing these terms requires member notification via push or email campaigns to remain compliant with local regulations.</p>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+            <TabsContent value="privacy" className="m-0 space-y-6 animate-slide-up">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Data Privacy Policy</CardTitle>
+                  <CardDescription>Transparency regarding member data collection and usage.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <Textarea 
+                    className="min-h-[500px] font-mono text-sm leading-relaxed" 
+                    value={formData.privacyContent} 
+                    onChange={(e) => updateField('privacyContent', e.target.value)}
+                  />
+                </CardContent>
+              </Card>
+            </TabsContent>
+            <TabsContent value="wifi" className="m-0 space-y-6 animate-slide-up">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Venue Wifi Credentials</CardTitle>
+                  <CardDescription>Manage guest network details across physical locations.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="space-y-2">
+                    <Label>Network SSID</Label>
+                    <Input value={formData.wifiSsid} onChange={(e) => updateField('wifiSsid', e.target.value)} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Guest Password</Label>
+                    <div className="relative">
+                      <Input 
+                        type={showWifiPass ? "text" : "password"} 
+                        value={formData.wifiPassword} 
+                        onChange={(e) => updateField('wifiPassword', e.target.value)} 
+                        className="pr-10"
+                      />
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                        onClick={() => setShowWifiPass(!showWifiPass)}
+                      >
+                        {showWifiPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </Button>
                     </div>
+                  </div>
+                  <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-900 rounded-xl border">
+                    <div className="space-y-1">
+                      <Label className="text-base">Broadcast Network</Label>
+                      <p className="text-xs text-muted-foreground">Toggle visibility in member application dashboard.</p>
+                    </div>
+                    <Switch checked={formData.wifiIsVisible} onCheckedChange={(v) => updateField('wifiIsVisible', v)} />
                   </div>
                 </CardContent>
               </Card>
             </TabsContent>
             <TabsContent value="advanced" className="m-0 space-y-6 animate-slide-up">
               <Card>
-                <CardHeader><CardTitle>AI & Infrastructure</CardTitle></CardHeader>
+                <CardHeader>
+                  <CardTitle>AI & Infrastructure</CardTitle>
+                  <CardDescription>Manage processing parameters for OCR and Point Claims.</CardDescription>
+                </CardHeader>
                 <CardContent className="space-y-6">
                   <div className="space-y-2">
                     <Label>OCR Precision Mode</Label>
@@ -179,20 +321,13 @@ export function SettingsPage() {
                       <SelectContent>
                         <SelectItem value="high">High Precision (Best for Receipts)</SelectItem>
                         <SelectItem value="medium">Balanced</SelectItem>
-                        <SelectItem value="low">Performance (Faster)</SelectItem>
+                        <SelectItem value="low">Performance Priority</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="space-y-2">
-                    <Label>Venue WiFi Network Name (SSID)</Label>
-                    <div className="flex gap-2">
-                      <div className="bg-slate-100 p-2 rounded-lg"><Wifi className="h-5 w-5 text-indigo-600" /></div>
-                      <Input value={formData.wifiSsid} onChange={(e) => updateField('wifiSsid', e.target.value)} />
-                    </div>
-                  </div>
                   <div className="p-4 rounded-xl bg-amber-50 border border-amber-100 flex gap-3 text-amber-700">
                     <AlertTriangle className="h-5 w-5 shrink-0" />
-                    <p className="text-xs font-medium">Changing AI processing parameters will affect the real-time point claim success rate across all venues.</p>
+                    <p className="text-xs font-medium">Changing AI parameters will affect successful point claim rates in real-time across all active mall venues.</p>
                   </div>
                 </CardContent>
               </Card>

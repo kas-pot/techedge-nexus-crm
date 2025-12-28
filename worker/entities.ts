@@ -3,14 +3,15 @@ import type {
   User, Chat, ChatMessage, Tier, Voucher, Venue, Outlet,
   Mission, Campaign, InterestTag, Leaderboard, ApprovalTask,
   Partner, Badge, SystemSettings, Ad, MarketingTicket, NewsItem,
-  GiftCard, FaqItem, Member
+  GiftCard, FaqItem, Member, ContactSettings, LegalDocument, WifiSettings
 } from "@shared/types";
 import {
   MOCK_CHAT_MESSAGES, MOCK_CHATS, MOCK_USERS, MOCK_TIERS,
   MOCK_VOUCHERS, MOCK_VENUES, MOCK_OUTLETS, MOCK_MISSIONS,
   MOCK_INTERESTS, MOCK_LEADERBOARDS, MOCK_APPROVALS,
   MOCK_PARTNERS, MOCK_BADGES, MOCK_SYSTEM_SETTINGS,
-  MOCK_ADS, MOCK_TICKETS, MOCK_NEWS, MOCK_GIFT_CARDS, MOCK_FAQ, MOCK_MEMBERS
+  MOCK_ADS, MOCK_TICKETS, MOCK_NEWS, MOCK_GIFT_CARDS, MOCK_FAQ, MOCK_MEMBERS,
+  MOCK_CONTACT_SETTINGS, MOCK_TERMS_CONTENT, MOCK_PRIVACY_CONTENT, MOCK_WIFI_SETTINGS
 } from "@shared/mock-data";
 export class UserEntity extends IndexedEntity<Member> {
   static readonly entityName = "member";
@@ -84,8 +85,8 @@ export class ApprovalEntity extends IndexedEntity<ApprovalTask> {
   static seedData = MOCK_APPROVALS;
 }
 export class PartnerEntity extends IndexedEntity<Partner> {
-  static readonly entityName = "partner";
   static readonly indexName = "partners";
+  static readonly entityName = "partner";
   static readonly initialState: Partner = { id: "", name: "", type: "retail", status: "inactive", contactEmail: "", agreementLevel: "Standard", joinedDate: "" };
   static seedData = MOCK_PARTNERS;
 }
@@ -125,11 +126,44 @@ export class FaqEntity extends IndexedEntity<FaqItem> {
   static readonly initialState: FaqItem = { id: "", question: "", answer: "", category: "Points" };
   static seedData = MOCK_FAQ;
 }
+// Global System Singletons
 export class SystemSettingsEntity extends Entity<SystemSettings> {
   static readonly entityName = "system_settings";
   static readonly initialState: SystemSettings = MOCK_SYSTEM_SETTINGS;
   static async getGlobal(env: any): Promise<SystemSettings> {
     const inst = new SystemSettingsEntity(env, "global");
+    return inst.getState();
+  }
+}
+export class ContactSettingsEntity extends Entity<ContactSettings> {
+  static readonly entityName = "contact_settings";
+  static readonly initialState: ContactSettings = MOCK_CONTACT_SETTINGS;
+  static async getGlobal(env: any): Promise<ContactSettings> {
+    const inst = new ContactSettingsEntity(env, "global");
+    return inst.getState();
+  }
+}
+export class TermsEntity extends Entity<LegalDocument> {
+  static readonly entityName = "terms_conditions";
+  static readonly initialState: LegalDocument = MOCK_TERMS_CONTENT;
+  static async getGlobal(env: any): Promise<LegalDocument> {
+    const inst = new TermsEntity(env, "global");
+    return inst.getState();
+  }
+}
+export class PrivacyEntity extends Entity<LegalDocument> {
+  static readonly entityName = "privacy_policy";
+  static readonly initialState: LegalDocument = MOCK_PRIVACY_CONTENT;
+  static async getGlobal(env: any): Promise<LegalDocument> {
+    const inst = new PrivacyEntity(env, "global");
+    return inst.getState();
+  }
+}
+export class WifiEntity extends Entity<WifiSettings> {
+  static readonly entityName = "wifi_config";
+  static readonly initialState: WifiSettings = MOCK_WIFI_SETTINGS;
+  static async getGlobal(env: any): Promise<WifiSettings> {
+    const inst = new WifiEntity(env, "global");
     return inst.getState();
   }
 }

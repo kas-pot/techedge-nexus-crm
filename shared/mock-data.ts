@@ -1,9 +1,9 @@
 import type {
   User, Chat, ChatMessage, TransactionInsight, Tier, Voucher,
   Venue, Outlet, Mission, InterestTag, Leaderboard, ApprovalTask,
-  Partner, Badge, SystemSettings, Ad, MarketingTicket, NewsItem, GiftCard, FaqItem, Member
+  Partner, Badge, SystemSettings, Ad, MarketingTicket, NewsItem, GiftCard, FaqItem, Member,
+  ContactSettings, LegalDocument, WifiSettings
 } from './types';
-// Diverse list of names for realism
 const FIRST_NAMES = ["James", "Sarah", "Michael", "Elena", "David", "Ahmad", "Siti", "Budi", "Dewi", "Kevin", "Rina", "Aditya", "Jessica", "Robert", "Linda", "Maya", "Oscar", "Zoe", "Liam", "Hana"];
 const LAST_NAMES = ["Wilson", "Chen", "Scott", "Rodriguez", "Kim", "Pratama", "Sari", "Wijaya", "Kusuma", "Tan", "Lau", "Nguyen", "Murphy", "Santoso", "Hidayat", "Zhuang", "Lee", "Miller", "Garcia", "Wong"];
 export const MOCK_USERS: User[] = Array.from({ length: 20 }, (_, i) => ({
@@ -19,7 +19,6 @@ export const MOCK_CHAT_MESSAGES: ChatMessage[] = [
   { id: 'm1', chatId: 'c1', userId: 'u1', text: 'Hello, I need help with my points.', ts: Date.now() - 100000 },
   { id: 'm2', chatId: 'c1', userId: 'u2', text: 'Where can I see my history?', ts: Date.now() - 50000 },
 ];
-// 12 Months of Data for Analytics
 export const MOCK_TRANSACTION_INSIGHTS: TransactionInsight[] = [
   { date: 'Jul 23', transactions: 950, revenueIdr: 320000000 },
   { date: 'Aug 23', transactions: 1100, revenueIdr: 380000000 },
@@ -61,7 +60,6 @@ export const MOCK_TIERS: Tier[] = [
   { id: 't2', name: 'Silver', minPoints: 5000, benefits: ['Standard support', '5% discount', 'Early sale access'], color: '#C0C0C0' },
   { id: 't3', name: 'Gold', minPoints: 15000, benefits: ['Priority support', '10% discount', 'Lounge access', 'Concierge service'], color: '#FFD700' },
 ];
-// 50+ Vouchers
 export const MOCK_VOUCHERS: Voucher[] = Array.from({ length: 50 }, (_, i) => ({
   id: `v-${i + 1}`,
   title: i % 2 === 0 ? `Brand Reward ${i + 1}` : `Partner Discount ${i + 1}`,
@@ -73,20 +71,11 @@ export const MOCK_VOUCHERS: Voucher[] = Array.from({ length: 50 }, (_, i) => ({
   isExternal: i % 5 === 0,
   sourcePartnerId: i % 5 === 0 ? `p${(i % 2) + 1}` : undefined
 }));
-// 10+ Venues
 export const MOCK_VENUES: Venue[] = [
   { id: 'ven1', name: 'Sedayu Mall A', location: 'Jakarta North', type: 'Mall', isActive: true, pointClaimEligible: true },
   { id: 'ven2', name: 'Nexus Tower', location: 'Jakarta CBD', type: 'Office', isActive: true, pointClaimEligible: false },
   { id: 'ven3', name: 'The Residency Plaza', location: 'Jakarta South', type: 'Residential', isActive: true, pointClaimEligible: true },
-  { id: 'ven4', name: 'Coastal Walk', location: 'Bali', type: 'Mall', isActive: true, pointClaimEligible: true },
-  { id: 'ven5', name: 'Summit Office Park', location: 'Surabaya', type: 'Office', isActive: true, pointClaimEligible: false },
-  { id: 'ven6', name: 'West Gate Mall', location: 'Tangerang', type: 'Mall', isActive: true, pointClaimEligible: true },
-  { id: 'ven7', name: 'Harbor Point', location: 'Semarang', type: 'Mall', isActive: true, pointClaimEligible: true },
-  { id: 'ven8', name: 'Echo Hub', location: 'Jakarta West', type: 'Office', isActive: true, pointClaimEligible: false },
-  { id: 'ven9', name: 'Lakeside Living', location: 'Bogor', type: 'Residential', isActive: true, pointClaimEligible: true },
-  { id: 'ven10', name: 'Urban Green Square', location: 'Bandung', type: 'Mall', isActive: true, pointClaimEligible: true },
 ];
-// 50+ Outlets
 const CATEGORIES = ["F&B Dining", "Fashion & Accessories", "Electronics", "Supermarket", "Cosmetics & Beauty", "Home & Living"];
 export const MOCK_OUTLETS: Outlet[] = Array.from({ length: 60 }, (_, i) => ({
   id: `out-${i + 1}`,
@@ -99,16 +88,10 @@ export const MOCK_OUTLETS: Outlet[] = Array.from({ length: 60 }, (_, i) => ({
 export const MOCK_MISSIONS: Mission[] = [
   { id: 'm1', title: 'Complete Profile', type: 'onboarding', pointsReward: 100, status: 'active', rewardType: 'points', rewardValue: 100, instructions: 'Fill in all mandatory fields.' },
   { id: 'm2', title: 'Invite a Friend', type: 'referral', pointsReward: 500, status: 'active', rewardType: 'points', rewardValue: 500, instructions: 'Your friend must sign up.' },
-  { id: 'm3', title: 'Daily Login Streak', type: 'general', pointsReward: 50, status: 'active', rewardType: 'points', rewardValue: 50, instructions: 'Login for 5 consecutive days.' },
-  { id: 'm4', title: 'First Purchase', type: 'onboarding', pointsReward: 200, status: 'active', rewardType: 'points', rewardValue: 200, instructions: 'Make your first transaction.' },
-  { id: 'm5', title: 'Elite Membership', type: 'tier', pointsReward: 1000, status: 'active', rewardType: 'points', rewardValue: 1000, instructions: 'Reach Gold tier status.' },
 ];
 export const MOCK_INTERESTS: InterestTag[] = [
   { id: 'int1', name: 'Coffee', color: '#78350f', category: 'F&B', count: 4200 },
   { id: 'int2', name: 'Fashion', color: '#065f46', category: 'Lifestyle', count: 3100 },
-  { id: 'int3', name: 'Tech', color: '#1e40af', category: 'Tech', count: 2800 },
-  { id: 'int4', name: 'Hiking', color: '#15803d', category: 'Lifestyle', count: 1200 },
-  { id: 'int5', name: 'Luxury', color: '#b45309', category: 'Shopping', count: 950 },
 ];
 export const MOCK_LEADERBOARDS: Leaderboard[] = [
   {
@@ -123,7 +106,6 @@ export const MOCK_LEADERBOARDS: Leaderboard[] = [
     }))
   }
 ];
-// 100 Members
 export const MOCK_MEMBERS: Member[] = Array.from({ length: 100 }, (_, i) => ({
   id: `MEM-${1000 + i}`,
   name: `${FIRST_NAMES[i % FIRST_NAMES.length]} ${LAST_NAMES[i % LAST_NAMES.length]}`,
@@ -144,13 +126,9 @@ export const MOCK_APPROVALS: ApprovalTask[] = Array.from({ length: 30 }, (_, i) 
 }));
 export const MOCK_PARTNERS: Partner[] = [
   { id: 'p1', name: 'Global Bank Inc', type: 'bank', status: 'active', contactEmail: 'partnerships@globalbank.com', agreementLevel: 'Platinum', joinedDate: '2022-01-15' },
-  { id: 'p2', name: 'Retail Union', type: 'retail', status: 'active', contactEmail: 'ops@retailunion.net', agreementLevel: 'Gold', joinedDate: '2023-05-20' },
-  { id: 'p3', name: 'Sky Airline', type: 'service', status: 'active', contactEmail: 'loyalty@sky.com', agreementLevel: 'Standard', joinedDate: '2023-11-10' },
 ];
 export const MOCK_BADGES: Badge[] = [
   { id: 'b1', name: 'Early Bird', description: 'Joined in the first month', icon: 'zap', color: '#4F46E5', requirementPoints: 0, earnedCount: 1240 },
-  { id: 'b2', name: 'High Spender', description: 'Spent over $10k', icon: 'trending-up', color: '#F59E0B', requirementPoints: 10000, earnedCount: 85 },
-  { id: 'b3', name: 'Referral King', description: 'Invited 10+ friends', icon: 'users', color: '#10B981', requirementPoints: 0, earnedCount: 42 },
 ];
 export const MOCK_ADS: Ad[] = Array.from({ length: 15 }, (_, i) => ({
   id: `ad${i + 1}`,
@@ -172,7 +150,7 @@ export const MOCK_TICKETS: MarketingTicket[] = Array.from({ length: 20 }, (_, i)
 export const MOCK_NEWS: NewsItem[] = Array.from({ length: 15 }, (_, i) => ({
   id: `nw${i + 1}`,
   title: `News Update ${i + 1}`,
-  content: `Content for enterprise news update ${i + 1}. High-fidelity mock content for CRM.`,
+  content: `Content for enterprise news update ${i + 1}.`,
   category: i % 2 === 0 ? 'Announcement' : 'Promotion',
   publishDate: '2024-06-' + ((i % 15) + 1).toString().padStart(2, '0'),
   status: i < 10 ? 'published' : 'draft'
@@ -188,9 +166,56 @@ export const MOCK_GIFT_CARDS: GiftCard[] = Array.from({ length: 50 }, (_, i) => 
 export const MOCK_FAQ: FaqItem[] = Array.from({ length: 30 }, (_, i) => ({
   id: `fq${i + 1}`,
   question: `Frequently Asked Question #${i + 1}?`,
-  answer: `This is a detailed answer for the knowledge base item #${i + 1}. It explains enterprise CRM logic.`,
+  answer: `This is a detailed answer for the knowledge base item #${i + 1}.`,
   category: i % 4 === 0 ? 'Points' : i % 4 === 1 ? 'Membership' : i % 4 === 2 ? 'Technical' : 'Security'
 }));
+// System Excellence Mock Data
+export const MOCK_CONTACT_SETTINGS: ContactSettings = {
+  id: 'global',
+  email: 'pik.experience@agungsedyu.com',
+  phone: '+622150982122',
+  whatsapp: '+628123456789',
+  whatsappUrl: 'https://wa.me/628123456789',
+  websiteUrl: 'https://amantara.com/',
+  facebookUrl: 'https://facebook.com/nexus.crm',
+  instagramUrl: 'https://instagram.com/nexus.crm'
+};
+export const MOCK_TERMS_CONTENT: LegalDocument = {
+  id: 'terms',
+  title: 'Loyalty Program Terms & Conditions',
+  content: `LOYALTY PROGRAM TERMS & CONDITIONS MEMBERSHIP
+1. Acceptance of Terms
+By registering for the Nexus CRM Loyalty Program, members agree to be bound by these terms and conditions.
+2. Membership Eligibility
+Membership is open to individuals aged 17 and above. Corporations and legal entities are not eligible for individual membership.
+3. Earning Points
+Points are earned based on qualifying purchases at participating venues. The current earning rate is defined in the Loyalty Rules Engine.
+4. Point Expiration
+Points remain valid for a period of 12 months from the date of earn unless otherwise specified.
+5. Redemption
+Members may redeem points for vouchers, gift cards, or other rewards available in the reward catalog.`,
+  lastUpdated: '2024-06-01'
+};
+export const MOCK_PRIVACY_CONTENT: LegalDocument = {
+  id: 'privacy',
+  title: 'Data Privacy Policy',
+  content: `PRIVACY POLICY
+1. Information Collection
+We collect personal information including name, email, and transaction history to provide personalized loyalty services.
+2. Data Usage
+Your data is used to process rewards, improve our services, and send targeted marketing communications if opted-in.
+3. Data Security
+We implement enterprise-grade security measures to protect your personal information from unauthorized access.
+4. Third-Party Sharing
+We do not sell your personal data. Data may be shared with authorized partners only to facilitate reward fulfillment.`,
+  lastUpdated: '2024-06-01'
+};
+export const MOCK_WIFI_SETTINGS: WifiSettings = {
+  id: 'global',
+  ssid: 'Nexus_Guest_WiFi',
+  password: 'nexus_loyalty_2024',
+  isVisible: true
+};
 export const MOCK_SYSTEM_SETTINGS: SystemSettings = {
   id: 'global',
   theme: 'system',

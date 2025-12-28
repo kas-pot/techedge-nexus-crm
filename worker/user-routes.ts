@@ -4,9 +4,10 @@ import {
   UserEntity, ChatBoardEntity, TierEntity, VoucherEntity, VenueEntity,
   OutletEntity, MissionEntity, CampaignEntity, InterestEntity,
   LeaderboardEntity, ApprovalEntity, PartnerEntity, BadgeEntity,
-  SystemSettingsEntity, AdEntity, TicketEntity, NewsEntity, GiftCardEntity, FaqEntity
+  SystemSettingsEntity, AdEntity, TicketEntity, NewsEntity, GiftCardEntity, FaqEntity,
+  ContactSettingsEntity, TermsEntity, PrivacyEntity, WifiEntity
 } from "./entities";
-import { ok, bad, notFound, isStr, Index } from './core-utils';
+import { ok, bad, notFound, Index } from './core-utils';
 const ENTITY_MAP: Record<string, any> = {
   users: UserEntity,
   tiers: TierEntity,
@@ -74,7 +75,42 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     const deleted = await EntityClass.delete(c.env, id);
     return deleted ? ok(c, { success: true }) : notFound(c);
   });
-
+  // Specialized System Routes
+  app.get('/api/system/settings', async (c) => ok(c, await SystemSettingsEntity.getGlobal(c.env)));
+  app.put('/api/system/settings', async (c) => {
+    const data = await c.req.json();
+    const inst = new SystemSettingsEntity(c.env, "global");
+    await inst.patch(data);
+    return ok(c, await inst.getState());
+  });
+  app.get('/api/system/contact', async (c) => ok(c, await ContactSettingsEntity.getGlobal(c.env)));
+  app.put('/api/system/contact', async (c) => {
+    const data = await c.req.json();
+    const inst = new ContactSettingsEntity(c.env, "global");
+    await inst.patch(data);
+    return ok(c, await inst.getState());
+  });
+  app.get('/api/system/terms', async (c) => ok(c, await TermsEntity.getGlobal(c.env)));
+  app.put('/api/system/terms', async (c) => {
+    const data = await c.req.json();
+    const inst = new TermsEntity(c.env, "global");
+    await inst.patch(data);
+    return ok(c, await inst.getState());
+  });
+  app.get('/api/system/privacy', async (c) => ok(c, await PrivacyEntity.getGlobal(c.env)));
+  app.put('/api/system/privacy', async (c) => {
+    const data = await c.req.json();
+    const inst = new PrivacyEntity(c.env, "global");
+    await inst.patch(data);
+    return ok(c, await inst.getState());
+  });
+  app.get('/api/system/wifi', async (c) => ok(c, await WifiEntity.getGlobal(c.env)));
+  app.put('/api/system/wifi', async (c) => {
+    const data = await c.req.json();
+    const inst = new WifiEntity(c.env, "global");
+    await inst.patch(data);
+    return ok(c, await inst.getState());
+  });
   app.get('/api/reseed-all', async (c) => {
     let count = 0;
     for (const [type, EntityClass] of Object.entries(ENTITY_MAP)) {
@@ -87,57 +123,5 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       }
     }
     return ok(c, { reseeded: count, message: 'All mock entities force-reseeded' });
-  });
-  app.post('/api/gift-cards/batch', async (c) => {
-    const { count, value, expiryDate } = await c.req.json();
-    if (!count || !value) return bad(c, 'count and value required');
-    const batch = [];
-    for (let i = 0; i < count; i++) {
-      const id = crypto.randomUUID();
-      const card = {
-        id,
-        serial: `NXS-${Math.random().toString(36).substring(2, 10).toUpperCase()}`,
-        value: Number(value),
-        balance: Number(value),
-        status: 'active',
-        expiryDate: expiryDate || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString()
-      };
-      await GiftCardEntity.create(c.env, card as any);
-      batch.push(card);
-    }
-    return ok(c, batch);
-  });
-  app.post('/api/vouchers/sync-external', async (c) => {
-    const { partnerId, count = 5 } = await c.req.json();
-    if (!partnerId) return bad(c, 'partnerId required');
-    const syncedVouchers = [];
-    const partner = new PartnerEntity(c.env, partnerId);
-    if (!await partner.exists()) return notFound(c, 'Partner not found');
-    const pState = await partner.getState();
-    for (let i = 0; i < count; i++) {
-      const v = {
-        id: crypto.randomUUID(),
-        title: `${pState.name} Reward #${Math.floor(Math.random() * 1000)}`,
-        code: `EXT-${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
-        discountType: Math.random() > 0.5 ? 'fixed' : 'percentage',
-        value: Math.random() > 0.5 ? 50000 : 15,
-        expiryDate: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(),
-        status: 'active',
-        isExternal: true,
-        sourcePartnerId: partnerId,
-        syncDate: new Date().toISOString(),
-        metadata: { imported: true, partnerType: pState.type }
-      };
-      await VoucherEntity.create(c.env, v as any);
-      syncedVouchers.push(v);
-    }
-    return ok(c, { synced: syncedVouchers.length, items: syncedVouchers });
-  });
-  app.get('/api/system/settings', async (c) => ok(c, await SystemSettingsEntity.getGlobal(c.env)));
-  app.put('/api/system/settings', async (c) => {
-    const data = await c.req.json();
-    const inst = new SystemSettingsEntity(c.env, "global");
-    await inst.patch(data);
-    return ok(c, await inst.getState());
   });
 }

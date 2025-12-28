@@ -114,7 +114,6 @@ export interface TransactionInsight {
   transactions: number;
   revenueIdr: number;
 }
-// Phase 5 & 7: New Operational Entities
 export interface ApprovalTask {
   id: string;
   type: 'points_claim' | 'membership' | 'voucher_redeem';
@@ -182,6 +181,29 @@ export interface FaqItem {
   question: string;
   answer: string;
   category: 'Points' | 'Membership' | 'Technical' | 'Security';
+}
+// System Excellence Specialized Interfaces
+export interface ContactSettings {
+  id: string;
+  email: string;
+  phone: string;
+  whatsapp: string;
+  whatsappUrl: string;
+  websiteUrl: string;
+  facebookUrl?: string;
+  instagramUrl?: string;
+}
+export interface LegalDocument {
+  id: string;
+  title: string;
+  content: string;
+  lastUpdated: string;
+}
+export interface WifiSettings {
+  id: string;
+  ssid: string;
+  password?: string;
+  isVisible: boolean;
 }
 export interface SystemSettings {
   id: string;
