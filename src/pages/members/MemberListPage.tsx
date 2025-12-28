@@ -1,32 +1,57 @@
 import React, { useState } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Search, Filter, MoreVertical, Download, UserPlus, Mail, ShieldAlert, ChevronRight, Edit, Trash2, Check, X } from 'lucide-react';
+import { Search, Filter, MoreVertical, Download, UserPlus, Mail, Edit, Trash2 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from '@/components/ui/sheet';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Skeleton } from '@/components/ui/skeleton';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useMembers, useMemberMutations } from '@/lib/api-hooks';
 import { toast } from 'sonner';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
+const memberSchema = z.object({
+  name: z.string().min(2, "Name required"),
+  email: z.string().email("Invalid email"),
+  tier: z.string(),
+  status: z.enum(['Active', 'Inactive']),
+});
 export function MemberListPage() {
   const [search, setSearch] = useState('');
   const [isAdding, setIsAdding] = useState(false);
+  const [editingMember, setEditingMember] = useState<any>(null);
   const { data, isLoading } = useMembers();
   const { create, update, remove } = useMemberMutations();
+  const form = useForm({
+    resolver: zodResolver(memberSchema),
+    defaultValues: { name: '', email: '', tier: 'Bronze', status: 'Active' as const }
+  });
+  React.useEffect(() => {
+    if (editingMember) {
+      form.reset({
+        name: editingMember.name,
+        email: editingMember.email,
+        tier: editingMember.tier,
+        status: editingMember.status,
+      });
+    }
+  }, [editingMember, form]);
   const members = data?.items || [];
   const filteredMembers = members.filter(m =>
     m.name.toLowerCase().includes(search.toLowerCase()) ||
     m.email.toLowerCase().includes(search.toLowerCase()) ||
     m.id.toLowerCase().includes(search.toLowerCase())
   );
-  const handleAddMember = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleCreate = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
-    const data = {
+    const payload = {
       name: fd.get('name') as string,
       email: fd.get('email') as string,
       tier: fd.get('tier') as string,
@@ -35,19 +60,20 @@ export function MemberListPage() {
       joinedDate: new Date().toLocaleDateString()
     };
     try {
-      await create.mutateAsync(data);
+      await create.mutateAsync(payload);
       setIsAdding(false);
       toast.success("Member registered successfully");
     } catch (err) {
       toast.error("Registration failed");
     }
   };
-  const handleInlineTierChange = async (id: string, newTier: string) => {
+  const handleUpdate = async (values: z.infer<typeof memberSchema>) => {
     try {
-      await update.mutateAsync({ id, tier: newTier });
-      toast.success("Tier updated");
+      await update.mutateAsync({ id: editingMember.id, ...values });
+      setEditingMember(null);
+      toast.success("Member profile updated");
     } catch (e) {
-      toast.error("Failed to update tier");
+      toast.error("Update failed");
     }
   };
   return (
@@ -62,7 +88,7 @@ export function MemberListPage() {
             <Button variant="outline" className="shadow-sm">
               <Download className="mr-2 h-4 w-4" /> Export
             </Button>
-            <Button className="bg-indigo-600 hover:bg-indigo-700 shadow-indigo-100" onClick={() => setIsAdding(true)}>
+            <Button className="bg-indigo-600 hover:bg-indigo-700" onClick={() => setIsAdding(true)}>
               <UserPlus className="mr-2 h-4 w-4" /> Add Member
             </Button>
           </div>
@@ -79,16 +105,15 @@ export function MemberListPage() {
                   onChange={(e) => setSearch(e.target.value)}
                 />
               </div>
-              <Button variant="outline" size="icon" className="h-11 w-11"><Filter className="h-4 w-4" /></Button>
             </div>
           </CardHeader>
           <CardContent className="p-0">
             <Table>
               <TableHeader>
                 <TableRow className="bg-slate-50/30">
-                  <TableHead className="pl-6 w-32 font-bold uppercase text-[10px] tracking-widest text-muted-foreground">ID</TableHead>
+                  <TableHead className="pl-6 font-bold uppercase text-[10px] tracking-widest text-muted-foreground">ID</TableHead>
                   <TableHead className="font-bold uppercase text-[10px] tracking-widest text-muted-foreground">Profile</TableHead>
-                  <TableHead className="font-bold uppercase text-[10px] tracking-widest text-muted-foreground">Tier Status</TableHead>
+                  <TableHead className="font-bold uppercase text-[10px] tracking-widest text-muted-foreground">Tier</TableHead>
                   <TableHead className="font-bold uppercase text-[10px] tracking-widest text-muted-foreground">Points</TableHead>
                   <TableHead className="font-bold uppercase text-[10px] tracking-widest text-muted-foreground">Status</TableHead>
                   <TableHead className="pr-6 text-right font-bold uppercase text-[10px] tracking-widest text-muted-foreground">Actions</TableHead>
@@ -96,56 +121,54 @@ export function MemberListPage() {
               </TableHeader>
               <TableBody>
                 {isLoading ? (
-                  Array.from({ length: 8 }).map((_, i) => (
+                  Array.from({ length: 5 }).map((_, i) => (
                     <TableRow key={i}><TableCell colSpan={6} className="h-16 animate-pulse" /></TableRow>
                   ))
                 ) : filteredMembers.map((member) => (
-                  <TableRow key={member.id} className="group hover:bg-indigo-50/30 transition-colors">
-                    <TableCell className="pl-6 font-mono text-[11px] font-bold text-muted-foreground/80">{member.id}</TableCell>
+                  <TableRow key={member.id} className="group hover:bg-indigo-50/30">
+                    <TableCell className="pl-6 font-mono text-[11px]">{member.id}</TableCell>
                     <TableCell>
-                      <div className="flex flex-col py-1">
+                      <div className="flex flex-col">
                         <span className="font-bold text-sm">{member.name}</span>
                         <span className="text-xs text-muted-foreground">{member.email}</span>
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Select value={member.tier} onValueChange={(v) => handleInlineTierChange(member.id, v)}>
-                        <SelectTrigger className="h-8 w-32 border-none bg-transparent hover:bg-slate-100 p-0 pl-2">
-                          <SelectValue>
-                            <Badge className={
-                              member.tier === 'Gold' ? "bg-amber-100 text-amber-700" :
-                              member.tier === 'Silver' ? "bg-slate-200 text-slate-700" : "bg-orange-100 text-orange-700"
-                            }>
-                              {member.tier}
-                            </Badge>
-                          </SelectValue>
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Gold">Gold</SelectItem>
-                          <SelectItem value="Silver">Silver</SelectItem>
-                          <SelectItem value="Bronze">Bronze</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <Badge className={member.tier === 'Gold' ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-700'}>{member.tier}</Badge>
                     </TableCell>
                     <TableCell className="font-bold">{member.points.toLocaleString()}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        <div className={`h-1.5 w-1.5 rounded-full ${member.status === 'Active' ? 'bg-emerald-500 shadow-glow' : 'bg-slate-400'}`} />
-                        <span className="text-sm font-medium">{member.status}</span>
+                        <div className={`h-2 w-2 rounded-full ${member.status === 'Active' ? 'bg-emerald-500' : 'bg-slate-400'}`} />
+                        <span className="text-sm">{member.status}</span>
                       </div>
                     </TableCell>
                     <TableCell className="pr-6 text-right">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-9 w-9"><MoreVertical className="h-4 w-4" /></Button>
+                          <Button variant="ghost" size="icon"><MoreVertical className="h-4 w-4" /></Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-48">
-                          <DropdownMenuItem><Edit className="mr-2 h-4 w-4" /> Edit Profile</DropdownMenuItem>
-                          <DropdownMenuItem><Mail className="mr-2 h-4 w-4" /> Send Invite</DropdownMenuItem>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => setEditingMember(member)}><Edit className="mr-2 h-4 w-4" /> Edit Profile</DropdownMenuItem>
+                          <DropdownMenuItem><Mail className="mr-2 h-4 w-4" /> Message</DropdownMenuItem>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem className="text-destructive" onClick={() => remove.mutate(member.id)}>
-                            <Trash2 className="mr-2 h-4 w-4" /> Remove Account
-                          </DropdownMenuItem>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <DropdownMenuItem className="text-destructive" onSelect={(e) => e.preventDefault()}>
+                                <Trash2 className="mr-2 h-4 w-4" /> Remove Account
+                              </DropdownMenuItem>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Delete Member?</AlertDialogTitle>
+                                <AlertDialogDescription>This action will permanently remove {member.name} from the CRM database.</AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction className="bg-destructive" onClick={() => remove.mutate(member.id)}>Confirm Delete</AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
@@ -155,34 +178,69 @@ export function MemberListPage() {
             </Table>
           </CardContent>
         </Card>
+        {/* Edit Member Sheet */}
+        <Sheet open={!!editingMember} onOpenChange={(o) => !o && setEditingMember(null)}>
+          <SheetContent className="sm:max-w-md">
+            <SheetHeader>
+              <SheetTitle>Edit Member Profile</SheetTitle>
+              <SheetDescription>Update personal details and tier status for {editingMember?.name}.</SheetDescription>
+            </SheetHeader>
+            <form onSubmit={form.handleSubmit(handleUpdate)} className="space-y-6 py-6">
+              <div className="space-y-2">
+                <label className="text-sm font-bold">Full Name</label>
+                <Input {...form.register('name')} />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-bold">Email</label>
+                <Input {...form.register('email')} />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-bold">Tier</label>
+                  <Select value={form.watch('tier')} onValueChange={(v) => form.setValue('tier', v)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Bronze">Bronze</SelectItem>
+                      <SelectItem value="Silver">Silver</SelectItem>
+                      <SelectItem value="Gold">Gold</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-bold">Status</label>
+                  <Select value={form.watch('status')} onValueChange={(v: any) => form.setValue('status', v)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Active">Active</SelectItem>
+                      <SelectItem value="Inactive">Inactive</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <SheetFooter className="pt-8">
+                <Button variant="outline" type="button" onClick={() => setEditingMember(null)}>Cancel</Button>
+                <Button type="submit" className="bg-indigo-600" disabled={update.isPending}>
+                  {update.isPending ? "Saving..." : "Save Changes"}
+                </Button>
+              </SheetFooter>
+            </form>
+          </SheetContent>
+        </Sheet>
         <Dialog open={isAdding} onOpenChange={setIsAdding}>
           <DialogContent className="sm:max-w-lg">
-            <form onSubmit={handleAddMember}>
+            <form onSubmit={handleCreate}>
               <DialogHeader>
-                <DialogTitle>Member Registration</DialogTitle>
-                <DialogDescription>Add a new individual to the Nexus CRM ecosystem.</DialogDescription>
+                <DialogTitle>Register Member</DialogTitle>
+                <DialogDescription>Manually add a member to the Nexus ecosystem.</DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-6">
                 <div className="grid gap-2">
                   <label className="text-sm font-bold">Full Name</label>
-                  <Input name="name" placeholder="Johnathan Doe" required />
+                  <Input name="name" required />
                 </div>
                 <div className="grid gap-2">
                   <label className="text-sm font-bold">Email Address</label>
-                  <Input name="email" type="email" placeholder="john@enterprise.com" required />
-                </div>
-                <div className="grid gap-2">
-                  <label className="text-sm font-bold">Initial Tier</label>
-                  <Select name="tier" defaultValue="Bronze">
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Bronze">Bronze (Entry Level)</SelectItem>
-                      <SelectItem value="Silver">Silver (Mid-Tier)</SelectItem>
-                      <SelectItem value="Gold">Gold (Premium)</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <Input name="email" type="email" required />
                 </div>
               </div>
               <DialogFooter>

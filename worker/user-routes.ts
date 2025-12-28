@@ -7,7 +7,6 @@ import {
   SystemSettingsEntity, AdEntity, TicketEntity, NewsEntity, GiftCardEntity, FaqEntity
 } from "./entities";
 import { ok, bad, notFound, isStr } from './core-utils';
-// Helper to map entity name to class
 const ENTITY_MAP: Record<string, any> = {
   users: UserEntity,
   tiers: TierEntity,
@@ -28,7 +27,6 @@ const ENTITY_MAP: Record<string, any> = {
   faqs: FaqEntity
 };
 export function userRoutes(app: Hono<{ Bindings: Env }>) {
-  // CRUD - GET (List)
   app.get('/api/:entityType', async (c) => {
     const type = c.req.param('entityType');
     const EntityClass = ENTITY_MAP[type];
@@ -39,7 +37,6 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     const page = await EntityClass.list(c.env, cursor ?? null, limit ? Math.max(1, (Number(limit) | 0)) : undefined);
     return ok(c, page);
   });
-  // CRUD - GET (Single)
   app.get('/api/:entityType/:id', async (c) => {
     const type = c.req.param('entityType');
     const id = c.req.param('id');
@@ -49,7 +46,6 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     if (!await inst.exists()) return notFound(c);
     return ok(c, await inst.getState());
   });
-  // CRUD - POST (Create)
   app.post('/api/:entityType', async (c) => {
     const type = c.req.param('entityType');
     const data = await c.req.json();
@@ -59,7 +55,6 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     const result = await EntityClass.create(c.env, { ...data, id });
     return ok(c, result);
   });
-  // CRUD - PUT (Update)
   app.put('/api/:entityType/:id', async (c) => {
     const type = c.req.param('entityType');
     const id = c.req.param('id');
@@ -71,7 +66,6 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     await inst.patch(data);
     return ok(c, await inst.getState());
   });
-  // CRUD - DELETE (Delete)
   app.delete('/api/:entityType/:id', async (c) => {
     const type = c.req.param('entityType');
     const id = c.req.param('id');
@@ -80,7 +74,25 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     const deleted = await EntityClass.delete(c.env, id);
     return deleted ? ok(c, { success: true }) : notFound(c);
   });
-  // Specialized: External Voucher Sync
+  app.post('/api/gift-cards/batch', async (c) => {
+    const { count, value, expiryDate } = await c.req.json();
+    if (!count || !value) return bad(c, 'count and value required');
+    const batch = [];
+    for (let i = 0; i < count; i++) {
+      const id = crypto.randomUUID();
+      const card = {
+        id,
+        serial: `NXS-${Math.random().toString(36).substring(2, 10).toUpperCase()}`,
+        value: Number(value),
+        balance: Number(value),
+        status: 'active',
+        expiryDate: expiryDate || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString()
+      };
+      await GiftCardEntity.create(c.env, card as any);
+      batch.push(card);
+    }
+    return ok(c, batch);
+  });
   app.post('/api/vouchers/sync-external', async (c) => {
     const { partnerId, count = 5 } = await c.req.json();
     if (!partnerId) return bad(c, 'partnerId required');
@@ -106,7 +118,6 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     }
     return ok(c, { synced: syncedVouchers.length, items: syncedVouchers });
   });
-  // System Settings Singleton
   app.get('/api/system/settings', async (c) => ok(c, await SystemSettingsEntity.getGlobal(c.env)));
   app.put('/api/system/settings', async (c) => {
     const data = await c.req.json();

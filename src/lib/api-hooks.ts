@@ -5,7 +5,6 @@ import type {
   InterestTag, Leaderboard, ApprovalTask, Partner, Badge,
   SystemSettings, Ad, MarketingTicket, NewsItem, GiftCard, FaqItem, Member
 } from '@shared/types';
-// Generic hook for listing entities
 export function useEntities<T>(key: string, path: string, params?: Record<string, string>) {
   const queryParams = params ? new URLSearchParams(params).toString() : '';
   const fullPath = queryParams ? `${path}?${queryParams}` : path;
@@ -16,7 +15,6 @@ export function useEntities<T>(key: string, path: string, params?: Record<string
     staleTime: 5 * 60 * 1000,
   });
 }
-// Generic CRUD Mutation Factory
 export function useEntityMutation<T>(entityKey: string, apiPath: string) {
   const queryClient = useQueryClient();
   const create = useMutation({
@@ -24,7 +22,7 @@ export function useEntityMutation<T>(entityKey: string, apiPath: string) {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: [entityKey] }),
   });
   const update = useMutation({
-    mutationFn: ({ id, ...data }: Partial<T> & { id: string }) => 
+    mutationFn: ({ id, ...data }: Partial<T> & { id: string }) =>
       api<T>(`${apiPath}/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
     onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: [entityKey] });
@@ -37,7 +35,6 @@ export function useEntityMutation<T>(entityKey: string, apiPath: string) {
   });
   return { create, update, remove };
 }
-// Specific Entity Hooks
 export const useTiers = () => useEntities<Tier>('tiers', '/api/tiers');
 export const useVouchers = () => useEntities<Voucher>('vouchers', '/api/vouchers');
 export const useVenues = () => useEntities<Venue>('venues', '/api/venues');
@@ -59,16 +56,31 @@ export const useSystemSettings = () => useQuery({
   queryKey: ['system-settings'],
   queryFn: () => api<SystemSettings>('/api/system/settings')
 });
-// Mutation Hooks
 export const useVoucherMutations = () => useEntityMutation<Voucher>('vouchers', '/api/vouchers');
 export const useMemberMutations = () => useEntityMutation<Member>('members', '/api/users');
 export const useVenueMutations = () => useEntityMutation<Venue>('venues', '/api/venues');
 export const useOutletMutations = () => useEntityMutation<Outlet>('outlets', '/api/outlets');
 export const usePartnerMutations = () => useEntityMutation<Partner>('partners', '/api/partners');
+export const useMissionMutations = () => useEntityMutation<Mission>('missions', '/api/missions');
+export const useApprovalMutations = () => useEntityMutation<ApprovalTask>('approvals', '/api/approvals');
+export const useAdMutations = () => useEntityMutation<Ad>('ads', '/api/ads');
+export const useTicketMutations = () => useEntityMutation<MarketingTicket>('tickets', '/api/tickets');
+export const useNewsMutations = () => useEntityMutation<NewsItem>('news', '/api/news');
+export const useFaqMutations = () => useEntityMutation<FaqItem>('faqs', '/api/faqs');
+export const useInterestMutations = () => useEntityMutation<InterestTag>('interests', '/api/interests');
+export const useGiftCardMutations = () => useEntityMutation<GiftCard>('gift-cards', '/api/gift-cards');
+export const useGiftCardBatch = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { count: number, value: number, expiryDate?: string }) =>
+      api<GiftCard[]>('/api/gift-cards/batch', { method: 'POST', body: JSON.stringify(data) }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['gift-cards'] }),
+  });
+};
 export const usePartnerSync = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (data: { partnerId: string, count: number }) => 
+    mutationFn: (data: { partnerId: string, count: number }) =>
       api<{ synced: number, items: Voucher[] }>('/api/vouchers/sync-external', { method: 'POST', body: JSON.stringify(data) }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['vouchers'] }),
   });

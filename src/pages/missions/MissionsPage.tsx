@@ -11,31 +11,46 @@ import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from '@/components/ui/sheet';
-import { Target, Coins, Star, Trophy, ArrowRight, Plus, ChevronRight, Zap, TrendingUp, Gift, MessageSquare, ExternalLink } from 'lucide-react';
-import { useMissions, useVouchers, useMissionMutation } from '@/lib/api-hooks';
+import { Target, Coins, Star, Trophy, Plus, ChevronRight, Zap, Gift, MessageSquare, ExternalLink } from 'lucide-react';
+import { useMissions, useVouchers, useMissionMutations } from '@/lib/api-hooks';
 import { toast } from 'sonner';
 export function MissionsPage() {
   const [activeType, setActiveType] = useState('onboarding');
   const [editingMission, setEditingMission] = useState<any>(null);
   const { data, isLoading } = useMissions(activeType);
   const { data: vouchersData } = useVouchers();
+  const mutations = useMissionMutations();
   const missions = data?.items || [];
-  const mutation = useMissionMutation();
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     const formData = new FormData(e.target as HTMLFormElement);
     const payload = Object.fromEntries(formData.entries());
+    const data = {
+      ...payload,
+      type: activeType,
+      pointsReward: Number(payload.pointsReward || 0),
+      status: editingMission?.status || 'active',
+    };
     try {
-      await mutation.mutateAsync({
-        ...payload,
-        type: activeType,
-        status: 'active',
-        pointsReward: Number(payload.pointsReward || 0),
-      } as any);
+      if (editingMission?.id) {
+        await mutations.update.mutateAsync({ id: editingMission.id, ...data } as any);
+        toast.success('Mission updated');
+      } else {
+        await mutations.create.mutateAsync(data as any);
+        toast.success('Mission created');
+      }
       setEditingMission(null);
-      toast.success('Mission created successfully');
     } catch (err) {
-      toast.error('Failed to create mission');
+      toast.error('Operation failed');
+    }
+  };
+  const toggleStatus = async (mission: any) => {
+    try {
+      const nextStatus = mission.status === 'active' ? 'inactive' : 'active';
+      await mutations.update.mutateAsync({ id: mission.id, status: nextStatus });
+      toast.success(`Mission marked ${nextStatus}`);
+    } catch (e) {
+      toast.error('Failed to toggle status');
     }
   };
   return (
@@ -60,41 +75,43 @@ export function MissionsPage() {
           <TabsContent value={activeType} className="mt-0">
             <div className="grid gap-4">
               {isLoading ? (
-                [1, 2, 3].map(i => <Card key={i} className="h-24 animate-pulse bg-muted/20" />)
+                [1, 2].map(i => <Card key={i} className="h-24 animate-pulse" />)
               ) : missions.length === 0 ? (
                 <Card className="border-dashed flex flex-col items-center justify-center py-20 text-center">
-                  <div className="h-16 w-16 bg-slate-50 rounded-full flex items-center justify-center mb-4">
-                    <Target className="h-8 w-8 text-muted-foreground" />
-                  </div>
-                  <h3 className="text-lg font-semibold">No active missions</h3>
+                  <Target className="h-12 w-12 text-muted-foreground/30 mb-4" />
+                  <h3 className="font-semibold text-lg">No active missions</h3>
                   <p className="text-muted-foreground">Start by creating a new mission for this category.</p>
                 </Card>
               ) : (
                 missions.map((mission) => (
-                  <Card key={mission.id} className="group hover:border-indigo-200 transition-colors cursor-pointer" onClick={() => setEditingMission(mission)}>
+                  <Card key={mission.id} className="group hover:border-indigo-200 transition-colors">
                     <CardContent className="p-0">
                       <div className="flex items-center p-6 gap-6">
-                        <div className="h-14 w-14 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0 shadow-sm group-hover:scale-110 transition-transform">
+                        <div className="h-14 w-14 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
                           {mission.type === 'referral' ? <MessageSquare className="h-7 w-7" /> : <Zap className="h-7 w-7" />}
                         </div>
                         <div className="flex-1 space-y-1">
                           <div className="flex items-center gap-2">
                             <h3 className="font-bold text-lg">{mission.title}</h3>
-                            <Badge variant="secondary" className="bg-amber-50 text-amber-700 hover:bg-amber-50 border-amber-100">
-                              {mission.rewardType === 'voucher' ? <Gift className="h-3 w-3 mr-1" /> : <Coins className="h-3 w-3 mr-1" />}
-                              {mission.pointsReward > 0 ? `${mission.pointsReward} Points` : 'Voucher Reward'}
+                            <Badge variant="secondary" className="bg-amber-50 text-amber-700">
+                              {mission.pointsReward > 0 ? `${mission.pointsReward} XP` : 'Reward Item'}
                             </Badge>
                           </div>
-                          <p className="text-sm text-muted-foreground line-clamp-1">{mission.instructions || 'No specific instructions provided.'}</p>
+                          <p className="text-sm text-muted-foreground line-clamp-1">{mission.instructions}</p>
                         </div>
-                        <div className="flex items-center gap-8 px-4 border-l">
-                          <div className="flex flex-col items-center gap-1.5">
+                        <div className="flex items-center gap-6 px-4 border-l">
+                          <div className="flex flex-col items-end gap-1.5">
                             <span className="text-[10px] uppercase font-bold text-muted-foreground">Status</span>
-                            <Badge variant={mission.status === 'active' ? 'default' : 'secondary'} className={mission.status === 'active' ? 'bg-emerald-600' : ''}>
-                              {mission.status}
-                            </Badge>
+                            <div className="flex items-center gap-2">
+                              <Badge variant={mission.status === 'active' ? 'default' : 'secondary'}>{mission.status}</Badge>
+                              <Switch 
+                                checked={mission.status === 'active'} 
+                                onCheckedChange={() => toggleStatus(mission)}
+                                disabled={mutations.update.isPending}
+                              />
+                            </div>
                           </div>
-                          <Button variant="ghost" size="icon" className="group-hover:bg-indigo-50 group-hover:text-indigo-600">
+                          <Button variant="ghost" size="icon" onClick={() => setEditingMission(mission)}>
                             <ChevronRight className="h-5 w-5" />
                           </Button>
                         </div>
@@ -116,78 +133,45 @@ export function MissionsPage() {
               <div className="grid gap-6 py-6">
                 <div className="space-y-2">
                   <Label htmlFor="title">Mission Title</Label>
-                  <Input id="title" name="title" placeholder="e.g., Welcome New Members" defaultValue={editingMission?.title} required />
+                  <Input id="title" name="title" defaultValue={editingMission?.title} required />
                 </div>
                 <div className="space-y-4">
-                  <Label>Reward Type</Label>
+                  <Label>Reward Basis</Label>
                   <RadioGroup defaultValue={editingMission?.rewardType || "none"} name="rewardType" className="grid grid-cols-3 gap-4">
-                    <div>
-                      <RadioGroupItem value="none" id="r1" className="peer sr-only" />
-                      <Label htmlFor="r1" className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary">
-                        <Target className="mb-3 h-6 w-6" />
-                        No Reward
-                      </Label>
-                    </div>
-                    <div>
-                      <RadioGroupItem value="points" id="r2" className="peer sr-only" />
-                      <Label htmlFor="r2" className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary">
-                        <Coins className="mb-3 h-6 w-6" />
-                        Bonus Points
-                      </Label>
-                    </div>
-                    <div>
-                      <RadioGroupItem value="voucher" id="r3" className="peer sr-only" />
-                      <Label htmlFor="r3" className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary">
-                        <Gift className="mb-3 h-6 w-6" />
-                        Voucher
-                      </Label>
-                    </div>
+                    {['none', 'points', 'voucher'].map((t) => (
+                      <div key={t}>
+                        <RadioGroupItem value={t} id={`rt-${t}`} className="peer sr-only" />
+                        <Label htmlFor={`rt-${t}`} className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary">
+                          <span className="capitalize text-xs font-bold">{t}</span>
+                        </Label>
+                      </div>
+                    ))}
                   </RadioGroup>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="pointsReward">Points Value</Label>
-                    <Input id="pointsReward" name="pointsReward" type="number" defaultValue={editingMission?.pointsReward} />
+                    <Label>Points Value</Label>
+                    <Input name="pointsReward" type="number" defaultValue={editingMission?.pointsReward} />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="rewardValue">Selected Voucher</Label>
+                    <Label>Selected Voucher</Label>
                     <Select name="rewardValue" defaultValue={editingMission?.rewardValue}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select Voucher" />
-                      </SelectTrigger>
+                      <SelectTrigger><SelectValue placeholder="Optional" /></SelectTrigger>
                       <SelectContent>
-                        {vouchersData?.items.map(v => (
-                          <SelectItem key={v.id} value={v.id}>{v.title}</SelectItem>
-                        ))}
+                        {vouchersData?.items.map(v => <SelectItem key={v.id} value={v.id}>{v.title}</SelectItem>)}
                       </SelectContent>
                     </Select>
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="instructions">How to Play (Instructions)</Label>
-                  <Textarea id="instructions" name="instructions" placeholder="Enter step-by-step instructions..." maxLength={1000} className="min-h-[100px]" defaultValue={editingMission?.instructions} />
-                  <p className="text-[10px] text-muted-foreground text-right">Max 1000 characters</p>
+                  <Label>How to Play (Instructions)</Label>
+                  <Textarea name="instructions" defaultValue={editingMission?.instructions} className="min-h-[100px]" />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="terms">Terms & Conditions</Label>
-                  <Textarea id="terms" name="terms" placeholder="Legal requirements and limitations..." className="min-h-[80px]" defaultValue={editingMission?.terms} />
-                </div>
-                {activeType === 'referral' && (
-                  <div className="space-y-4 border-t pt-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="referralMessage">Referral Code Message</Label>
-                      <Textarea id="referralMessage" name="referralMessage" placeholder="Invite text for the member to share..." defaultValue={editingMission?.referralMessage} />
-                    </div>
-                    <Button type="button" variant="outline" className="w-full">
-                      <ExternalLink className="mr-2 h-4 w-4" /> Preview Message Mockup
-                    </Button>
-                  </div>
-                )}
               </div>
-              <SheetFooter className="gap-2">
+              <SheetFooter>
                 <Button type="button" variant="ghost" onClick={() => setEditingMission(null)}>Cancel</Button>
-                <Button type="submit" className="bg-indigo-600 hover:bg-indigo-700" disabled={mutation.isPending}>
-                  {mutation.isPending ? 'Saving...' : 'Save Mission'}
+                <Button type="submit" className="bg-indigo-600" disabled={mutations.create.isPending || mutations.update.isPending}>
+                  {editingMission?.id ? 'Save Changes' : 'Create Mission'}
                 </Button>
               </SheetFooter>
             </form>
