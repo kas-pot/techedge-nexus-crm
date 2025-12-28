@@ -1,4 +1,4 @@
-import type { User, Chat, ChatMessage, TransactionInsight, Tier, Voucher, Venue, Outlet, Mission } from './types';
+import type { User, Chat, ChatMessage, TransactionInsight, Tier, Voucher, Venue, Outlet, Mission, InterestTag, Leaderboard } from './types';
 export const MOCK_USERS: User[] = [
   { id: 'u1', name: 'James Wilson' },
   { id: 'u2', name: 'Sarah Chen' },
@@ -55,16 +55,46 @@ export const MOCK_VOUCHERS: Voucher[] = [
   { id: 'v2', title: 'Flash Sale', code: 'FLASH20', discountType: 'percentage', value: 20, expiryDate: '2025-06-30', status: 'active' },
 ];
 export const MOCK_VENUES: Venue[] = [
-  { id: 'ven1', name: 'Sedayu Mall A', location: 'Jakarta North', type: 'Mall' },
-  { id: 'ven2', name: 'Nexus Tower', location: 'Jakarta CBD', type: 'Office' },
+  { id: 'ven1', name: 'Sedayu Mall A', location: 'Jakarta North', type: 'Mall', isActive: true, pointClaimEligible: true },
+  { id: 'ven2', name: 'Nexus Tower', location: 'Jakarta CBD', type: 'Office', isActive: true, pointClaimEligible: false },
 ];
 export const MOCK_OUTLETS: Outlet[] = [
   { id: 'out1', venueId: 'ven1', name: 'Coffee Lab', category: 'F&B Dining', tenantName: 'Coffee Lab Ltd', floor: 'G' },
   { id: 'out2', venueId: 'ven1', name: 'Urban Fashion', category: 'Fashion & Accessories', tenantName: 'Urban Group', floor: '1st' },
 ];
 export const MOCK_MISSIONS: Mission[] = [
-  { id: 'm1', title: 'Complete Profile', type: 'onboarding', pointsReward: 100, status: 'active' },
-  { id: 'm2', title: 'Spend $500 in Fashion', type: 'general', pointsReward: 500, status: 'active' },
+  { id: 'm1', title: 'Complete Profile', type: 'onboarding', pointsReward: 100, status: 'active', rewardType: 'points', rewardValue: 100, instructions: 'Fill in all mandatory fields in your profile settings.' },
+  { id: 'm2', title: 'Invite a Friend', type: 'referral', pointsReward: 500, status: 'active', rewardType: 'points', rewardValue: 500, referralMessage: 'Hey! Join Nexus CRM and get exclusive rewards using my code: {code}', instructions: 'Your friend must sign up and complete their first transaction.' },
+  { id: 'm3', title: 'Spend $500 in Fashion', type: 'general', pointsReward: 0, status: 'active', rewardType: 'voucher', rewardValue: 'v1', instructions: 'Purchase items from any fashion outlet totaling $500 or more.' },
+];
+export const MOCK_INTERESTS: InterestTag[] = [
+  { id: 'int1', name: 'Coffee', color: '#78350f', category: 'F&B', count: 1240 },
+  { id: 'int2', name: 'Sustainable Fashion', color: '#065f46', category: 'Lifestyle', count: 850 },
+  { id: 'int3', name: 'Gadgets', color: '#1e40af', category: 'Tech', count: 2100 },
+  { id: 'int4', name: 'Fine Dining', color: '#991b1b', category: 'F&B', count: 450 },
+];
+export const MOCK_LEADERBOARDS: Leaderboard[] = [
+  {
+    id: 'lb-weekly',
+    title: 'Weekly Top Earners',
+    period: 'weekly',
+    entries: [
+      { rank: 1, memberName: 'James Wilson', points: 4500, change: 'neutral' },
+      { rank: 2, memberName: 'Sarah Chen', points: 4200, change: 'up' },
+      { rank: 3, memberName: 'Michael Scott', points: 3800, change: 'down' },
+      { rank: 4, memberName: 'Elena Rodriguez', points: 3100, change: 'up' },
+    ]
+  },
+  {
+    id: 'lb-monthly',
+    title: 'Monthly Masters',
+    period: 'monthly',
+    entries: [
+      { rank: 1, memberName: 'David Kim', points: 15400, change: 'up' },
+      { rank: 2, memberName: 'James Wilson', points: 14200, change: 'down' },
+      { rank: 3, memberName: 'Elena Rodriguez', points: 12800, change: 'up' },
+    ]
+  }
 ];
 export const MOCK_MEMBERS = Array.from({ length: 25 }, (_, i) => ({
   id: `MEM-${1000 + i}`,

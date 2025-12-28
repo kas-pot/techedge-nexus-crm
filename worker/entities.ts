@@ -1,6 +1,6 @@
 import { IndexedEntity } from "./core-utils";
-import type { User, Chat, ChatMessage, Tier, Voucher, Venue, Outlet, Mission, Campaign } from "@shared/types";
-import { MOCK_CHAT_MESSAGES, MOCK_CHATS, MOCK_USERS, MOCK_TIERS, MOCK_VOUCHERS, MOCK_VENUES, MOCK_OUTLETS, MOCK_MISSIONS } from "@shared/mock-data";
+import type { User, Chat, ChatMessage, Tier, Voucher, Venue, Outlet, Mission, Campaign, InterestTag, Leaderboard } from "@shared/types";
+import { MOCK_CHAT_MESSAGES, MOCK_CHATS, MOCK_USERS, MOCK_TIERS, MOCK_VOUCHERS, MOCK_VENUES, MOCK_OUTLETS, MOCK_MISSIONS, MOCK_INTERESTS, MOCK_LEADERBOARDS } from "@shared/mock-data";
 export class UserEntity extends IndexedEntity<User> {
   static readonly entityName = "user";
   static readonly indexName = "users";
@@ -42,7 +42,7 @@ export class VoucherEntity extends IndexedEntity<Voucher> {
 export class VenueEntity extends IndexedEntity<Venue> {
   static readonly entityName = "venue";
   static readonly indexName = "venues";
-  static readonly initialState: Venue = { id: "", name: "", location: "", type: "Mall" };
+  static readonly initialState: Venue = { id: "", name: "", location: "", type: "Mall", isActive: true, pointClaimEligible: true };
   static seedData = MOCK_VENUES;
 }
 export class OutletEntity extends IndexedEntity<Outlet> {
@@ -54,7 +54,7 @@ export class OutletEntity extends IndexedEntity<Outlet> {
 export class MissionEntity extends IndexedEntity<Mission> {
   static readonly entityName = "mission";
   static readonly indexName = "missions";
-  static readonly initialState: Mission = { id: "", title: "", type: "general", pointsReward: 0, status: "inactive" };
+  static readonly initialState: Mission = { id: "", title: "", type: "general", pointsReward: 0, status: "inactive", rewardType: "none" };
   static seedData = MOCK_MISSIONS;
 }
 export class CampaignEntity extends IndexedEntity<Campaign> {
@@ -62,4 +62,16 @@ export class CampaignEntity extends IndexedEntity<Campaign> {
   static readonly indexName = "campaigns";
   static readonly initialState: Campaign = { id: "", name: "", startDate: "", endDate: "", channel: "push", status: "scheduled" };
   static seedData = [];
+}
+export class InterestEntity extends IndexedEntity<InterestTag> {
+  static readonly entityName = "interest";
+  static readonly indexName = "interests";
+  static readonly initialState: InterestTag = { id: "", name: "", color: "#ccc", category: "Uncategorized", count: 0 };
+  static seedData = MOCK_INTERESTS;
+}
+export class LeaderboardEntity extends IndexedEntity<Leaderboard> {
+  static readonly entityName = "leaderboard";
+  static readonly indexName = "leaderboards";
+  static readonly initialState: Leaderboard = { id: "", title: "", period: "weekly", entries: [] };
+  static seedData = MOCK_LEADERBOARDS;
 }

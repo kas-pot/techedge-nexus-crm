@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from './api-client';
-import type { ApiResponse, Tier, Voucher, Venue, Outlet, Mission, Campaign } from '@shared/types';
+import type { ApiResponse, Tier, Voucher, Venue, Outlet, Mission, Campaign, InterestTag, Leaderboard } from '@shared/types';
 // Generic hook for listing entities
 export function useEntities<T>(key: string, path: string, params?: Record<string, string>) {
   const queryParams = params ? new URLSearchParams(params).toString() : '';
@@ -19,10 +19,13 @@ export const useVenues = () => useEntities<Venue>('venues', '/api/venues');
 export const useOutlets = (venueId?: string) =>
   useEntities<Outlet>('outlets', '/api/outlets', venueId ? { venueId } : undefined);
 // Marketing & Missions Hooks
-export const useMissions = (type?: string) => 
+export const useMissions = (type?: string) =>
   useEntities<Mission>('missions', '/api/missions', type ? { type } : undefined);
-export const useCampaigns = (channel?: string) => 
+export const useCampaigns = (channel?: string) =>
   useEntities<Campaign>('campaigns', '/api/campaigns', channel ? { channel } : undefined);
+// Gamification Hooks
+export const useInterests = () => useEntities<InterestTag>('interests', '/api/interests');
+export const useLeaderboards = () => useEntities<Leaderboard>('leaderboards', '/api/leaderboards');
 // Mutation helper
 export function useCreateEntity<T>(key: string, path: string) {
   const queryClient = useQueryClient();
@@ -36,3 +39,4 @@ export function useCreateEntity<T>(key: string, path: string) {
     },
   });
 }
+export const useMissionMutation = () => useCreateEntity<Mission>('missions', '/api/missions');

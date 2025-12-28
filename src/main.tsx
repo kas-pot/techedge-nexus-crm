@@ -12,6 +12,8 @@ import '@/index.css'
 import { DashboardPage } from '@/pages/DashboardPage';
 import { MemberListPage } from '@/pages/members/MemberListPage';
 import { TiersPage } from '@/pages/members/TiersPage';
+import { LeaderboardsPage } from '@/pages/members/LeaderboardsPage';
+import { InterestsPage } from '@/pages/members/InterestsPage';
 import { EarnPointsPage } from '@/pages/loyalty/EarnPointsPage';
 import { VouchersPage } from '@/pages/loyalty/VouchersPage';
 import { VenuesPage } from '@/pages/ops/VenuesPage';
@@ -34,8 +36,8 @@ const router = createBrowserRouter([
   { path: "/insights", element: <MemberInsightsPage />, errorElement: <RouteErrorBoundary /> },
   { path: "/members", element: <MemberListPage />, errorElement: <RouteErrorBoundary /> },
   { path: "/tiers", element: <TiersPage />, errorElement: <RouteErrorBoundary /> },
-  { path: "/leaderboards", element: <PlaceholderPage title="Leaderboards" category="Member Management" /> },
-  { path: "/interests", element: <PlaceholderPage title="Interests" category="Member Management" /> },
+  { path: "/leaderboards", element: <LeaderboardsPage />, errorElement: <RouteErrorBoundary /> },
+  { path: "/interests", element: <InterestsPage />, errorElement: <RouteErrorBoundary /> },
   { path: "/manual-approval", element: <PlaceholderPage title="Manual Approval" category="Member Management" /> },
   { path: "/loyalty/earn-points", element: <EarnPointsPage />, errorElement: <RouteErrorBoundary /> },
   { path: "/loyalty/burn-rules", element: <PlaceholderPage title="Burn Rules" category="Loyalty Engine" /> },
