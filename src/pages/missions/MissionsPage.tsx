@@ -11,7 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from '@/components/ui/sheet';
-import { Target, Coins, Star, Trophy, Plus, ChevronRight, Zap, Gift, MessageSquare, ExternalLink } from 'lucide-react';
+import { Target, Zap, Plus, ChevronRight, MessageSquare } from 'lucide-react';
 import { useMissions, useVouchers, useMissionMutations } from '@/lib/api-hooks';
 import { toast } from 'sonner';
 export function MissionsPage() {
@@ -25,7 +25,8 @@ export function MissionsPage() {
     e.preventDefault();
     const formData = new FormData(e.target as HTMLFormElement);
     const payload = Object.fromEntries(formData.entries());
-    const data = {
+    // Rename local 'data' to 'payloadData' to avoid shadowing hook result 'data'
+    const payloadData = {
       ...payload,
       type: activeType,
       pointsReward: Number(payload.pointsReward || 0),
@@ -33,10 +34,10 @@ export function MissionsPage() {
     };
     try {
       if (editingMission?.id) {
-        await mutations.update.mutateAsync({ id: editingMission.id, ...data } as any);
+        await mutations.update.mutateAsync({ id: editingMission.id, ...payloadData } as any);
         toast.success('Mission updated');
       } else {
-        await mutations.create.mutateAsync(data as any);
+        await mutations.create.mutateAsync(payloadData as any);
         toast.success('Mission created');
       }
       setEditingMission(null);

@@ -1,7 +1,6 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip, CartesianGrid, XAxis, YAxis, Bar, Line, ComposedChart, LineChart } from 'recharts';
 import { MOCK_DASHBOARD_STATS } from '@shared/mock-data';
 import { Users, TrendingUp, Award, DollarSign, Zap, CreditCard, ChevronRight, Download } from 'lucide-react';
@@ -18,12 +17,19 @@ const stats = [
 export function HomePage() {
   const [activeRange, setActiveRange] = useState('12M');
   const [pulse, setPulse] = useState(false);
+  const pulseTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     const interval = setInterval(() => {
       setPulse(true);
-      setTimeout(() => setPulse(false), 2000);
+      if (pulseTimeoutRef.current) clearTimeout(pulseTimeoutRef.current);
+      pulseTimeoutRef.current = setTimeout(() => {
+        setPulse(false);
+      }, 2000);
     }, 15000);
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      if (pulseTimeoutRef.current) clearTimeout(pulseTimeoutRef.current);
+    };
   }, []);
   const chartData = useMemo(() => {
     if (activeRange === '3M') return MOCK_DASHBOARD_STATS.insights.slice(-3);

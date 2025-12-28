@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
-import { Gift, Copy, Plus, Search, RefreshCcw, Landmark } from 'lucide-react';
+import { Plus, Search, RefreshCcw } from 'lucide-react';
 import { useGiftCards, useGiftCardBatch, useGiftCardMutations } from '@/lib/api-hooks';
 import { toast } from 'sonner';
 export function GiftCardsPage() {
@@ -144,9 +144,9 @@ export function GiftCardsPage() {
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="flex gap-2">
-                <Input
-                  placeholder="NXS-XXXXXXXX"
-                  value={redeemSerial}
+                <Input 
+                  placeholder="NXS-XXXXXXXX" 
+                  value={redeemSerial} 
                   onChange={(e) => setRedeemSerial(e.target.value.toUpperCase())}
                   className="h-12 text-lg font-mono"
                 />
@@ -163,8 +163,8 @@ export function GiftCardsPage() {
                     <span className="text-sm font-medium">{foundCard.status}</span>
                   </div>
                   <Separator />
-                  <Button
-                    className="w-full bg-indigo-600 h-11"
+                  <Button 
+                    className="w-full bg-indigo-600 h-11" 
                     onClick={handleRedeem}
                     disabled={foundCard.status !== 'active' || updateMutation.isPending}
                   >
