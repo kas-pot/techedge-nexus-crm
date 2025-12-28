@@ -16,6 +16,10 @@ import { EarnPointsPage } from '@/pages/loyalty/EarnPointsPage';
 import { VouchersPage } from '@/pages/loyalty/VouchersPage';
 import { VenuesPage } from '@/pages/ops/VenuesPage';
 import { OutletsPage } from '@/pages/ops/OutletsPage';
+import { CampaignsPage } from '@/pages/marketing/CampaignsPage';
+import { EventsPage } from '@/pages/marketing/EventsPage';
+import { MissionsPage } from '@/pages/missions/MissionsPage';
+import { MemberInsightsPage } from '@/pages/insights/MemberInsightsPage';
 import { PlaceholderPage } from '@/components/ui/placeholder-page';
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -27,7 +31,7 @@ const queryClient = new QueryClient({
 });
 const router = createBrowserRouter([
   { path: "/", element: <DashboardPage />, errorElement: <RouteErrorBoundary /> },
-  { path: "/insights", element: <PlaceholderPage title="Member Insights" category="Overview" /> },
+  { path: "/insights", element: <MemberInsightsPage />, errorElement: <RouteErrorBoundary /> },
   { path: "/members", element: <MemberListPage />, errorElement: <RouteErrorBoundary /> },
   { path: "/tiers", element: <TiersPage />, errorElement: <RouteErrorBoundary /> },
   { path: "/leaderboards", element: <PlaceholderPage title="Leaderboards" category="Member Management" /> },
@@ -40,17 +44,20 @@ const router = createBrowserRouter([
   { path: "/loyalty/gift-cards", element: <PlaceholderPage title="Gift Cards" category="Loyalty Engine" /> },
   { path: "/loyalty/badges", element: <PlaceholderPage title="Badges" category="Loyalty Engine" /> },
   { path: "/loyalty/tags", element: <PlaceholderPage title="Master Tags" category="Loyalty Engine" /> },
-  { path: "/missions/onboarding", element: <PlaceholderPage title="Onboarding Missions" category="Missions" /> },
-  { path: "/missions/general", element: <PlaceholderPage title="General Missions" category="Missions" /> },
-  { path: "/missions/tier", element: <PlaceholderPage title="Tier Missions" category="Missions" /> },
+  // Missions Unified Routing
+  { path: "/missions", element: <MissionsPage />, errorElement: <RouteErrorBoundary /> },
+  { path: "/missions/onboarding", element: <MissionsPage />, errorElement: <RouteErrorBoundary /> },
+  { path: "/missions/general", element: <MissionsPage />, errorElement: <RouteErrorBoundary /> },
+  { path: "/missions/tier", element: <MissionsPage />, errorElement: <RouteErrorBoundary /> },
   { path: "/ops/venues", element: <VenuesPage />, errorElement: <RouteErrorBoundary /> },
   { path: "/ops/outlets", element: <OutletsPage />, errorElement: <RouteErrorBoundary /> },
   { path: "/ops/maps", element: <PlaceholderPage title="Isometric Maps" category="Rewards & Ops" /> },
-  { path: "/marketing/events", element: <PlaceholderPage title="Events" category="Marketing" /> },
+  // Marketing & Communications
+  { path: "/marketing/events", element: <EventsPage />, errorElement: <RouteErrorBoundary /> },
   { path: "/marketing/activities", element: <PlaceholderPage title="Activities" category="Marketing" /> },
   { path: "/marketing/tickets", element: <PlaceholderPage title="Tickets" category="Marketing" /> },
-  { path: "/marketing/push", element: <PlaceholderPage title="Push Notifications" category="Marketing" /> },
-  { path: "/marketing/email", element: <PlaceholderPage title="Email Campaigns" category="Marketing" /> },
+  { path: "/marketing/push", element: <CampaignsPage />, errorElement: <RouteErrorBoundary /> },
+  { path: "/marketing/email", element: <CampaignsPage />, errorElement: <RouteErrorBoundary /> },
   { path: "/marketing/videos", element: <PlaceholderPage title="Video Promotions" category="Marketing" /> },
   { path: "/marketing/ads", element: <PlaceholderPage title="Ads Management" category="Marketing" /> },
   { path: "/marketing/news", element: <PlaceholderPage title="News & Promo" category="Marketing" /> },
