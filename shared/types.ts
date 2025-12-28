@@ -92,10 +92,25 @@ export interface Campaign {
   openRate?: number;
   ctr?: number;
 }
+export type PushNotificationCategory = 
+  | 'General' 
+  | 'Event' 
+  | 'Mission' 
+  | 'Points' 
+  | 'Birthday' 
+  | 'Tenant' 
+  | 'Approval' 
+  | 'Reminder' 
+  | 'Announcement' 
+  | 'Congrats';
 export interface PushCampaign extends Campaign {
+  category: PushNotificationCategory;
   messageTitle: string;
   messageBody: string;
-  targetSegment: 'All Members' | 'Gold Tier' | 'Silver Tier' | 'Bronze Tier';
+  imageUrl?: string;
+  targetSegment: 'All Members' | 'Gold Tier' | 'Silver Tier' | 'Bronze Tier' | 'Mission Completers';
+  targetingType: 'Global Broadcast' | 'Segmented';
+  triggerType: 'Manual' | 'Event-Based' | 'Scheduled';
   scheduledFor: string;
   sentAt?: string;
 }

@@ -3,7 +3,7 @@ import type {
   Venue, Outlet, Mission, InterestTag, Leaderboard, ApprovalTask,
   Partner, Badge, SystemSettings, Ad, MarketingTicket, NewsItem, GiftCard, FaqItem, Member,
   ContactSettings, LegalDocument, WifiSettings, Campaign, WeatherConfig, WeatherRecommendation,
-  SplashScreenConfig, HeroBannerConfig
+  SplashScreenConfig, HeroBannerConfig, PushCampaign
 } from './types';
 const FIRST_NAMES = ["James", "Sarah", "Michael", "Elena", "David", "Ahmad", "Siti", "Budi", "Dewi", "Kevin", "Rina", "Aditya", "Jessica", "Robert", "Linda", "Maya", "Oscar", "Zoe", "Liam", "Hana"];
 const LAST_NAMES = ["Wilson", "Chen", "Scott", "Rodriguez", "Kim", "Pratama", "Sari", "Wijaya", "Kusuma", "Tan", "Lau", "Nguyen", "Murphy", "Santoso", "Hidayat", "Zhuang", "Lee", "Miller", "Garcia", "Wong"];
@@ -227,7 +227,6 @@ export const MOCK_FAQ: FaqItem[] = Array.from({ length: 30 }, (_, i) => ({
   answer: `This is a detailed answer for the knowledge base item #${i + 1}.`,
   category: i % 4 === 0 ? 'Points' : i % 4 === 1 ? 'Membership' : i % 4 === 2 ? 'Technical' : 'Security'
 }));
-// System Excellence Mock Data
 export const MOCK_CONTACT_SETTINGS: ContactSettings = {
   id: 'global',
   email: 'pik.experience@agungsedyu.com',
@@ -287,45 +286,55 @@ export const MOCK_SYSTEM_SETTINGS: SystemSettings = {
   splashBgColor: '#4F46E5'
 };
 export const MOCK_CATEGORIES = CATEGORIES;
-
 export const MOCK_PUSH_CAMPAIGNS: PushCampaign[] = [
   {
     id: "push-1", name: "Weekend Flash Sale", channel: "push", status: "sent", reach: 12050, openRate: 32.4, ctr: 8.1,
-    startDate: "2024-05-10", endDate: "2024-05-12", messageTitle: "Flash Sale is LIVE! ����", messageBody: "Get 20% off all fashion brands this weekend only. Open to see your exclusive codes.",
-    targetSegment: "All Members", scheduledFor: "2024-05-10T09:00:00Z", sentAt: "2024-05-10T09:00:05Z"
+    category: "Announcement", startDate: "2024-05-10", endDate: "2024-05-12", messageTitle: "Flash Sale is LIVE! 🛍️", messageBody: "Get 20% off all fashion brands this weekend only. Open to see your exclusive codes.",
+    targetSegment: "All Members", targetingType: "Global Broadcast", triggerType: "Scheduled", scheduledFor: "2024-05-10T09:00:00Z", sentAt: "2024-05-10T09:00:05Z",
+    imageUrl: "https://images.unsplash.com/photo-1483985988000-0e9567e62ef5?q=80&w=800"
   },
   {
     id: "push-2", name: "Gold Tier Exclusive", channel: "push", status: "sent", reach: 850, openRate: 58.2, ctr: 14.5,
-    startDate: "2024-05-15", endDate: "2024-05-15", messageTitle: "Private Lounge Access 🥂", messageBody: "As a Gold Member, enjoy complimentary snacks at the VIP Lounge today.",
-    targetSegment: "Gold Tier", scheduledFor: "2024-05-15T14:00:00Z", sentAt: "2024-05-15T14:00:02Z"
+    category: "Announcement", startDate: "2024-05-15", endDate: "2024-05-15", messageTitle: "Private Lounge Access ���", messageBody: "As a Gold Member, enjoy complimentary snacks at the VIP Lounge today.",
+    targetSegment: "Gold Tier", targetingType: "Segmented", triggerType: "Manual", scheduledFor: "2024-05-15T14:00:00Z", sentAt: "2024-05-15T14:00:02Z",
+    imageUrl: "https://images.unsplash.com/photo-1560624052-449f5ddf0c31?q=80&w=800"
   },
   {
-    id: "push-3", name: "Venue Opening PIK", channel: "push", status: "scheduled", reach: 5000, openRate: 0, ctr: 0,
-    startDate: "2024-06-01", endDate: "2024-06-01", messageTitle: "Grand Opening tomorrow! 🏛️", messageBody: "Join us for the Sedayu Mall PIK opening. First 100 members get free vouchers.",
-    targetSegment: "All Members", scheduledFor: "2024-06-01T10:00:00Z"
+    id: "push-3", name: "Birthday Shoutout", channel: "push", status: "scheduled", reach: 120, openRate: 0, ctr: 0,
+    category: "Birthday", startDate: "2024-06-01", endDate: "2024-06-01", messageTitle: "Happy Birthday! 🎂", messageBody: "Enjoy a complimentary coffee and 500 bonus XP on your special day.",
+    targetSegment: "All Members", targetingType: "Segmented", triggerType: "Event-Based", scheduledFor: "2024-06-01T08:00:00Z",
+    imageUrl: "https://images.unsplash.com/photo-1464349095431-e9a21285b5f3?q=80&w=800"
   },
   {
-    id: "push-4", name: "Silver Points Boost", channel: "push", status: "draft", reach: 0, openRate: 0, ctr: 0,
-    startDate: "2024-06-10", endDate: "2024-06-12", messageTitle: "Silver Members: 2x Points!", messageBody: "Earn double points on all F&B dining this weekend. Don't miss out!",
-    targetSegment: "Silver Tier", scheduledFor: "2024-06-10T08:00:00Z"
+    id: "push-4", name: "Mission: Mystery Shopper", channel: "push", status: "draft", reach: 0, openRate: 0, ctr: 0,
+    category: "Mission", startDate: "2024-06-10", endDate: "2024-06-12", messageTitle: "New Mission: Shopper 🕵️", messageBody: "Complete 3 purchases at PIK Avenue to unlock the secret badge.",
+    targetSegment: "Silver Tier", targetingType: "Segmented", triggerType: "Scheduled", scheduledFor: "2024-06-10T10:00:00Z",
+    imageUrl: "https://images.unsplash.com/photo-1556742044-3c52d6e88c62?q=80&w=800"
   },
-  ...Array.from({ length: 12 }, (_, i) => ({
+  {
+    id: "push-5", name: "Points Claim Approved", channel: "push", status: "sent", reach: 1, openRate: 100, ctr: 85,
+    category: "Approval", startDate: "2024-05-20", endDate: "2024-05-20", messageTitle: "Claim Approved! ✅", messageBody: "Your receipt scan from Sedayu Mall has been verified. 250 XP added.",
+    targetSegment: "All Members", targetingType: "Segmented", triggerType: "Event-Based", scheduledFor: "2024-05-20T12:00:00Z", sentAt: "2024-05-20T12:00:01Z"
+  },
+  ...Array.from({ length: 10 }, (_, i) => ({
     id: `push-extra-${i}`,
-    name: `Retargeting Campaign ${i + 5}`,
+    name: `Enterprise Update ${i + 6}`,
     channel: "push" as const,
     status: i % 3 === 0 ? "sent" as const : "scheduled" as const,
+    category: (["Announcement", "Reminder", "Congrats", "Tenant"] as const)[i % 4],
     reach: 2000 + i * 150,
     openRate: 15 + Math.random() * 25,
     ctr: 2 + Math.random() * 5,
-    startDate: "2024-05-20",
-    endDate: "2024-05-21",
-    messageTitle: `Special Offer ${i + 5}`,
-    messageBody: `This is a sample message for campaign ${i + 5}. Click to redeem.`,
+    startDate: "2024-05-25",
+    endDate: "2024-05-26",
+    messageTitle: `Special Offer ${i + 6}`,
+    messageBody: `This is a sample message for campaign ${i + 6}. Click to redeem your rewards immediately.`,
     targetSegment: "All Members" as const,
-    scheduledFor: "2024-06-15T10:00:00Z"
+    targetingType: "Global Broadcast" as const,
+    triggerType: "Scheduled" as const,
+    scheduledFor: "2024-06-20T10:00:00Z"
   }))
 ];
-
 export const PUSH_ANALYTICS_DATA = Array.from({ length: 30 }, (_, i) => ({
   day: i + 1,
   openRate: 15 + Math.sin(i * 0.5) * 10 + Math.random() * 10,

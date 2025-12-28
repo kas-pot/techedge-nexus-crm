@@ -73,7 +73,7 @@ export class CampaignEntity extends IndexedEntity<Campaign> {
 export class PushCampaignEntity extends IndexedEntity<PushCampaign> {
   static readonly entityName = "push_campaign";
   static readonly indexName = "push_campaigns";
-  static readonly initialState: PushCampaign = { id: "", name: "", startDate: "", endDate: "", channel: "push", status: "draft", messageTitle: "", messageBody: "", targetSegment: "All Members", scheduledFor: "" };
+  static readonly initialState: PushCampaign = { id: "", name: "", startDate: "", endDate: "", channel: "push", status: "draft", category: "General", messageTitle: "", messageBody: "", targetSegment: "All Members", targetingType: "Global Broadcast", triggerType: "Manual", scheduledFor: "" };
   static seedData = MOCK_PUSH_CAMPAIGNS;
 }
 export class InterestEntity extends IndexedEntity<InterestTag> {

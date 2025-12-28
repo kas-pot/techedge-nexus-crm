@@ -10,7 +10,8 @@ import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from '@/components/ui/sheet';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { Megaphone, Mail, Bell, MessageSquare, Send, BarChart3, Clock, LayoutGrid, List, Plus, Search } from 'lucide-react';
+import { Megaphone, Mail, Bell, MessageSquare, Send, BarChart3, Clock, LayoutGrid, List, Plus, Search, ArrowRight } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { useCampaigns, useCampaignMutations } from '@/lib/api-hooks';
 import { toast } from 'sonner';
 const channelIcons: Record<string, any> = {
@@ -164,8 +165,8 @@ export function CampaignsPage() {
                         <Button variant="ghost" className="flex-1 text-xs font-semibold justify-between group-hover:text-indigo-600">
                           Report <BarChart3 className="h-3.5 w-3.5" />
                         </Button>
-                        <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setPreviewCampaign(campaign)}>
-                          <Send className="h-3.5 w-3.5" />
+                        <Button variant="outline" size="icon" className="h-8 w-8" asChild>
+                          {campaign.channel === 'push' ? <Link to="/marketing/push"><ArrowRight className="h-3.5 w-3.5" /></Link> : <button onClick={() => setPreviewCampaign(campaign)}><Send className="h-3.5 w-3.5" /></button>}
                         </Button>
                       </CardFooter>
                     </Card>
@@ -210,7 +211,7 @@ export function CampaignsPage() {
                           </TableCell>
                           <TableCell className="text-right pr-6">
                             <div className="flex justify-end gap-1">
-                              <Button variant="ghost" size="icon" onClick={() => setPreviewCampaign(c)}><Send className="h-4 w-4" /></Button>
+                              {c.channel === 'push' ? <Button variant="ghost" size="icon" asChild><Link to="/marketing/push"><ArrowRight className="h-4 w-4" /></Link></Button> : <Button variant="ghost" size="icon" onClick={() => setPreviewCampaign(c)}><Send className="h-4 w-4" /></Button>}
                               <Button variant="ghost" size="icon"><BarChart3 className="h-4 w-4" /></Button>
                             </div>
                           </TableCell>
