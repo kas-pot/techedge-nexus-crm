@@ -33,8 +33,21 @@ export interface Voucher {
   discountType: 'fixed' | 'percentage';
   value: number;
   expiryDate: string;
-  status: 'active' | 'expired' | 'draft';
+  status: 'active' | 'expired' | 'draft' | 'syncing';
   isExternal?: boolean;
+  sourcePartnerId?: string;
+  syncDate?: string;
+  metadata?: Record<string, any>;
+}
+export interface Member {
+  id: string;
+  name: string;
+  email: string;
+  tier: string;
+  points: number;
+  status: 'Active' | 'Inactive';
+  joinedDate: string;
+  metadata?: Record<string, any>;
 }
 export interface Venue {
   id: string;
@@ -46,6 +59,7 @@ export interface Venue {
   socialUrl?: string;
   isActive: boolean;
   pointClaimEligible: boolean;
+  metadata?: Record<string, any>;
 }
 export interface Outlet {
   id: string;

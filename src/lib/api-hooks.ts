@@ -1,9 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from './api-client';
-import type { 
-  ApiResponse, Tier, Voucher, Venue, Outlet, Mission, Campaign, 
-  InterestTag, Leaderboard, ApprovalTask, Partner, Badge, 
-  SystemSettings, Ad, MarketingTicket, NewsItem, GiftCard, FaqItem 
+import type {
+  ApiResponse, Tier, Voucher, Venue, Outlet, Mission, Campaign,
+  InterestTag, Leaderboard, ApprovalTask, Partner, Badge,
+  SystemSettings, Ad, MarketingTicket, NewsItem, GiftCard, FaqItem, Member
 } from '@shared/types';
 // Generic hook for listing entities
 export function useEntities<T>(key: string, path: string, params?: Record<string, string>) {
@@ -16,48 +16,67 @@ export function useEntities<T>(key: string, path: string, params?: Record<string
     staleTime: 5 * 60 * 1000,
   });
 }
-// Specific hooks for CRM modules
+// Generic CRUD Mutation Factory
+export function useEntityMutation<T>(entityKey: string, apiPath: string) {
+  const queryClient = useQueryClient();
+  const create = useMutation({
+    mutationFn: (data: Partial<T>) => api<T>(apiPath, { method: 'POST', body: JSON.stringify(data) }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: [entityKey] }),
+  });
+  const update = useMutation({
+    mutationFn: ({ id, ...data }: Partial<T> & { id: string }) => 
+      api<T>(`${apiPath}/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: [entityKey] });
+      queryClient.invalidateQueries({ queryKey: [entityKey, data.id] });
+    },
+  });
+  const remove = useMutation({
+    mutationFn: (id: string) => api<{ success: boolean }>(`${apiPath}/${id}`, { method: 'DELETE' }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: [entityKey] }),
+  });
+  return { create, update, remove };
+}
+// Specific Entity Hooks
 export const useTiers = () => useEntities<Tier>('tiers', '/api/tiers');
 export const useVouchers = () => useEntities<Voucher>('vouchers', '/api/vouchers');
 export const useVenues = () => useEntities<Venue>('venues', '/api/venues');
-export const useOutlets = (venueId?: string) =>
-  useEntities<Outlet>('outlets', '/api/outlets', venueId ? { venueId } : undefined);
-// Marketing & Missions Hooks
-export const useMissions = (type?: string) =>
-  useEntities<Mission>('missions', '/api/missions', type ? { type } : undefined);
-export const useCampaigns = (channel?: string) =>
-  useEntities<Campaign>('campaigns', '/api/campaigns', channel ? { channel } : undefined);
-// Gamification Hooks
+export const useOutlets = (venueId?: string) => useEntities<Outlet>('outlets', '/api/outlets', venueId ? { venueId } : undefined);
+export const useMissions = (type?: string) => useEntities<Mission>('missions', '/api/missions', type ? { type } : undefined);
+export const useCampaigns = (channel?: string) => useEntities<Campaign>('campaigns', '/api/campaigns', channel ? { channel } : undefined);
 export const useInterests = () => useEntities<InterestTag>('interests', '/api/interests');
 export const useLeaderboards = () => useEntities<Leaderboard>('leaderboards', '/api/leaderboards');
-// Phase 7 Enterprise Hooks
 export const useAds = () => useEntities<Ad>('ads', '/api/ads');
 export const useTickets = () => useEntities<MarketingTicket>('tickets', '/api/tickets');
 export const useNews = () => useEntities<NewsItem>('news', '/api/news');
 export const useGiftCards = () => useEntities<GiftCard>('gift-cards', '/api/gift-cards');
 export const useFaq = () => useEntities<FaqItem>('faqs', '/api/faqs');
-export const useApprovals = (status?: string) =>
-  useEntities<ApprovalTask>('approvals', '/api/approvals', status ? { status } : undefined);
+export const useApprovals = (status?: string) => useEntities<ApprovalTask>('approvals', '/api/approvals', status ? { status } : undefined);
 export const usePartners = () => useEntities<Partner>('partners', '/api/partners');
 export const useBadges = () => useEntities<Badge>('badges', '/api/badges');
+export const useMembers = (search?: string) => useEntities<Member>('members', '/api/users', search ? { search } : undefined);
 export const useSystemSettings = () => useQuery({
   queryKey: ['system-settings'],
   queryFn: () => api<SystemSettings>('/api/system/settings')
 });
-// Mutations
-export function useGenericMutation<TInput, TOutput>(path: string, method: 'POST' | 'PUT' = 'POST', invalidationKeys: string[]) {
+// Mutation Hooks
+export const useVoucherMutations = () => useEntityMutation<Voucher>('vouchers', '/api/vouchers');
+export const useMemberMutations = () => useEntityMutation<Member>('members', '/api/users');
+export const useVenueMutations = () => useEntityMutation<Venue>('venues', '/api/venues');
+export const useOutletMutations = () => useEntityMutation<Outlet>('outlets', '/api/outlets');
+export const usePartnerMutations = () => useEntityMutation<Partner>('partners', '/api/partners');
+export const usePartnerSync = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (data: TInput) => api<TOutput>(path, {
-      method,
-      body: JSON.stringify(data),
-    }),
-    onSuccess: () => {
-      invalidationKeys.forEach(key => queryClient.invalidateQueries({ queryKey: [key] }));
-    },
+    mutationFn: (data: { partnerId: string, count: number }) => 
+      api<{ synced: number, items: Voucher[] }>('/api/vouchers/sync-external', { method: 'POST', body: JSON.stringify(data) }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['vouchers'] }),
   });
-}
-export const useApprovalMutation = (id: string) => useGenericMutation<{ status: 'approved' | 'rejected' }, ApprovalTask>(`/api/approvals/${id}/decide`, 'POST', ['approvals']);
-export const useSettingsMutation = () => useGenericMutation<Partial<SystemSettings>, SystemSettings>('/api/system/settings', 'PUT', ['system-settings']);
-export const useMissionMutation = () => useGenericMutation<Partial<Mission>, Mission>('/api/missions', 'POST', ['missions']);
-export const useGiftCardGeneration = () => useGenericMutation<{ count: number; value: number; expiryDate: string }, { generated: number }>('/api/gift-cards/generate', 'POST', ['gift-cards']);
+};
+export const useSettingsMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: Partial<SystemSettings>) => api<SystemSettings>('/api/system/settings', { method: 'PUT', body: JSON.stringify(data) }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['system-settings'] }),
+  });
+};

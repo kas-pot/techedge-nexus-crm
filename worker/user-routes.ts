@@ -1,42 +1,111 @@
 import { Hono } from "hono";
 import type { Env } from './core-utils';
-import { 
-  UserEntity, ChatBoardEntity, TierEntity, VoucherEntity, VenueEntity, 
-  OutletEntity, MissionEntity, CampaignEntity, InterestEntity, 
-  LeaderboardEntity, ApprovalEntity, PartnerEntity, BadgeEntity, 
-  SystemSettingsEntity, AdEntity, TicketEntity, NewsEntity, GiftCardEntity, FaqEntity 
+import {
+  UserEntity, ChatBoardEntity, TierEntity, VoucherEntity, VenueEntity,
+  OutletEntity, MissionEntity, CampaignEntity, InterestEntity,
+  LeaderboardEntity, ApprovalEntity, PartnerEntity, BadgeEntity,
+  SystemSettingsEntity, AdEntity, TicketEntity, NewsEntity, GiftCardEntity, FaqEntity
 } from "./entities";
 import { ok, bad, notFound, isStr } from './core-utils';
+// Helper to map entity name to class
+const ENTITY_MAP: Record<string, any> = {
+  users: UserEntity,
+  tiers: TierEntity,
+  vouchers: VoucherEntity,
+  venues: VenueEntity,
+  outlets: OutletEntity,
+  missions: MissionEntity,
+  campaigns: CampaignEntity,
+  interests: InterestEntity,
+  leaderboards: LeaderboardEntity,
+  approvals: ApprovalEntity,
+  partners: PartnerEntity,
+  badges: BadgeEntity,
+  ads: AdEntity,
+  tickets: TicketEntity,
+  news: NewsEntity,
+  'gift-cards': GiftCardEntity,
+  faqs: FaqEntity
+};
 export function userRoutes(app: Hono<{ Bindings: Env }>) {
-  app.get('/api/test', (c) => c.json({ success: true, data: { name: 'Nexus CRM API' }}));
-  const createListRoute = (path: string, entity: any) => {
-    app.get(path, async (c) => {
-      await entity.ensureSeed(c.env);
-      const cursor = c.req.query('cursor');
-      const limit = c.req.query('limit');
-      const page = await entity.list(c.env, cursor ?? null, limit ? Math.max(1, (Number(limit) | 0)) : undefined);
-      return ok(c, page);
-    });
-  };
-  createListRoute('/api/users', UserEntity);
-  createListRoute('/api/chats', ChatBoardEntity);
-  createListRoute('/api/tiers', TierEntity);
-  createListRoute('/api/vouchers', VoucherEntity);
-  createListRoute('/api/venues', VenueEntity);
-  createListRoute('/api/outlets', OutletEntity);
-  createListRoute('/api/missions', MissionEntity);
-  createListRoute('/api/campaigns', CampaignEntity);
-  createListRoute('/api/interests', InterestEntity);
-  createListRoute('/api/leaderboards', LeaderboardEntity);
-  createListRoute('/api/approvals', ApprovalEntity);
-  createListRoute('/api/partners', PartnerEntity);
-  createListRoute('/api/badges', BadgeEntity);
-  // Phase 7 Routes
-  createListRoute('/api/ads', AdEntity);
-  createListRoute('/api/tickets', TicketEntity);
-  createListRoute('/api/news', NewsEntity);
-  createListRoute('/api/gift-cards', GiftCardEntity);
-  createListRoute('/api/faqs', FaqEntity);
+  // CRUD - GET (List)
+  app.get('/api/:entityType', async (c) => {
+    const type = c.req.param('entityType');
+    const EntityClass = ENTITY_MAP[type];
+    if (!EntityClass) return notFound(c, `Entity type ${type} not found`);
+    await EntityClass.ensureSeed(c.env);
+    const cursor = c.req.query('cursor');
+    const limit = c.req.query('limit');
+    const page = await EntityClass.list(c.env, cursor ?? null, limit ? Math.max(1, (Number(limit) | 0)) : undefined);
+    return ok(c, page);
+  });
+  // CRUD - GET (Single)
+  app.get('/api/:entityType/:id', async (c) => {
+    const type = c.req.param('entityType');
+    const id = c.req.param('id');
+    const EntityClass = ENTITY_MAP[type];
+    if (!EntityClass) return notFound(c);
+    const inst = new EntityClass(c.env, id);
+    if (!await inst.exists()) return notFound(c);
+    return ok(c, await inst.getState());
+  });
+  // CRUD - POST (Create)
+  app.post('/api/:entityType', async (c) => {
+    const type = c.req.param('entityType');
+    const data = await c.req.json();
+    const EntityClass = ENTITY_MAP[type];
+    if (!EntityClass) return notFound(c);
+    const id = data.id || crypto.randomUUID();
+    const result = await EntityClass.create(c.env, { ...data, id });
+    return ok(c, result);
+  });
+  // CRUD - PUT (Update)
+  app.put('/api/:entityType/:id', async (c) => {
+    const type = c.req.param('entityType');
+    const id = c.req.param('id');
+    const data = await c.req.json();
+    const EntityClass = ENTITY_MAP[type];
+    if (!EntityClass) return notFound(c);
+    const inst = new EntityClass(c.env, id);
+    if (!await inst.exists()) return notFound(c);
+    await inst.patch(data);
+    return ok(c, await inst.getState());
+  });
+  // CRUD - DELETE (Delete)
+  app.delete('/api/:entityType/:id', async (c) => {
+    const type = c.req.param('entityType');
+    const id = c.req.param('id');
+    const EntityClass = ENTITY_MAP[type];
+    if (!EntityClass) return notFound(c);
+    const deleted = await EntityClass.delete(c.env, id);
+    return deleted ? ok(c, { success: true }) : notFound(c);
+  });
+  // Specialized: External Voucher Sync
+  app.post('/api/vouchers/sync-external', async (c) => {
+    const { partnerId, count = 5 } = await c.req.json();
+    if (!partnerId) return bad(c, 'partnerId required');
+    const syncedVouchers = [];
+    const partner = new PartnerEntity(c.env, partnerId);
+    const pState = await partner.getState();
+    for (let i = 0; i < count; i++) {
+      const v = {
+        id: crypto.randomUUID(),
+        title: `${pState.name} Reward #${Math.floor(Math.random() * 1000)}`,
+        code: `EXT-${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
+        discountType: Math.random() > 0.5 ? 'fixed' : 'percentage',
+        value: Math.random() > 0.5 ? 50000 : 15,
+        expiryDate: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(),
+        status: 'active',
+        isExternal: true,
+        sourcePartnerId: partnerId,
+        syncDate: new Date().toISOString(),
+        metadata: { imported: true, partnerType: pState.type }
+      };
+      await VoucherEntity.create(c.env, v as any);
+      syncedVouchers.push(v);
+    }
+    return ok(c, { synced: syncedVouchers.length, items: syncedVouchers });
+  });
   // System Settings Singleton
   app.get('/api/system/settings', async (c) => ok(c, await SystemSettingsEntity.getGlobal(c.env)));
   app.put('/api/system/settings', async (c) => {
@@ -44,44 +113,5 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     const inst = new SystemSettingsEntity(c.env, "global");
     await inst.patch(data);
     return ok(c, await inst.getState());
-  });
-  // Specialized Routes
-  app.post('/api/approvals/:id/decide', async (c) => {
-    const { status } = await c.req.json() as { status: 'approved' | 'rejected' };
-    const inst = new ApprovalEntity(c.env, c.req.param('id'));
-    if (!await inst.exists()) return notFound(c);
-    await inst.patch({ status });
-    return ok(c, await inst.getState());
-  });
-  app.post('/api/gift-cards/generate', async (c) => {
-    const { count, value, expiryDate } = await c.req.json();
-    for(let i = 0; i < count; i++) {
-      const serial = `NXS-${Math.floor(1000 + Math.random() * 9000)}-${Math.floor(1000 + Math.random() * 9000)}`;
-      await GiftCardEntity.create(c.env, {
-        id: crypto.randomUUID(),
-        serial,
-        value: Number(value),
-        balance: Number(value),
-        status: 'active',
-        expiryDate
-      });
-    }
-    return ok(c, { generated: count });
-  });
-  app.post('/api/tickets/issue', async (c) => {
-    const data = await c.req.json();
-    const ticket = await TicketEntity.create(c.env, {
-      ...data,
-      id: crypto.randomUUID(),
-      status: 'valid',
-      issueDate: new Date().toISOString()
-    });
-    return ok(c, ticket);
-  });
-  app.post('/api/missions', async (c) => {
-    const data = await c.req.json();
-    if (!data.title) return bad(c, 'title required');
-    const mission = await MissionEntity.create(c.env, { ...data, id: crypto.randomUUID() });
-    return ok(c, mission);
   });
 }

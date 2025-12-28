@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,9 +8,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Progress } from '@/components/ui/progress';
-import { Ticket, RefreshCw, Filter, Search, Trash2, Eye, Download } from 'lucide-react';
+import { Ticket, ExternalLink, RefreshCw, Filter, Search, MoreVertical, Trash2, Eye, Download } from 'lucide-react';
 import { useVouchers, usePartners, usePartnerSync, useVoucherMutations } from '@/lib/api-hooks';
 import { toast } from 'sonner';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
 export function ExternalVouchersPage() {
   const [search, setSearch] = useState('');
@@ -18,55 +19,32 @@ export function ExternalVouchersPage() {
   const [syncProgress, setSyncProgress] = useState(0);
   const [showSyncDialog, setShowSyncDialog] = useState(false);
   const [selectedPartner, setSelectedPartner] = useState('');
-  const syncIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const isMounted = useRef(true);
   const { data, isLoading } = useVouchers();
   const { data: partnersData } = usePartners();
   const syncMutation = usePartnerSync();
   const { remove: deleteMutation } = useVoucherMutations();
-  useEffect(() => {
-    isMounted.current = true;
-    return () => {
-      isMounted.current = false;
-      if (syncIntervalRef.current) clearInterval(syncIntervalRef.current);
-    };
-  }, []);
-  const externalVouchers = (data?.items || []).filter(v => 
-    v.isExternal && v.title.toLowerCase().includes(search.toLowerCase())
-  );
+  const externalVouchers = (data?.items || []).filter(v => v.isExternal && v.title.toLowerCase().includes(search.toLowerCase()));
   const partners = partnersData?.items || [];
   const handleSync = async () => {
     if (!selectedPartner) return;
     setIsSyncing(true);
     setSyncProgress(10);
-    if (syncIntervalRef.current) clearInterval(syncIntervalRef.current);
-    syncIntervalRef.current = setInterval(() => {
-      if (isMounted.current) {
-        setSyncProgress(prev => (prev < 90 ? prev + 10 : prev));
-      }
-    }, 400);
     try {
+      // Simulate progress
+      const interval = setInterval(() => {
+        setSyncProgress(prev => (prev < 90 ? prev + 20 : prev));
+      }, 400);
       await syncMutation.mutateAsync({ partnerId: selectedPartner, count: 5 });
-      if (isMounted.current) {
-        setSyncProgress(100);
-        setTimeout(() => {
-          if (isMounted.current) {
-            setIsSyncing(false);
-            setShowSyncDialog(false);
-            toast.success("Rewards synchronized successfully from partner.");
-          }
-        }, 500);
-      }
-    } catch (e) {
-      if (isMounted.current) {
+      clearInterval(interval);
+      setSyncProgress(100);
+      setTimeout(() => {
         setIsSyncing(false);
-        toast.error("Synchronization failed.");
-      }
-    } finally {
-      if (syncIntervalRef.current) {
-        clearInterval(syncIntervalRef.current);
-        syncIntervalRef.current = null;
-      }
+        setShowSyncDialog(false);
+        toast.success("Rewards synchronized successfully from partner.");
+      }, 500);
+    } catch (e) {
+      setIsSyncing(false);
+      toast.error("Synchronization failed.");
     }
   };
   return (
@@ -89,8 +67,8 @@ export function ExternalVouchersPage() {
             <div className="flex items-center justify-between">
               <div className="relative w-full max-w-sm">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search external rewards..."
+                <Input 
+                  placeholder="Search external rewards..." 
                   className="pl-9 h-11"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}

@@ -18,6 +18,8 @@ import { ManualApprovalPage } from '@/pages/members/ManualApprovalPage';
 import { EarnPointsPage } from '@/pages/loyalty/EarnPointsPage';
 import { BurnRulesPage } from '@/pages/loyalty/BurnRulesPage';
 import { VouchersPage } from '@/pages/loyalty/VouchersPage';
+import { ExternalVouchersPage } from '@/pages/loyalty/ExternalVouchersPage';
+import { VoucherDetailPage } from '@/pages/loyalty/VoucherDetailPage';
 import { BadgesPage } from '@/pages/loyalty/BadgesPage';
 import { VenuesPage } from '@/pages/ops/VenuesPage';
 import { OutletsPage } from '@/pages/ops/OutletsPage';
@@ -60,7 +62,8 @@ const router = createBrowserRouter([
   { path: "/loyalty/earn-points", element: <EarnPointsPage />, errorElement: <RouteErrorBoundary /> },
   { path: "/loyalty/burn-rules", element: <BurnRulesPage />, errorElement: <RouteErrorBoundary /> },
   { path: "/loyalty/vouchers", element: <VouchersPage />, errorElement: <RouteErrorBoundary /> },
-  { path: "/loyalty/external-vouchers", element: <VouchersPage />, errorElement: <RouteErrorBoundary /> },
+  { path: "/loyalty/vouchers/:id", element: <VoucherDetailPage />, errorElement: <RouteErrorBoundary /> },
+  { path: "/loyalty/external-vouchers", element: <ExternalVouchersPage />, errorElement: <RouteErrorBoundary /> },
   { path: "/loyalty/gift-cards", element: <GiftCardsPage />, errorElement: <RouteErrorBoundary /> },
   { path: "/loyalty/badges", element: <BadgesPage />, errorElement: <RouteErrorBoundary /> },
   { path: "/loyalty/tags", element: <InterestsPage />, errorElement: <RouteErrorBoundary /> },
