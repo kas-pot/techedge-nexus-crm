@@ -31,6 +31,7 @@ import { SettingsPage } from '@/pages/system/SettingsPage';
 import { MarketingHubPage } from '@/pages/marketing/MarketingHubPage';
 import { GiftCardsPage } from '@/pages/loyalty/GiftCardsPage';
 import { HelpFAQPage } from '@/pages/system/HelpFAQPage';
+import { TooltipProvider } from '@/components/ui/tooltip';
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -85,9 +86,11 @@ const router = createBrowserRouter([
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
-      <ErrorBoundary>
-        <RouterProvider router={router} />
-      </ErrorBoundary>
+      <TooltipProvider delayDuration={0}>
+        <ErrorBoundary>
+          <RouterProvider router={router} />
+        </ErrorBoundary>
+      </TooltipProvider>
     </QueryClientProvider>
   </StrictMode>,
 )
