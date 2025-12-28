@@ -6,7 +6,7 @@ import {
   LeaderboardEntity, ApprovalEntity, PartnerEntity, BadgeEntity,
   SystemSettingsEntity, AdEntity, TicketEntity, NewsEntity, GiftCardEntity, FaqEntity
 } from "./entities";
-import { ok, bad, notFound, isStr } from './core-utils';
+import { ok, bad, notFound, isStr, Index } from './core-utils';
 const ENTITY_MAP: Record<string, any> = {
   users: UserEntity,
   tiers: TierEntity,
@@ -74,6 +74,20 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     const deleted = await EntityClass.delete(c.env, id);
     return deleted ? ok(c, { success: true }) : notFound(c);
   });
+
+  app.get('/api/reseed-all', async (c) => {
+    let count = 0;
+    for (const [type, EntityClass] of Object.entries(ENTITY_MAP)) {
+      const indexName = (EntityClass as any).indexName;
+      if (indexName) {
+        const idx = new Index<string>(c.env, indexName);
+        await idx.clear();
+        await EntityClass.ensureSeed(c.env);
+        count++;
+      }
+    }
+    return ok(c, { reseeded: count, message: 'All mock entities force-reseeded' });
+  });
   app.post('/api/gift-cards/batch', async (c) => {
     const { count, value, expiryDate } = await c.req.json();
     if (!count || !value) return bad(c, 'count and value required');
@@ -98,6 +112,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     if (!partnerId) return bad(c, 'partnerId required');
     const syncedVouchers = [];
     const partner = new PartnerEntity(c.env, partnerId);
+    if (!await partner.exists()) return notFound(c, 'Partner not found');
     const pState = await partner.getState();
     for (let i = 0; i < count; i++) {
       const v = {
