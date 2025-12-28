@@ -78,7 +78,8 @@ function updateWranglerJsonc() {
 
 function runSetupCommands() {
     const commands = [
-    "bun add framer-motion lucide-react clsx tailwind-merge"
+    "bun add framer-motion lucide-react clsx tailwind-merge",
+    "bun add react-hook-form @hookform/resolvers zod"
 ];
     
     if (commands.length === 0) {
