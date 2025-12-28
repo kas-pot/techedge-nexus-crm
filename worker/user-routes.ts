@@ -28,6 +28,53 @@ const ENTITY_MAP: Record<string, any> = {
   faqs: FaqEntity
 };
 export function userRoutes(app: Hono<{ Bindings: Env }>) {
+  // 1. Specialized Batch Gift Card Generation
+  app.post('/api/gift-cards/batch', async (c) => {
+    const { count, value, expiryDate } = await c.req.json();
+    if (!count || count <= 0) return bad(c, 'Invalid count');
+    const results = [];
+    for (let i = 0; i < count; i++) {
+      const id = crypto.randomUUID();
+      const serial = `NXS-${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
+      const card = await GiftCardEntity.create(c.env, {
+        id,
+        serial,
+        value: Number(value) || 0,
+        balance: Number(value) || 0,
+        status: 'active',
+        expiryDate: expiryDate || '2025-12-31'
+      });
+      results.push(card);
+    }
+    return ok(c, results);
+  });
+  // 2. Specialized External Voucher Synchronization
+  app.post('/api/vouchers/sync-external', async (c) => {
+    const { partnerId, count } = await c.req.json();
+    if (!partnerId) return bad(c, 'Partner ID required');
+    const partnerInst = new PartnerEntity(c.env, partnerId);
+    if (!await partnerInst.exists()) return notFound(c, 'Partner not found');
+    const syncResults = [];
+    const syncDate = new Date().toISOString();
+    for (let i = 0; i < (count || 5); i++) {
+      const id = crypto.randomUUID();
+      const voucher = await VoucherEntity.create(c.env, {
+        id,
+        title: `Partner Reward ${i + 1}`,
+        code: `EXT-${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
+        discountType: i % 2 === 0 ? 'percentage' : 'fixed',
+        value: i % 2 === 0 ? 15 : 50000,
+        expiryDate: '2025-12-31',
+        status: 'active',
+        isExternal: true,
+        sourcePartnerId: partnerId,
+        syncDate
+      });
+      syncResults.push(voucher);
+    }
+    return ok(c, { synced: syncResults.length, items: syncResults });
+  });
+  // Generic Entity Routes
   app.get('/api/:entityType', async (c) => {
     const type = c.req.param('entityType');
     const EntityClass = ENTITY_MAP[type];
