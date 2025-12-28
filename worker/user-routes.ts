@@ -9,6 +9,11 @@ import {
   SplashScreenEntity, HeroBannerEntity
 } from "./entities";
 import { ok, bad, notFound, Index } from './core-utils';
+import { 
+  MOCK_SPLASH_CONFIG, 
+  MOCK_HERO_BANNER_CONFIG, 
+  MOCK_WIFI_SETTINGS 
+} from '@shared/mock-data';
 const ENTITY_MAP: Record<string, any> = {
   users: UserEntity,
   tiers: TierEntity,
@@ -197,7 +202,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         count++;
       }
     }
-    // Reseed singletons
+    // Reseed singletons with imported constants
     await new SplashScreenEntity(c.env, "global").save(MOCK_SPLASH_CONFIG);
     await new HeroBannerEntity(c.env, "global").save(MOCK_HERO_BANNER_CONFIG);
     await new WifiEntity(c.env, "global").save(MOCK_WIFI_SETTINGS);

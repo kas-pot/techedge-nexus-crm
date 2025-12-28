@@ -8,12 +8,10 @@ import { Switch } from '@/components/ui/switch';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Badge } from '@/components/ui/badge';
 import {
-  Shield, Globe, Palette, Cpu, Wifi, Save, AlertTriangle, CloudSun,
-  Sun, CloudRain, Cloud, Droplets, Mail, Phone, BookOpen, UserCheck, Eye, EyeOff, Info,
-  Image as ImageIcon, Layout, MoveUp, Trash2, Plus
+  Shield, Globe, Palette, Cpu, Wifi, Save, CloudSun,
+  Mail, Phone, BookOpen, UserCheck, Eye, EyeOff,
+  Image as ImageIcon, Layout, Trash2, Plus, Instagram, Facebook, MessageCircle
 } from 'lucide-react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
@@ -27,21 +25,19 @@ import {
   useHeroBanner, useBannerMutation
 } from '@/lib/api-hooks';
 import { toast } from 'sonner';
-import { WEATHER_PRESETS } from '@shared/mock-data';
 import { cn } from '@/lib/utils';
-import { motion, AnimatePresence } from 'framer-motion';
 export function SettingsPage() {
   const { tab } = useParams();
   const navigate = useNavigate();
   const currentTab = tab || 'appearance';
-  const { data: settings, isLoading: loadingSettings } = useSystemSettings();
-  const { data: contact, isLoading: loadingContact } = useContactSettings();
-  const { data: terms, isLoading: loadingTerms } = useTermsContent();
-  const { data: privacy, isLoading: loadingPrivacy } = usePrivacyContent();
-  const { data: wifi, isLoading: loadingWifi } = useWifiSettings();
-  const { data: weather, isLoading: loadingWeather } = useWeatherSettings();
-  const { data: splash, isLoading: loadingSplash } = useSplashScreen();
-  const { data: banners, isLoading: loadingBanners } = useHeroBanner();
+  const { data: settings } = useSystemSettings();
+  const { data: contact } = useContactSettings();
+  const { data: terms } = useTermsContent();
+  const { data: privacy } = usePrivacyContent();
+  const { data: wifi } = useWifiSettings();
+  const { data: weather } = useWeatherSettings();
+  const { data: splash } = useSplashScreen();
+  const { data: banners } = useHeroBanner();
   const settingsMutation = useSettingsMutation();
   const contactMutation = useContactMutation();
   const termsMutation = useTermsMutation();
@@ -77,7 +73,7 @@ export function SettingsPage() {
   }, [settings, contact, terms, privacy, wifi, weather, splash, banners]);
   const handleSave = async (section: string) => {
     try {
-      if (['appearance', 'localization', 'advanced'].includes(section)) {
+      if (['appearance', 'localization', 'advanced', 'security'].includes(section)) {
         await settingsMutation.mutateAsync(formData as any);
       } else if (section === 'contact') {
         await contactMutation.mutateAsync(formData as any);
@@ -86,7 +82,7 @@ export function SettingsPage() {
       } else if (section === 'privacy') {
         await privacyMutation.mutateAsync({ content: formData.privacyContent } as any);
       } else if (section === 'wifi') {
-        await wifiMutation.mutateAsync({ password: formData.wifiPassword, isVisible: formData.wifiIsVisible } as any);
+        await wifiMutation.mutateAsync({ password: formData.wifiPassword, isVisible: formData.wifiIsVisible, ssid: formData.wifiSsid } as any);
       } else if (section === 'weather') {
         await weatherMutation.mutateAsync({
           isEnabled: formData.isEnabled,
@@ -114,9 +110,19 @@ export function SettingsPage() {
   const updateField = (key: string, value: any) => {
     setFormData(prev => ({ ...prev, [key]: value }));
   };
-  if (loadingSettings || loadingContact || loadingTerms || loadingPrivacy || loadingWifi || loadingWeather || loadingSplash || loadingBanners) {
-    return <AppLayout container><div className="space-y-6"><div className="h-20 w-full bg-muted/20 animate-pulse rounded-xl" /></div></AppLayout>;
-  }
+  const navItems = [
+    { id: 'appearance', label: 'Appearance', icon: Palette },
+    { id: 'localization', label: 'Localization', icon: Globe },
+    { id: 'splash', label: 'Splash Screen', icon: ImageIcon },
+    { id: 'banner', label: 'Hero Banners', icon: Layout },
+    { id: 'contact', label: 'Contact Channels', icon: Mail },
+    { id: 'weather', label: 'Weather Intel', icon: CloudSun },
+    { id: 'security', label: 'SSO Config', icon: Shield },
+    { id: 'privacy', label: 'Privacy Policy', icon: UserCheck },
+    { id: 'terms', label: 'Terms & Conditions', icon: BookOpen },
+    { id: 'wifi', label: 'Wifi Settings', icon: Wifi },
+    { id: 'advanced', label: 'AI & OCR', icon: Cpu },
+  ];
   return (
     <AppLayout container contentClassName="pb-20">
       <div className="max-w-7xl mx-auto space-y-10 animate-fade-in">
@@ -125,33 +131,67 @@ export function SettingsPage() {
             <h1 className="text-4xl font-black tracking-tighter">System Mastery</h1>
             <p className="text-muted-foreground font-medium">Enterprise controls for the Nexus CRM mobile experience.</p>
           </div>
-          <div className="flex gap-3">
-            <Button className="bg-indigo-600 hover:bg-indigo-700 h-11 px-8 rounded-xl shadow-lg font-bold" onClick={() => handleSave(currentTab)}>
-              <Save className="mr-2 h-4 w-4" /> Save Configuration
-            </Button>
-          </div>
+          <Button className="bg-indigo-600 hover:bg-indigo-700 h-11 px-8 rounded-xl shadow-lg font-bold" onClick={() => handleSave(currentTab)}>
+            <Save className="mr-2 h-4 w-4" /> Save Configuration
+          </Button>
         </div>
         <Tabs value={currentTab} onValueChange={(v) => navigate(`/system/${v}`)} className="flex flex-col md:flex-row gap-12">
           <TabsList className="md:w-64 flex flex-col h-auto bg-transparent border-r rounded-none p-0 gap-1 shrink-0">
-            {[
-              { id: 'appearance', label: 'Appearance', icon: Palette },
-              { id: 'localization', label: 'Localization', icon: Globe },
-              { id: 'splash', label: 'Splash Screen', icon: ImageIcon },
-              { id: 'banner', label: 'Hero Banners', icon: Layout },
-              { id: 'contact', label: 'Contact Channels', icon: Mail },
-              { id: 'weather', label: 'Weather Intel', icon: CloudSun },
-              { id: 'security', label: 'SSO Config', icon: Shield },
-              { id: 'privacy', label: 'Privacy Policy', icon: UserCheck },
-              { id: 'terms', label: 'Terms & Conditions', icon: BookOpen },
-              { id: 'wifi', label: 'Wifi Settings', icon: Wifi },
-              { id: 'advanced', label: 'AI & OCR', icon: Cpu },
-            ].map((t) => (
+            {navItems.map((t) => (
               <TabsTrigger key={t.id} value={t.id} className="w-full justify-start px-4 h-12 data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-600 rounded-xl transition-all font-bold">
                 <t.icon className="mr-3 h-4 w-4" /> {t.label}
               </TabsTrigger>
             ))}
           </TabsList>
           <div className="flex-1 min-w-0">
+            {/* Appearance Tab */}
+            <TabsContent value="appearance" className="m-0 space-y-6">
+               <Card className="rounded-3xl border-none shadow-soft overflow-hidden">
+                  <CardHeader className="bg-slate-50/50 border-b"><CardTitle>Global Themes</CardTitle></CardHeader>
+                  <CardContent className="pt-8 space-y-4">
+                    <Label className="font-bold">System Theme</Label>
+                    <Select value={formData.theme} onValueChange={(v) => updateField('theme', v)}>
+                       <SelectTrigger className="h-11"><SelectValue /></SelectTrigger>
+                       <SelectContent>
+                          <SelectItem value="light">Light Mode</SelectItem>
+                          <SelectItem value="dark">Dark Mode</SelectItem>
+                          <SelectItem value="system">Follow System</SelectItem>
+                       </SelectContent>
+                    </Select>
+                  </CardContent>
+               </Card>
+            </TabsContent>
+            {/* Localization Tab */}
+            <TabsContent value="localization" className="m-0 space-y-6">
+              <Card className="rounded-3xl border-none shadow-soft overflow-hidden">
+                <CardHeader className="bg-slate-50/50 border-b"><CardTitle>Language & Region</CardTitle></CardHeader>
+                <CardContent className="pt-8 space-y-6">
+                  <div className="grid md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <Label className="font-bold">Default Display Language</Label>
+                      <Select value={formData.language} onValueChange={(v) => updateField('language', v)}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="English">English (US)</SelectItem>
+                          <SelectItem value="Indonesian">Bahasa Indonesia</SelectItem>
+                          <SelectItem value="Mandarin">Mandarin (Simplified)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="font-bold">Primary Timezone</Label>
+                      <Select defaultValue="Asia/Jakarta">
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Asia/Jakarta">Jakarta (GMT+7)</SelectItem>
+                          <SelectItem value="Asia/Singapore">Singapore (GMT+8)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
             {/* Splash Screen Tab */}
             <TabsContent value="splash" className="m-0 space-y-6">
               <Card className="rounded-3xl border-none shadow-soft overflow-hidden">
@@ -233,13 +273,135 @@ export function SettingsPage() {
                 </CardContent>
               </Card>
             </TabsContent>
-            {/* Wifi Settings Tab */}
+            {/* Contact Channels Tab */}
+            <TabsContent value="contact" className="m-0 space-y-6">
+              <Card className="rounded-3xl border-none shadow-soft overflow-hidden">
+                <CardHeader className="bg-slate-50/50 border-b"><CardTitle>Support Channels</CardTitle></CardHeader>
+                <CardContent className="pt-8 space-y-6">
+                  <div className="grid md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <Label className="flex items-center gap-2"><Mail className="h-3 w-3" /> Support Email</Label>
+                      <Input value={formData.email} onChange={(e) => updateField('email', e.target.value)} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="flex items-center gap-2"><Phone className="h-3 w-3" /> Customer Hotline</Label>
+                      <Input value={formData.phone} onChange={(e) => updateField('phone', e.target.value)} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="flex items-center gap-2"><MessageCircle className="h-3 w-3" /> WhatsApp Contact</Label>
+                      <Input value={formData.whatsapp} onChange={(e) => updateField('whatsapp', e.target.value)} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="flex items-center gap-2"><Instagram className="h-3 w-3" /> Instagram URL</Label>
+                      <Input value={formData.instagramUrl} onChange={(e) => updateField('instagramUrl', e.target.value)} />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+            {/* Weather Intelligence Tab */}
+            <TabsContent value="weather" className="m-0 space-y-6">
+              <Card className="rounded-3xl border-none shadow-soft overflow-hidden">
+                <CardHeader className="bg-slate-50/50 border-b flex flex-row items-center justify-between">
+                  <div><CardTitle>Weather Intelligence</CardTitle></div>
+                  <Switch checked={formData.isEnabled} onCheckedChange={(v) => updateField('isEnabled', v)} />
+                </CardHeader>
+                <CardContent className="pt-8 space-y-6">
+                  <div className="grid md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <Label className="font-bold">Active Override Condition</Label>
+                      <Select value={formData.activeCondition} onValueChange={(v) => updateField('activeCondition', v)}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="sunny">Sunny / Clear</SelectItem>
+                          <SelectItem value="rainy">Rainy / Stormy</SelectItem>
+                          <SelectItem value="cloudy">Overcast / Cloudy</SelectItem>
+                          <SelectItem value="humid">High Humidity</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="font-bold">Display Location Name</Label>
+                      <Input value={formData.locationName} onChange={(e) => updateField('locationName', e.target.value)} />
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl">
+                    <div className="space-y-0.5">
+                      <Label className="font-bold">Auto-Rotate Tips</Label>
+                      <p className="text-xs text-muted-foreground font-medium">Cycle through weather recommendations automatically.</p>
+                    </div>
+                    <Switch checked={formData.autoRotation} onCheckedChange={(v) => updateField('autoRotation', v)} />
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+            {/* Security / SSO Tab */}
+            <TabsContent value="security" className="m-0 space-y-6">
+              <Card className="rounded-3xl border-none shadow-soft overflow-hidden">
+                <CardHeader className="bg-slate-50/50 border-b flex flex-row items-center justify-between">
+                  <div><CardTitle>Sedayu SSO Integration</CardTitle></div>
+                  <Switch checked={formData.ssoEnabled} onCheckedChange={(v) => updateField('ssoEnabled', v)} />
+                </CardHeader>
+                <CardContent className="pt-8 space-y-6">
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label className="font-bold">SAML Entity ID</Label>
+                      <Input value={formData.ssoEntityId} onChange={(e) => updateField('ssoEntityId', e.target.value)} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="font-bold">Identity Provider Metadata URL</Label>
+                      <Input value={formData.ssoMetadataUrl} onChange={(e) => updateField('ssoMetadataUrl', e.target.value)} />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+            {/* Privacy Policy Tab */}
+            <TabsContent value="privacy" className="m-0 space-y-6">
+              <Card className="rounded-3xl border-none shadow-soft overflow-hidden">
+                <CardHeader className="bg-slate-50/50 border-b flex flex-row items-center justify-between">
+                  <CardTitle>Privacy Policy</CardTitle>
+                  <div className="flex bg-muted p-1 rounded-lg">
+                    <Button variant={activePrivacyTab === 'edit' ? 'secondary' : 'ghost'} size="sm" onClick={() => setActivePrivacyTab('edit')}>Edit</Button>
+                    <Button variant={activePrivacyTab === 'preview' ? 'secondary' : 'ghost'} size="sm" onClick={() => setActivePrivacyTab('preview')}>Preview</Button>
+                  </div>
+                </CardHeader>
+                <CardContent className="pt-8">
+                  {activePrivacyTab === 'edit' ? (
+                    <Textarea value={formData.privacyContent} onChange={(e) => updateField('privacyContent', e.target.value)} className="min-h-[500px] font-mono text-sm" />
+                  ) : (
+                    <div className="prose prose-slate dark:prose-invert max-w-none p-8 bg-slate-50 dark:bg-slate-900 rounded-3xl whitespace-pre-wrap">
+                      {formData.privacyContent}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+            {/* Terms Tab */}
+            <TabsContent value="terms" className="m-0 space-y-6">
+              <Card className="rounded-3xl border-none shadow-soft overflow-hidden">
+                <CardHeader className="bg-slate-50/50 border-b flex flex-row items-center justify-between">
+                  <CardTitle>Terms & Conditions</CardTitle>
+                  <div className="flex bg-muted p-1 rounded-lg">
+                    <Button variant={activeTermsTab === 'edit' ? 'secondary' : 'ghost'} size="sm" onClick={() => setActiveTermsTab('edit')}>Edit</Button>
+                    <Button variant={activeTermsTab === 'preview' ? 'secondary' : 'ghost'} size="sm" onClick={() => setActiveTermsTab('preview')}>Preview</Button>
+                  </div>
+                </CardHeader>
+                <CardContent className="pt-8">
+                  {activeTermsTab === 'edit' ? (
+                    <Textarea value={formData.termsContent} onChange={(e) => updateField('termsContent', e.target.value)} className="min-h-[500px] font-mono text-sm" />
+                  ) : (
+                    <div className="prose prose-slate dark:prose-invert max-w-none p-8 bg-slate-50 dark:bg-slate-900 rounded-3xl whitespace-pre-wrap">
+                      {formData.termsContent}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+            {/* Wifi Tab */}
             <TabsContent value="wifi" className="m-0 space-y-6">
               <Card className="rounded-3xl border-none shadow-soft overflow-hidden">
-                <CardHeader className="bg-slate-50/50 border-b">
-                  <CardTitle>Guest Wifi Access</CardTitle>
-                  <CardDescription>Configure credentials for the Amantara Guest Network.</CardDescription>
-                </CardHeader>
+                <CardHeader className="bg-slate-50/50 border-b"><CardTitle>Guest Wifi Access</CardTitle></CardHeader>
                 <CardContent className="space-y-6 pt-8">
                   <div className="grid md:grid-cols-2 gap-8">
                     <div className="space-y-2">
@@ -257,57 +419,34 @@ export function SettingsPage() {
                     </div>
                   </div>
                   <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl">
-                    <div className="space-y-0.5">
-                      <Label className="font-bold">Broadcast SSID</Label>
-                      <p className="text-xs text-muted-foreground font-medium">Allow devices to discover this network automatically.</p>
-                    </div>
+                    <div className="space-y-0.5"><Label className="font-bold">Broadcast SSID</Label></div>
                     <Switch checked={formData.wifiIsVisible} onCheckedChange={(v) => updateField('wifiIsVisible', v)} />
                   </div>
                 </CardContent>
               </Card>
             </TabsContent>
-            {/* Legal Pages Tab */}
-            {['terms', 'privacy'].map((type) => (
-              <TabsContent key={type} value={type} className="m-0 space-y-6">
-                <Card className="rounded-3xl border-none shadow-soft overflow-hidden">
-                  <CardHeader className="bg-slate-50/50 border-b flex flex-row items-center justify-between">
-                    <div>
-                      <CardTitle>{type === 'terms' ? 'Terms & Conditions' : 'Privacy Policy'}</CardTitle>
-                      <CardDescription>Manage the legal documentation for the loyalty platform.</CardDescription>
-                    </div>
-                    <div className="flex bg-muted p-1 rounded-lg">
-                      <Button variant={ (type === 'terms' ? activeTermsTab : activePrivacyTab) === 'edit' ? 'secondary' : 'ghost'} size="sm" onClick={() => type === 'terms' ? setActiveTermsTab('edit') : setActivePrivacyTab('edit')}>Edit</Button>
-                      <Button variant={ (type === 'terms' ? activeTermsTab : activePrivacyTab) === 'preview' ? 'secondary' : 'ghost'} size="sm" onClick={() => type === 'terms' ? setActiveTermsTab('preview') : setActivePrivacyTab('preview')}>Preview</Button>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="pt-8">
-                    { (type === 'terms' ? activeTermsTab : activePrivacyTab) === 'edit' ? (
-                      <Textarea value={type === 'terms' ? formData.termsContent : formData.privacyContent} onChange={(e) => updateField(type === 'terms' ? 'termsContent' : 'privacyContent', e.target.value)} className="min-h-[500px] font-mono text-sm leading-relaxed" />
-                    ) : (
-                      <div className="prose prose-slate dark:prose-invert max-w-none p-8 bg-slate-50 dark:bg-slate-900 rounded-3xl whitespace-pre-wrap font-sans">
-                        {type === 'terms' ? formData.termsContent : formData.privacyContent}
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              </TabsContent>
-            ))}
-            {/* Fallback for other settings (Appearance, etc.) */}
-            <TabsContent value="appearance" className="m-0 space-y-6">
-               <Card className="rounded-3xl border-none shadow-soft overflow-hidden">
-                  <CardHeader className="bg-slate-50/50 border-b"><CardTitle>Global Themes</CardTitle></CardHeader>
-                  <CardContent className="pt-8 space-y-4">
-                    <Label className="font-bold">System Theme</Label>
-                    <Select value={formData.theme} onValueChange={(v) => updateField('theme', v)}>
-                       <SelectTrigger className="h-11"><SelectValue /></SelectTrigger>
-                       <SelectContent>
-                          <SelectItem value="light">Light Mode</SelectItem>
-                          <SelectItem value="dark">Dark Mode</SelectItem>
-                          <SelectItem value="system">Follow System</SelectItem>
-                       </SelectContent>
+            {/* AI & OCR Tab */}
+            <TabsContent value="advanced" className="m-0 space-y-6">
+              <Card className="rounded-3xl border-none shadow-soft overflow-hidden">
+                <CardHeader className="bg-slate-50/50 border-b"><CardTitle>AI & Engine Config</CardTitle></CardHeader>
+                <CardContent className="pt-8 space-y-6">
+                  <div className="space-y-2">
+                    <Label className="font-bold">OCR Scan Precision</Label>
+                    <Select value={formData.ocrPrecision} onValueChange={(v) => updateField('ocrPrecision', v)}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="high">Enterprise High (Slowest)</SelectItem>
+                        <SelectItem value="medium">Balanced (Recommended)</SelectItem>
+                        <SelectItem value="low">Performance (Fastest)</SelectItem>
+                      </SelectContent>
                     </Select>
-                  </CardContent>
-               </Card>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="font-bold">System Notification Email</Label>
+                    <Input value={formData.notificationEmail} onChange={(e) => updateField('notificationEmail', e.target.value)} />
+                  </div>
+                </CardContent>
+              </Card>
             </TabsContent>
           </div>
         </Tabs>
