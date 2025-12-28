@@ -1,9 +1,10 @@
 import React from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip, Legend, CartesianGrid, XAxis, YAxis, Bar, Line, ComposedChart, LineChart } from 'recharts';
 import { MOCK_DASHBOARD_STATS } from '@shared/mock-data';
-import { Users, TrendingUp, Award, DollarSign, Zap, Gift, CreditCard, ChevronRight } from 'lucide-react';
+import { Users, TrendingUp, Award, DollarSign, Zap, Gift, CreditCard, ChevronRight, Download } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
@@ -41,7 +42,7 @@ export function HomePage() {
           </motion.div>
           <div className="flex gap-3">
             <Button variant="outline" className="h-11 shadow-sm border-slate-200">
-              <DownloadIcon className="mr-2 h-4 w-4" /> Export Report
+              <Download className="mr-2 h-4 w-4" /> Export Report
             </Button>
             <Button className="bg-indigo-600 hover:bg-indigo-700 h-11 px-6 shadow-indigo-100">
               Generate Insights
