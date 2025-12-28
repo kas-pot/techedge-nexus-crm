@@ -6,12 +6,11 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Ticket, Calendar, TrendingUp, Plus, Tag, ArrowRight } from 'lucide-react';
 import { useVouchers } from '@/lib/api-hooks';
-import { Link } from 'react-router-dom';
 export function VouchersPage() {
   const { data, isLoading } = useVouchers();
   const vouchers = data?.items || [];
   const renderVoucherCard = (voucher: any) => (
-    <Card key={voucher.id} className="group relative border-2 border-dashed hover:border-indigo-400 transition-all duration-300 bg-card overflow-hidden hover:shadow-glow">
+    <Card key={voucher.id} className="group relative border-2 border-dashed hover:border-indigo-400 transition-all duration-300 bg-card overflow-hidden">
       <div className="absolute top-0 bottom-0 left-[-8px] w-4 bg-background border-r-2 border-dashed border-border rounded-full flex flex-col justify-around py-4">
         {[1, 2, 3, 4].map(i => <div key={i} className="h-1 w-1 rounded-full bg-slate-200 dark:bg-slate-800" />)}
       </div>
@@ -30,7 +29,7 @@ export function VouchersPage() {
         <CardTitle className="text-xl mt-4">{voucher.title}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="p-4 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-md group-hover:scale-[1.02] transition-transform">
+        <div className="p-4 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-md">
           <div className="text-3xl font-bold flex items-baseline gap-1">
             {voucher.discountType === 'percentage' ? `${voucher.value}%` : `Rp ${voucher.value.toLocaleString()}`}
             <span className="text-xs font-normal opacity-80">Discount Value</span>
@@ -45,10 +44,8 @@ export function VouchersPage() {
             <TrendingUp className="h-4 w-4" /> 1.2k Used
           </div>
         </div>
-        <Button variant="outline" className="w-full group-hover:bg-indigo-600 group-hover:text-white transition-colors" asChild>
-          <Link to={`/loyalty/vouchers/${voucher.id}`}>
-            View Analytics <ArrowRight className="ml-2 h-4 w-4" />
-          </Link>
+        <Button variant="outline" className="w-full group-hover:bg-indigo-600 group-hover:text-white transition-colors">
+          View Analytics <ArrowRight className="ml-2 h-4 w-4" />
         </Button>
       </CardContent>
     </Card>
@@ -73,11 +70,7 @@ export function VouchersPage() {
           </TabsList>
           <TabsContent value="active" className="animate-in fade-in slide-in-from-bottom-2">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {isLoading ? (
-                Array.from({ length: 3 }).map((_, i) => <Card key={i} className="h-64 animate-pulse bg-muted/10" />)
-              ) : (
-                vouchers.filter(v => v.status === 'active').map(renderVoucherCard)
-              )}
+              {vouchers.filter(v => v.status === 'active').map(renderVoucherCard)}
               {vouchers.filter(v => v.status === 'active').length === 0 && !isLoading && (
                 <div className="col-span-full py-12 text-center border-2 border-dashed rounded-xl text-muted-foreground">
                   No active vouchers found.
