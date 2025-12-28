@@ -2,7 +2,7 @@ import type {
   User, Chat, ChatMessage, TransactionInsight, Tier, Voucher,
   Venue, Outlet, Mission, InterestTag, Leaderboard, ApprovalTask,
   Partner, Badge, SystemSettings, Ad, MarketingTicket, NewsItem, GiftCard, FaqItem, Member,
-  ContactSettings, LegalDocument, WifiSettings
+  ContactSettings, LegalDocument, WifiSettings, Campaign, WeatherConfig, WeatherRecommendation
 } from './types';
 const FIRST_NAMES = ["James", "Sarah", "Michael", "Elena", "David", "Ahmad", "Siti", "Budi", "Dewi", "Kevin", "Rina", "Aditya", "Jessica", "Robert", "Linda", "Maya", "Oscar", "Zoe", "Liam", "Hana"];
 const LAST_NAMES = ["Wilson", "Chen", "Scott", "Rodriguez", "Kim", "Pratama", "Sari", "Wijaya", "Kusuma", "Tan", "Lau", "Nguyen", "Murphy", "Santoso", "Hidayat", "Zhuang", "Lee", "Miller", "Garcia", "Wong"];
@@ -54,6 +54,47 @@ export const MOCK_DASHBOARD_STATS = {
     { date: 'Sun', earned: 7500, burnt: 4800 },
   ],
   insights: MOCK_TRANSACTION_INSIGHTS
+};
+export const MOCK_CAMPAIGNS: Campaign[] = Array.from({ length: 22 }, (_, i) => ({
+  id: `camp-${i + 1}`,
+  name: i % 3 === 0 ? `Summer Flash Sale ${Math.floor(i/3) + 1}` : i % 3 === 1 ? `Weekend Points Boost ${Math.floor(i/3) + 1}` : `Exclusive Member Invite ${Math.floor(i/3) + 1}`,
+  startDate: `2024-06-${(i % 15) + 1 < 10 ? '0' : ''}${(i % 15) + 1}`,
+  endDate: `2024-07-${(i % 15) + 1 < 10 ? '0' : ''}${(i % 15) + 1}`,
+  channel: i % 4 === 0 ? 'push' : i % 4 === 1 ? 'email' : i % 4 === 2 ? 'sms' : 'ads',
+  status: i < 5 ? 'running' : i < 15 ? 'completed' : 'scheduled',
+  reach: 5000 + Math.floor(Math.random() * 10000),
+  openRate: 5 + Math.random() * 20,
+  ctr: 1 + Math.random() * 7
+}));
+export const MOCK_WEATHER_CONFIG: WeatherConfig = {
+  id: 'global',
+  isEnabled: true,
+  locationName: 'PIK, Jakarta North',
+  activeCondition: 'sunny',
+  autoRotation: true,
+  lastUpdated: new Date().toISOString()
+};
+export const WEATHER_PRESETS: Record<string, WeatherRecommendation> = {
+  sunny: {
+    condition: 'Sunny',
+    tips: ["Stay hydrated - visit our water stations", "Apply sunscreen for outdoor events", "Enjoy rooftop dining at Venue A"],
+    icon: 'Sun'
+  },
+  rainy: {
+    condition: 'Rainy',
+    tips: ["Umbrella rentals available at Concierge", "Enjoy indoor workshops at Sedayu Mall", "Check out the indoor cinema promos"],
+    icon: 'CloudRain'
+  },
+  cloudy: {
+    condition: 'Cloudy',
+    tips: ["Perfect weather for a mall stroll", "Outdoor park is open for member activities", "Check out the new garden seating"],
+    icon: 'Cloud'
+  },
+  humid: {
+    condition: 'Humid',
+    tips: ["Cool off with 20% off all cold drinks", "Air-conditioned lounges are available", "Visit our indoor F&B outlets"],
+    icon: 'Droplets'
+  }
 };
 export const MOCK_TIERS: Tier[] = [
   { id: 't1', name: 'Bronze', minPoints: 0, benefits: ['Standard support', 'Birthday treat'], color: '#CD7F32' },

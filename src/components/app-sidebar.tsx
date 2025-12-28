@@ -6,7 +6,7 @@ import {
   TrendingUp, Star, UserPlus, Map, Ticket,
   Mail, Video, MonitorPlay, Newspaper, Languages,
   Palette, Smartphone, Fingerprint, ScanEye,
-  ShieldAlert, BookOpen, HelpCircle, Wifi, Users2, Landmark, CheckSquare
+  ShieldAlert, BookOpen, HelpCircle, Wifi, Users2, Landmark, CheckSquare, CloudSun
 } from "lucide-react";
 import {
   Sidebar,
@@ -80,10 +80,10 @@ const navGroups = [
   {
     label: "Marketing",
     items: [
+      { title: "Campaigns", icon: Megaphone, url: "/marketing/push" },
       { title: "Events", icon: Calendar, url: "/marketing/events" },
       { title: "Activities", icon: Newspaper, url: "/marketing/activities" },
       { title: "Tickets", icon: Ticket, url: "/marketing/tickets" },
-      { title: "Push Notifications", icon: Bell, url: "/marketing/push" },
       { title: "Email Campaigns", icon: Mail, url: "/marketing/email" },
       { title: "Video Promotions", icon: Video, url: "/marketing/videos" },
       { title: "Ads Management", icon: MonitorPlay, url: "/marketing/ads" },
@@ -106,6 +106,7 @@ const navGroups = [
         url: "/system",
         sub: [
           { title: "Global Config", url: "/system" },
+          { title: "Weather Config", url: "/system/weather" },
           { title: "Themes", url: "/system/themes" },
           { title: "Languages", url: "/system/languages" },
           { title: "Splash Screen", url: "/system/splash" },

@@ -8,16 +8,23 @@ import { Switch } from '@/components/ui/switch';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Shield, Globe, Palette, Cpu, Wifi, Save, AlertTriangle, Monitor, Upload, Mail, Phone, MessageSquare, BookOpen, UserCheck, Eye, EyeOff } from 'lucide-react';
-import { useParams, useNavigate } from 'react-router-dom';
 import { 
-  useSystemSettings, useSettingsMutation, 
+  Shield, Globe, Palette, Cpu, Wifi, Save, AlertTriangle, Monitor, Upload, 
+  Mail, Phone, MessageSquare, BookOpen, UserCheck, Eye, EyeOff, CloudSun,
+  Sun, CloudRain, Cloud, Droplets
+} from 'lucide-react';
+import { useParams, useNavigate } from 'react-router-dom';
+import {
+  useSystemSettings, useSettingsMutation,
   useContactSettings, useContactMutation,
   useTermsContent, useTermsMutation,
   usePrivacyContent, usePrivacyMutation,
-  useWifiSettings, useWifiMutation 
+  useWifiSettings, useWifiMutation,
+  useWeatherSettings, useWeatherMutation
 } from '@/lib/api-hooks';
 import { toast } from 'sonner';
+import { WEATHER_PRESETS } from '@shared/mock-data';
+import { cn } from '@/lib/utils';
 export function SettingsPage() {
   const { tab } = useParams();
   const navigate = useNavigate();
@@ -27,29 +34,31 @@ export function SettingsPage() {
   const { data: terms, isLoading: loadingTerms } = useTermsContent();
   const { data: privacy, isLoading: loadingPrivacy } = usePrivacyContent();
   const { data: wifi, isLoading: loadingWifi } = useWifiSettings();
+  const { data: weather, isLoading: loadingWeather } = useWeatherSettings();
   const settingsMutation = useSettingsMutation();
   const contactMutation = useContactMutation();
   const termsMutation = useTermsMutation();
   const privacyMutation = usePrivacyMutation();
   const wifiMutation = useWifiMutation();
+  const weatherMutation = useWeatherMutation();
   const [formData, setFormData] = useState<Record<string, any>>({});
   const [showWifiPass, setShowWifiPass] = useState(false);
   useEffect(() => {
-    if (settings && contact && terms && privacy && wifi) {
+    if (settings && contact && terms && privacy && wifi && weather) {
       setFormData({
         ...settings,
         ...contact,
+        ...weather,
         termsContent: terms.content,
         privacyContent: privacy.content,
         wifiPassword: wifi.password,
         wifiIsVisible: wifi.isVisible,
-        // Critical: Ensure fallbacks for select components to avoid uncontrolled/controlled warning
         language: settings.language || 'English',
         theme: settings.theme || 'system',
         ocrPrecision: settings.ocrPrecision || 'high',
       });
     }
-  }, [settings, contact, terms, privacy, wifi]);
+  }, [settings, contact, terms, privacy, wifi, weather]);
   const handleSave = async (section: string) => {
     try {
       if (section === 'appearance' || section === 'localization' || section === 'advanced') {
@@ -62,6 +71,13 @@ export function SettingsPage() {
         await privacyMutation.mutateAsync({ content: formData.privacyContent } as any);
       } else if (section === 'wifi') {
         await wifiMutation.mutateAsync({ password: formData.wifiPassword, isVisible: formData.wifiIsVisible } as any);
+      } else if (section === 'weather') {
+        await weatherMutation.mutateAsync({ 
+          isEnabled: formData.isEnabled, 
+          activeCondition: formData.activeCondition,
+          locationName: formData.locationName,
+          autoRotation: formData.autoRotation
+        } as any);
       }
       toast.success(`${section.charAt(0).toUpperCase() + section.slice(1)} settings updated`);
     } catch (err) {
@@ -71,7 +87,7 @@ export function SettingsPage() {
   const updateField = (key: string, value: any) => {
     setFormData(prev => ({ ...prev, [key]: value }));
   };
-  if (loadingSettings || loadingContact || loadingTerms || loadingPrivacy || loadingWifi) {
+  if (loadingSettings || loadingContact || loadingTerms || loadingPrivacy || loadingWifi || loadingWeather) {
     return (
       <AppLayout container>
         <div className="space-y-6">
@@ -84,6 +100,15 @@ export function SettingsPage() {
       </AppLayout>
     );
   }
+  const WeatherIcon = formData.activeCondition === 'sunny' ? Sun : 
+                    formData.activeCondition === 'rainy' ? CloudRain : 
+                    formData.activeCondition === 'cloudy' ? Cloud : Droplets;
+  const WeatherColors = {
+    sunny: "from-amber-400 to-orange-600",
+    rainy: "from-indigo-500 to-blue-700",
+    cloudy: "from-slate-400 to-slate-600",
+    humid: "from-emerald-400 to-teal-600",
+  };
   return (
     <AppLayout container>
       <div className="space-y-8 animate-fade-in">
@@ -109,6 +134,9 @@ export function SettingsPage() {
             </TabsTrigger>
             <TabsTrigger value="contact" className="w-full justify-start px-4 h-11 data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-600 rounded-lg">
               <Mail className="mr-2 h-4 w-4" /> Contact Channels
+            </TabsTrigger>
+            <TabsTrigger value="weather" className="w-full justify-start px-4 h-11 data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-600 rounded-lg">
+              <CloudSun className="mr-2 h-4 w-4" /> Weather Intel
             </TabsTrigger>
             <TabsTrigger value="security" className="w-full justify-start px-4 h-11 data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-600 rounded-lg">
               <Shield className="mr-2 h-4 w-4" /> Security & SSO
@@ -172,6 +200,58 @@ export function SettingsPage() {
                         <SelectItem value="Mandarin">Mandarin</SelectItem>
                       </SelectContent>
                     </Select>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+            <TabsContent value="weather" className="m-0 space-y-6 animate-slide-up">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Weather Intelligence Integration</CardTitle>
+                  <CardDescription>Manage PIK location-based operational context on the dashboard.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-900 rounded-xl border">
+                    <div className="space-y-1">
+                      <Label className="text-base font-bold">Enable Dashboard Widget</Label>
+                      <p className="text-xs text-muted-foreground">Show real-time weather alerts and recommendations to admins.</p>
+                    </div>
+                    <Switch checked={formData.isEnabled} onCheckedChange={(v) => updateField('isEnabled', v)} />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Location Label</Label>
+                      <Input value={formData.locationName} onChange={(e) => updateField('locationName', e.target.value)} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Active Preset (Manual Override)</Label>
+                      <Select value={formData.activeCondition} onValueChange={(v) => updateField('activeCondition', v)}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="sunny">Sunny / High UV</SelectItem>
+                          <SelectItem value="rainy">Rainy / Storm</SelectItem>
+                          <SelectItem value="cloudy">Cloudy / Cool</SelectItem>
+                          <SelectItem value="humid">Humid / Indoor Focus</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="space-y-4 pt-4 border-t">
+                    <Label className="text-xs font-bold uppercase text-muted-foreground tracking-widest">Dashboard Preview</Label>
+                    <div className={cn(
+                      "rounded-2xl p-6 text-white shadow-lg bg-gradient-to-r transition-all duration-500",
+                      formData.activeCondition ? WeatherColors[formData.activeCondition] : WeatherColors.sunny
+                    )}>
+                      <div className="flex items-center gap-4">
+                        <div className="bg-white/20 backdrop-blur-md p-3 rounded-xl border border-white/20">
+                          <WeatherIcon className="h-8 w-8 text-white" />
+                        </div>
+                        <div>
+                          <div className="text-[10px] font-bold uppercase tracking-widest opacity-70">{formData.locationName}</div>
+                          <div className="text-xl font-black">{WEATHER_PRESETS[formData.activeCondition || 'sunny'].condition}</div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -240,9 +320,9 @@ export function SettingsPage() {
                   <CardDescription>Legally binding membership agreement text.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <Textarea 
-                    className="min-h-[500px] font-mono text-sm leading-relaxed" 
-                    value={formData.termsContent} 
+                  <Textarea
+                    className="min-h-[500px] font-mono text-sm leading-relaxed"
+                    value={formData.termsContent}
                     onChange={(e) => updateField('termsContent', e.target.value)}
                   />
                   <div className="p-4 rounded-lg bg-indigo-50 border border-indigo-100 flex items-start gap-3">
@@ -259,9 +339,9 @@ export function SettingsPage() {
                   <CardDescription>Transparency regarding member data collection and usage.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <Textarea 
-                    className="min-h-[500px] font-mono text-sm leading-relaxed" 
-                    value={formData.privacyContent} 
+                  <Textarea
+                    className="min-h-[500px] font-mono text-sm leading-relaxed"
+                    value={formData.privacyContent}
                     onChange={(e) => updateField('privacyContent', e.target.value)}
                   />
                 </CardContent>
@@ -281,15 +361,15 @@ export function SettingsPage() {
                   <div className="space-y-2">
                     <Label>Guest Password</Label>
                     <div className="relative">
-                      <Input 
-                        type={showWifiPass ? "text" : "password"} 
-                        value={formData.wifiPassword} 
-                        onChange={(e) => updateField('wifiPassword', e.target.value)} 
+                      <Input
+                        type={showWifiPass ? "text" : "password"}
+                        value={formData.wifiPassword}
+                        onChange={(e) => updateField('wifiPassword', e.target.value)}
                         className="pr-10"
                       />
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
+                      <Button
+                        variant="ghost"
+                        size="icon"
                         className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
                         onClick={() => setShowWifiPass(!showWifiPass)}
                       >

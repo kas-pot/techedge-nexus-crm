@@ -3,7 +3,7 @@ import type {
   User, Chat, ChatMessage, Tier, Voucher, Venue, Outlet,
   Mission, Campaign, InterestTag, Leaderboard, ApprovalTask,
   Partner, Badge, SystemSettings, Ad, MarketingTicket, NewsItem,
-  GiftCard, FaqItem, Member, ContactSettings, LegalDocument, WifiSettings
+  GiftCard, FaqItem, Member, ContactSettings, LegalDocument, WifiSettings, WeatherConfig
 } from "@shared/types";
 import {
   MOCK_CHAT_MESSAGES, MOCK_CHATS, MOCK_USERS, MOCK_TIERS,
@@ -11,7 +11,8 @@ import {
   MOCK_INTERESTS, MOCK_LEADERBOARDS, MOCK_APPROVALS,
   MOCK_PARTNERS, MOCK_BADGES, MOCK_SYSTEM_SETTINGS,
   MOCK_ADS, MOCK_TICKETS, MOCK_NEWS, MOCK_GIFT_CARDS, MOCK_FAQ, MOCK_MEMBERS,
-  MOCK_CONTACT_SETTINGS, MOCK_TERMS_CONTENT, MOCK_PRIVACY_CONTENT, MOCK_WIFI_SETTINGS
+  MOCK_CONTACT_SETTINGS, MOCK_TERMS_CONTENT, MOCK_PRIVACY_CONTENT, MOCK_WIFI_SETTINGS,
+  MOCK_CAMPAIGNS, MOCK_WEATHER_CONFIG
 } from "@shared/mock-data";
 export class UserEntity extends IndexedEntity<Member> {
   static readonly entityName = "member";
@@ -64,7 +65,7 @@ export class CampaignEntity extends IndexedEntity<Campaign> {
   static readonly entityName = "campaign";
   static readonly indexName = "campaigns";
   static readonly initialState: Campaign = { id: "", name: "", startDate: "", endDate: "", channel: "push", status: "scheduled" };
-  static seedData = [];
+  static seedData = MOCK_CAMPAIGNS;
 }
 export class InterestEntity extends IndexedEntity<InterestTag> {
   static readonly entityName = "interest";
@@ -164,6 +165,14 @@ export class WifiEntity extends Entity<WifiSettings> {
   static readonly initialState: WifiSettings = MOCK_WIFI_SETTINGS;
   static async getGlobal(env: any): Promise<WifiSettings> {
     const inst = new WifiEntity(env, "global");
+    return inst.getState();
+  }
+}
+export class WeatherSettingsEntity extends Entity<WeatherConfig> {
+  static readonly entityName = "weather_settings";
+  static readonly initialState: WeatherConfig = MOCK_WEATHER_CONFIG;
+  static async getGlobal(env: any): Promise<WeatherConfig> {
+    const inst = new WeatherSettingsEntity(env, "global");
     return inst.getState();
   }
 }

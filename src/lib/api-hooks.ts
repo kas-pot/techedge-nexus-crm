@@ -4,7 +4,7 @@ import type {
   ApiResponse, Tier, Voucher, Venue, Outlet, Mission, Campaign,
   InterestTag, Leaderboard, ApprovalTask, Partner, Badge,
   SystemSettings, Ad, MarketingTicket, NewsItem, GiftCard, FaqItem, Member,
-  ContactSettings, LegalDocument, WifiSettings
+  ContactSettings, LegalDocument, WifiSettings, WeatherConfig
 } from '@shared/types';
 export function useEntities<T>(key: string, path: string, params?: Record<string, string>, limit = 200) {
   const queryParams = new URLSearchParams(params);
@@ -75,6 +75,10 @@ export const useWifiSettings = () => useQuery({
   queryKey: ['wifi-settings'],
   queryFn: () => api<WifiSettings>('/api/system/wifi')
 });
+export const useWeatherSettings = () => useQuery({
+  queryKey: ['weather-settings'],
+  queryFn: () => api<WeatherConfig>('/api/system/weather')
+});
 // System Mutation Hooks
 export const useSettingsMutation = () => {
   const queryClient = useQueryClient();
@@ -111,6 +115,13 @@ export const useWifiMutation = () => {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['wifi-settings'] }),
   });
 };
+export const useWeatherMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: Partial<WeatherConfig>) => api<WeatherConfig>('/api/system/weather', { method: 'PUT', body: JSON.stringify(data) }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['weather-settings'] }),
+  });
+};
 // Common Mutations
 export const useVoucherMutations = () => useEntityMutation<Voucher>('vouchers', '/api/vouchers');
 export const useMemberMutations = () => useEntityMutation<Member>('members', '/api/users');
@@ -118,6 +129,7 @@ export const useVenueMutations = () => useEntityMutation<Venue>('venues', '/api/
 export const useOutletMutations = () => useEntityMutation<Outlet>('outlets', '/api/outlets');
 export const usePartnerMutations = () => useEntityMutation<Partner>('partners', '/api/partners');
 export const useMissionMutations = () => useEntityMutation<Mission>('missions', '/api/missions');
+export const useCampaignMutations = () => useEntityMutation<Campaign>('campaigns', '/api/campaigns');
 export const useApprovalMutations = () => useEntityMutation<ApprovalTask>('approvals', '/api/approvals');
 export const useAdMutations = () => useEntityMutation<Ad>('ads', '/api/ads');
 export const useTicketMutations = () => useEntityMutation<MarketingTicket>('tickets', '/api/tickets');

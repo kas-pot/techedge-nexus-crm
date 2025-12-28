@@ -2,22 +2,39 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip, CartesianGrid, XAxis, YAxis, Bar, Line, ComposedChart, LineChart } from 'recharts';
-import { MOCK_DASHBOARD_STATS } from '@shared/mock-data';
-import { Users, TrendingUp, Award, DollarSign, Zap, CreditCard, ChevronRight, Download } from 'lucide-react';
+import { MOCK_DASHBOARD_STATS, WEATHER_PRESETS } from '@shared/mock-data';
+import { Users, TrendingUp, Award, DollarSign, Zap, CreditCard, ChevronRight, Download, Sun, CloudRain, Cloud, Droplets, ArrowRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import { cn } from '@/lib/utils';
+import { useWeatherSettings } from '@/lib/api-hooks';
 const stats = [
   { label: 'Total Members', value: '10,050', change: '+12%', icon: Users, color: 'text-blue-600', bg: 'bg-blue-50' },
   { label: 'Total Revenue (IDR)', value: '6.8B', change: '+15%', icon: DollarSign, color: 'text-indigo-600', bg: 'bg-indigo-50' },
   { label: 'Active Campaigns', value: '24', change: '+2', icon: TrendingUp, color: 'text-amber-600', bg: 'bg-amber-50' },
   { label: 'Redemptions', value: '2,842', change: '+18%', icon: Award, color: 'text-emerald-600', bg: 'bg-emerald-50' },
 ];
+const WeatherIcons = {
+  sunny: Sun,
+  rainy: CloudRain,
+  cloudy: Cloud,
+  humid: Droplets,
+};
+const WeatherColors = {
+  sunny: "from-amber-400 to-orange-600",
+  rainy: "from-indigo-500 to-blue-700",
+  cloudy: "from-slate-400 to-slate-600",
+  humid: "from-emerald-400 to-teal-600",
+};
 export function HomePage() {
   const [activeRange, setActiveRange] = useState('12M');
   const [pulse, setPulse] = useState(false);
+  const [recIndex, setRecIndex] = useState(0);
   const pulseTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const { data: weather } = useWeatherSettings();
+  const currentPreset = weather ? WEATHER_PRESETS[weather.activeCondition] : WEATHER_PRESETS.sunny;
+  const WeatherIcon = weather ? WeatherIcons[weather.activeCondition] : Sun;
   useEffect(() => {
     const interval = setInterval(() => {
       setPulse(true);
@@ -26,11 +43,15 @@ export function HomePage() {
         setPulse(false);
       }, 2000);
     }, 15000);
+    const recInterval = setInterval(() => {
+      setRecIndex(prev => (prev + 1) % currentPreset.tips.length);
+    }, 5000);
     return () => {
       clearInterval(interval);
+      clearInterval(recInterval);
       if (pulseTimeoutRef.current) clearTimeout(pulseTimeoutRef.current);
     };
-  }, []);
+  }, [currentPreset.tips.length]);
   const chartData = useMemo(() => {
     if (activeRange === '3M') return MOCK_DASHBOARD_STATS.insights.slice(-3);
     if (activeRange === '6M') return MOCK_DASHBOARD_STATS.insights.slice(-6);
@@ -42,13 +63,62 @@ export function HomePage() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
             <h1 className="text-4xl font-extrabold tracking-tight text-foreground">Executive Dashboard</h1>
-            <p className="text-muted-foreground text-lg font-medium">Nexus Intelligence Hub • Real-time Enterprise Operations</p>
+            <p className="text-muted-foreground text-lg font-medium">Nexus Intelligence Hub • PIK Enterprise Operations</p>
           </motion.div>
           <div className="flex gap-3">
             <Button variant="outline" className="h-11 shadow-sm"><Download className="mr-2 h-4 w-4" /> Export Report</Button>
             <Button className="bg-indigo-600 h-11 px-6 shadow-indigo-100">Live Insights</Button>
           </div>
         </div>
+        {/* Weather Intelligence Widget */}
+        {weather?.isEnabled && (
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95 }} 
+            animate={{ opacity: 1, scale: 1 }}
+            className={cn(
+              "relative overflow-hidden rounded-3xl p-6 text-white shadow-xl bg-gradient-to-r",
+              weather ? WeatherColors[weather.activeCondition] : WeatherColors.sunny
+            )}
+          >
+            <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+              <div className="flex items-center gap-6">
+                <div className="bg-white/20 backdrop-blur-md rounded-2xl p-4 shadow-lg border border-white/30">
+                  <WeatherIcon className="h-10 w-10 text-white animate-pulse" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <span className="text-sm font-bold uppercase tracking-widest opacity-80">{weather.locationName}</span>
+                    <Badge className="bg-white/20 text-white border-none text-[10px]">REAL-TIME</Badge>
+                  </div>
+                  <h2 className="text-3xl font-black">{currentPreset.condition}</h2>
+                </div>
+              </div>
+              <div className="flex-1 max-w-md bg-black/10 backdrop-blur-sm rounded-2xl p-4 border border-white/10">
+                <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-tighter opacity-60 mb-2">
+                  <Zap className="h-3 w-3" /> Operational Recommendation
+                </div>
+                <AnimatePresence mode="wait">
+                  <motion.p 
+                    key={recIndex}
+                    initial={{ opacity: 0, y: 5 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -5 }}
+                    className="text-lg font-semibold leading-tight"
+                  >
+                    {currentPreset.tips[recIndex]}
+                  </motion.p>
+                </AnimatePresence>
+              </div>
+              <Button variant="ghost" className="bg-white/10 hover:bg-white/20 border-white/10 text-white h-12" asChild>
+                <Link to="/system/weather">
+                  Adjust Rules <ArrowRight className="ml-2 h-4 w-4" />
+                </Link>
+              </Button>
+            </div>
+            {/* Background Decorative Element */}
+            <div className="absolute top-[-20px] right-[-20px] h-64 w-64 bg-white/10 rounded-full blur-3xl pointer-events-none" />
+          </motion.div>
+        )}
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
           {stats.map((s, idx) => (
             <motion.div

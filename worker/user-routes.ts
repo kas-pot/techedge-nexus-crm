@@ -5,7 +5,7 @@ import {
   OutletEntity, MissionEntity, CampaignEntity, InterestEntity,
   LeaderboardEntity, ApprovalEntity, PartnerEntity, BadgeEntity,
   SystemSettingsEntity, AdEntity, TicketEntity, NewsEntity, GiftCardEntity, FaqEntity,
-  ContactSettingsEntity, TermsEntity, PrivacyEntity, WifiEntity
+  ContactSettingsEntity, TermsEntity, PrivacyEntity, WifiEntity, WeatherSettingsEntity
 } from "./entities";
 import { ok, bad, notFound, Index } from './core-utils';
 const ENTITY_MAP: Record<string, any> = {
@@ -80,9 +80,15 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     const EntityClass = ENTITY_MAP[type];
     if (!EntityClass) return notFound(c, `Entity type ${type} not found`);
     await EntityClass.ensureSeed(c.env);
+    const channel = c.req.query('channel');
     const cursor = c.req.query('cursor');
-    const limit = c.req.query('limit');
-    const page = await EntityClass.list(c.env, cursor ?? null, limit ? Math.max(1, (Number(limit) | 0)) : undefined);
+    const limitParam = c.req.query('limit');
+    const limit = limitParam ? Math.max(1, (Number(limitParam) | 0)) : undefined;
+    const page = await EntityClass.list(c.env, cursor ?? null, limit);
+    // Filter if channel is provided (for campaigns)
+    if (channel && type === 'campaigns') {
+      page.items = page.items.filter((item: any) => item.channel === channel);
+    }
     return ok(c, page);
   });
   app.get('/api/:entityType/:id', async (c) => {
@@ -155,6 +161,13 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
   app.put('/api/system/wifi', async (c) => {
     const data = await c.req.json();
     const inst = new WifiEntity(c.env, "global");
+    await inst.patch(data);
+    return ok(c, await inst.getState());
+  });
+  app.get('/api/system/weather', async (c) => ok(c, await WeatherSettingsEntity.getGlobal(c.env)));
+  app.put('/api/system/weather', async (c) => {
+    const data = await c.req.json();
+    const inst = new WeatherSettingsEntity(c.env, "global");
     await inst.patch(data);
     return ok(c, await inst.getState());
   });

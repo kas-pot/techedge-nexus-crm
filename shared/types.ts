@@ -88,6 +88,9 @@ export interface Campaign {
   endDate: string;
   channel: 'push' | 'email' | 'sms' | 'video' | 'ads';
   status: 'scheduled' | 'running' | 'completed';
+  reach?: number;
+  openRate?: number;
+  ctr?: number;
 }
 export interface InterestTag {
   id: string;
@@ -204,6 +207,19 @@ export interface WifiSettings {
   ssid: string;
   password?: string;
   isVisible: boolean;
+}
+export interface WeatherConfig {
+  id: string;
+  isEnabled: boolean;
+  locationName: string;
+  activeCondition: 'sunny' | 'rainy' | 'cloudy' | 'humid';
+  autoRotation: boolean;
+  lastUpdated: string;
+}
+export interface WeatherRecommendation {
+  condition: string;
+  tips: string[];
+  icon: string;
 }
 export interface SystemSettings {
   id: string;
