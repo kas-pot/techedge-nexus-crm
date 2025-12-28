@@ -80,7 +80,7 @@ function runSetupCommands() {
     const commands = [
     "bun add framer-motion lucide-react clsx tailwind-merge",
     "bun add react-hook-form @hookform/resolvers zod",
-    "bun add cmdk"
+    "bun add cmdk date-fns"
 ];
     
     if (commands.length === 0) {
