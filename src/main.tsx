@@ -1,7 +1,5 @@
 import '@/lib/errorReporter';
 import { enableMapSet } from "immer";
-enableMapSet();
-import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { createBrowserRouter, RouterProvider, ScrollRestoration } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -35,6 +33,9 @@ import { MarketingHubPage } from '@/pages/marketing/MarketingHubPage';
 import { GiftCardsPage } from '@/pages/loyalty/GiftCardsPage';
 import { HelpFAQPage } from '@/pages/system/HelpFAQPage';
 import { TooltipProvider } from '@/components/ui/tooltip';
+
+enableMapSet();
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
