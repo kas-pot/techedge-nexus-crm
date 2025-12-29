@@ -37,18 +37,28 @@ const ENTITY_MAP: Record<string, any> = {
   faqs: FaqEntity
 };
 async function logActivity(env: Env, action: any, type: string, id: string) {
-  try {
-    await ActivityLogEntity.create(env, {
-      id: crypto.randomUUID(),
-      action,
-      entityType: type,
-      entityId: id,
-      userName: "Nexus Admin",
-      timestamp: new Date().toISOString(),
-      details: `Automatic audit for ${action} event on ${type}:${id}`
-    });
-  } catch (e) {
-    console.error("Logging failed", e);
+  let attempt = 0;
+  const maxAttempts = 3;
+  while (attempt < maxAttempts) {
+    try {
+      await ActivityLogEntity.create(env, {
+        id: crypto.randomUUID(),
+        action,
+        entityType: type,
+        entityId: id,
+        userName: "Nexus Admin",
+        timestamp: new Date().toISOString(),
+        details: `Automatic audit for ${action} event on ${type}:${id}`
+      });
+      return;
+    } catch (e) {
+      attempt++;
+      if (attempt >= maxAttempts) {
+        console.error("Logging failed after", maxAttempts, "attempts:", e);
+        return;
+      }
+      await new Promise(resolve => setTimeout(resolve, 10));
+    }
   }
 }
 export function userRoutes(app: Hono<{ Bindings: Env }>) {
@@ -140,6 +150,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     for (const [type, EntityClass] of Object.entries(ENTITY_MAP)) {
       const indexName = (EntityClass as any).indexName;
       if (indexName) {
+        if (type === 'activity-logs') continue;
         const idx = new Index<string>(c.env, indexName);
         await idx.clear();
         await EntityClass.ensureSeed(c.env);
