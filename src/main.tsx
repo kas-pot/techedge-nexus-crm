@@ -88,13 +88,11 @@ const router = createBrowserRouter([
   { path: "/system/faq", element: <HelpFAQPage />, errorElement: <RouteErrorBoundary /> },
 ]);
 createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider delayDuration={0}>
-        <ErrorBoundary>
-          <RouterProvider router={router} />
-        </ErrorBoundary>
-      </TooltipProvider>
-    </QueryClientProvider>
-  </StrictMode>,
+  <QueryClientProvider client={queryClient}>
+    <TooltipProvider delayDuration={0}>
+      <ErrorBoundary>
+        <RouterProvider router={router} />
+      </ErrorBoundary>
+    </TooltipProvider>
+  </QueryClientProvider>
 )
