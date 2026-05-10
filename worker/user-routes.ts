@@ -4,7 +4,7 @@ import {
   UserEntity, ChatBoardEntity, TierEntity, VoucherEntity, VenueEntity,
   OutletEntity, MissionEntity, CampaignEntity, InterestEntity,
   LeaderboardEntity, ApprovalEntity, PartnerEntity, BadgeEntity,
-  SystemSettingsEntity, AdEntity, TicketEntity, NewsEntity, GiftCardEntity, FaqEntity,
+  SystemSettingsEntity, LocalizationSettingsEntity, AdEntity, TicketEntity, NewsEntity, GiftCardEntity, FaqEntity,
   ContactSettingsEntity, TermsEntity, PrivacyEntity, WifiEntity, WeatherSettingsEntity,
   SplashScreenEntity, HeroBannerEntity,
   PushCampaignEntity, ActivityLogEntity
@@ -354,7 +354,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         CampaignEntity.ensureSeed(c.env),
         ApprovalEntity.ensureSeed(c.env),
         GiftCardEntity.ensureSeed(c.env),
-      ].map(p => p.catch(() => {})));
+      ].map(p => p.catch(() => { })));
       const [memberIds, campaignIds, approvalIds, giftCardIds] = await Promise.all([
         new Index<string>(c.env, 'members').list().catch(() => [] as string[]),
         new Index<string>(c.env, 'campaigns').list().catch(() => [] as string[]),
@@ -426,6 +426,14 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     const data = await c.req.json();
     const inst = new SystemSettingsEntity(c.env, "global");
     await inst.patch(data);
+    return ok(c, await inst.getState());
+  });
+  app.get('/api/system/localization', async (c) => ok(c, await LocalizationSettingsEntity.getGlobal(c.env)));
+  app.put('/api/system/localization', async (c) => {
+    const data = await c.req.json();
+    const inst = new LocalizationSettingsEntity(c.env, "global");
+    await inst.patch({ ...data, updatedAt: new Date().toISOString() });
+    await logActivity(c.env, 'Updated', 'localization_settings', 'global');
     return ok(c, await inst.getState());
   });
   app.get('/api/system/weather', async (c) => ok(c, await WeatherSettingsEntity.getGlobal(c.env)));

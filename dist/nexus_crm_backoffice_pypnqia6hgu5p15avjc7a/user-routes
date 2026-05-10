@@ -408,6 +408,21 @@ var MOCK_WIFI_SETTINGS = {
   password: "techedge_loyalty_2024",
   isVisible: true
 };
+var MOCK_LOCALIZATION_SETTINGS = {
+  id: "global",
+  timezone: "Europe/Amsterdam",
+  location: "Amsterdam",
+  country: "Nederland",
+  languages: ["nl", "en"],
+  dateFormat: "DD-MM-YYYY",
+  timeFormat: "24h",
+  currency: "EUR",
+  currencySymbol: "\u20AC",
+  firstDayOfWeek: "monday",
+  status: "active",
+  updatedAt: (/* @__PURE__ */ new Date()).toISOString(),
+  updatedBy: "System"
+};
 var MOCK_SYSTEM_SETTINGS = {
   id: "global",
   theme: "system",
@@ -649,6 +664,14 @@ var SystemSettingsEntity = class _SystemSettingsEntity extends Entity {
   static initialState = MOCK_SYSTEM_SETTINGS;
   static async getGlobal(env) {
     const inst = new _SystemSettingsEntity(env, "global");
+    return inst.getState();
+  }
+};
+var LocalizationSettingsEntity = class _LocalizationSettingsEntity extends Entity {
+  static entityName = "localization_settings";
+  static initialState = MOCK_LOCALIZATION_SETTINGS;
+  static async getGlobal(env) {
+    const inst = new _LocalizationSettingsEntity(env, "global");
     return inst.getState();
   }
 };
@@ -1388,6 +1411,14 @@ function userRoutes(app) {
     const data = await c.req.json();
     const inst = new SystemSettingsEntity(c.env, "global");
     await inst.patch(data);
+    return ok(c, await inst.getState());
+  });
+  app.get("/api/system/localization", async (c) => ok(c, await LocalizationSettingsEntity.getGlobal(c.env)));
+  app.put("/api/system/localization", async (c) => {
+    const data = await c.req.json();
+    const inst = new LocalizationSettingsEntity(c.env, "global");
+    await inst.patch({ ...data, updatedAt: (/* @__PURE__ */ new Date()).toISOString() });
+    await logActivity(c.env, "Updated", "localization_settings", "global");
     return ok(c, await inst.getState());
   });
   app.get("/api/system/weather", async (c) => ok(c, await WeatherSettingsEntity.getGlobal(c.env)));

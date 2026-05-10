@@ -319,6 +319,21 @@ export interface SystemSettings {
   splashImageUrl?: string;
   splashBgColor?: string;
 }
+export interface LocalizationSettings {
+  id: string;
+  timezone: string;
+  location: string;
+  country: string;
+  languages: string[];
+  dateFormat: string;
+  timeFormat: '12h' | '24h';
+  currency: string;
+  currencySymbol: string;
+  firstDayOfWeek: 'monday' | 'sunday';
+  status: 'active' | 'draft';
+  updatedAt: string;
+  updatedBy: string;
+}
 
 // ─── The Pot App — Live D1 Data ───────────────────────────────────────────────
 export interface ThePotUser {

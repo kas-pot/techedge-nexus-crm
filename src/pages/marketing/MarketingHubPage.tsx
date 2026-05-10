@@ -37,7 +37,7 @@ export function MarketingHubPage({ defaultTab = 'ads' }: MarketingHubPageProps) 
           <TabsContent value="ads">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {loadingAds ? (
-                [1,2,3].map(i => <Card key={i} className="h-64 animate-pulse bg-muted/20" />)
+                [1, 2, 3].map(i => <Card key={i} className="h-64 animate-pulse bg-muted/20" />)
               ) : (
                 adsData?.items.map((ad) => (
                   <Card key={ad.id} className="overflow-hidden group border-border hover:shadow-soft transition-all">
@@ -113,7 +113,7 @@ export function MarketingHubPage({ defaultTab = 'ads' }: MarketingHubPageProps) 
           <TabsContent value="news">
             <div className="space-y-4">
               {loadingNews ? (
-                [1,2].map(i => <Card key={i} className="h-32 animate-pulse" />)
+                [1, 2].map(i => <Card key={i} className="h-32 animate-pulse" />)
               ) : (
                 newsData?.items.map((news) => (
                   <Card key={news.id} className="hover:bg-slate-50/50 transition-colors">

@@ -5,7 +5,7 @@ import type {
   InterestTag, Leaderboard, ApprovalTask, Partner, Badge,
   SystemSettings, Ad, MarketingTicket, NewsItem, GiftCard, FaqItem, Member,
   ContactSettings, LegalDocument, WifiSettings, WeatherConfig, PushCampaign,
-  SplashScreenConfig, HeroBannerConfig,
+  SplashScreenConfig, HeroBannerConfig, LocalizationSettings,
   ThePotUser, ThePotGame, ThePotChallenge, ThePotSubChallenge
 } from '@shared/types';
 export function useEntities<T>(key: string, path: string, params?: Record<string, string>, limit = 200) {
@@ -89,12 +89,24 @@ export const useHeroBanner = () => useQuery({
   queryKey: ['hero-banner'],
   queryFn: () => api<HeroBannerConfig>('/api/system/banner')
 });
+export const useLocalizationSettings = () => useQuery({
+  queryKey: ['localization-settings'],
+  queryFn: () => api<LocalizationSettings>('/api/system/localization'),
+  staleTime: 5 * 60 * 1000,
+});
 // System Mutation Hooks
 export const useSettingsMutation = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (data: Partial<SystemSettings>) => api<SystemSettings>('/api/system/settings', { method: 'PUT', body: JSON.stringify(data) }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['system-settings'] }),
+  });
+};
+export const useLocalizationMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: Partial<LocalizationSettings>) => api<LocalizationSettings>('/api/system/localization', { method: 'PUT', body: JSON.stringify(data) }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['localization-settings'] }),
   });
 };
 export const useContactMutation = () => {

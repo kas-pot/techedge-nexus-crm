@@ -4,7 +4,7 @@ import type {
   Mission, Campaign, InterestTag, Leaderboard, ApprovalTask,
   Partner, Badge, SystemSettings, Ad, MarketingTicket, NewsItem,
   GiftCard, FaqItem, Member, ContactSettings, LegalDocument, WifiSettings, WeatherConfig,
-  SplashScreenConfig, HeroBannerConfig, ActivityLog
+  SplashScreenConfig, HeroBannerConfig, ActivityLog, LocalizationSettings
 } from "@shared/types";
 import type { PushCampaign } from "@shared/types";
 import {
@@ -15,7 +15,7 @@ import {
   MOCK_ADS, MOCK_TICKETS, MOCK_NEWS, MOCK_GIFT_CARDS, MOCK_FAQ, MOCK_MEMBERS,
   MOCK_CONTACT_SETTINGS, MOCK_TERMS_CONTENT, MOCK_PRIVACY_CONTENT, MOCK_WIFI_SETTINGS,
   MOCK_CAMPAIGNS, MOCK_WEATHER_CONFIG, MOCK_SPLASH_CONFIG, MOCK_HERO_BANNER_CONFIG,
-  MOCK_PUSH_CAMPAIGNS, MOCK_ACTIVITY_LOGS
+  MOCK_PUSH_CAMPAIGNS, MOCK_ACTIVITY_LOGS, MOCK_LOCALIZATION_SETTINGS
 } from "@shared/mock-data";
 export class UserEntity extends IndexedEntity<Member> {
   static readonly entityName = "member";
@@ -148,6 +148,14 @@ export class SystemSettingsEntity extends Entity<SystemSettings> {
   static readonly initialState: SystemSettings = MOCK_SYSTEM_SETTINGS;
   static async getGlobal(env: any): Promise<SystemSettings> {
     const inst = new SystemSettingsEntity(env, "global");
+    return inst.getState();
+  }
+}
+export class LocalizationSettingsEntity extends Entity<LocalizationSettings> {
+  static readonly entityName = "localization_settings";
+  static readonly initialState: LocalizationSettings = MOCK_LOCALIZATION_SETTINGS;
+  static async getGlobal(env: any): Promise<LocalizationSettings> {
+    const inst = new LocalizationSettingsEntity(env, "global");
     return inst.getState();
   }
 }

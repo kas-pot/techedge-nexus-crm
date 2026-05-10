@@ -11,8 +11,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import {
   Shield, Globe, Palette, Cpu, Wifi, Save, CloudSun,
   Mail, Phone, BookOpen, UserCheck, Eye, EyeOff,
-  Image as ImageIcon, Layout, Trash2, Plus, Share2, MessageCircle
+  Image as ImageIcon, Layout, Trash2, Plus, Share2, MessageCircle, Clock, CheckCircle2
 } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Badge } from '@/components/ui/badge';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   useSystemSettings, useSettingsMutation,
@@ -22,10 +24,92 @@ import {
   useWifiSettings, useWifiMutation,
   useWeatherSettings, useWeatherMutation,
   useSplashScreen, useSplashMutation,
-  useHeroBanner, useBannerMutation
+  useHeroBanner, useBannerMutation,
+  useLocalizationSettings, useLocalizationMutation,
 } from '@/lib/api-hooks';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+
+const TIMEZONES = [
+  { group: 'Europa', options: [
+    { value: 'Europe/Amsterdam', label: 'Amsterdam, Nederland (CET/CEST)' },
+    { value: 'Europe/Brussels', label: 'Brussel, België (CET/CEST)' },
+    { value: 'Europe/Berlin', label: 'Berlijn, Duitsland (CET/CEST)' },
+    { value: 'Europe/Paris', label: 'Parijs, Frankrijk (CET/CEST)' },
+    { value: 'Europe/Rome', label: 'Rome, Italië (CET/CEST)' },
+    { value: 'Europe/Madrid', label: 'Madrid, Spanje (CET/CEST)' },
+    { value: 'Europe/Zurich', label: 'Zürich, Zwitserland (CET/CEST)' },
+    { value: 'Europe/Vienna', label: 'Wenen, Oostenrijk (CET/CEST)' },
+    { value: 'Europe/Warsaw', label: 'Warschau, Polen (CET/CEST)' },
+    { value: 'Europe/Stockholm', label: 'Stockholm, Zweden (CET/CEST)' },
+    { value: 'Europe/Copenhagen', label: 'Kopenhagen, Denemarken (CET/CEST)' },
+    { value: 'Europe/Oslo', label: 'Oslo, Noorwegen (CET/CEST)' },
+    { value: 'Europe/London', label: 'Londen, VK (GMT/BST)' },
+    { value: 'Europe/Lisbon', label: 'Lissabon, Portugal (WET/WEST)' },
+    { value: 'Europe/Helsinki', label: 'Helsinki, Finland (EET/EEST)' },
+    { value: 'Europe/Athens', label: 'Athene, Griekenland (EET/EEST)' },
+    { value: 'Europe/Bucharest', label: 'Boekarest, Roemenië (EET/EEST)' },
+    { value: 'Europe/Istanbul', label: 'Istanbul, Turkije (TRT)' },
+    { value: 'Europe/Moscow', label: 'Moskou, Rusland (MSK)' },
+  ]},
+  { group: 'Afrika', options: [
+    { value: 'Africa/Casablanca', label: 'Casablanca, Marokko (WET)' },
+    { value: 'Africa/Cairo', label: 'Caïro, Egypte (EET)' },
+    { value: 'Africa/Johannesburg', label: 'Johannesburg, Zuid-Afrika (SAST)' },
+    { value: 'Africa/Lagos', label: 'Lagos, Nigeria (WAT)' },
+    { value: 'Africa/Nairobi', label: 'Nairobi, Kenia (EAT)' },
+  ]},
+  { group: 'Midden-Oosten', options: [
+    { value: 'Asia/Dubai', label: 'Dubai, VAE (GST)' },
+    { value: 'Asia/Riyadh', label: 'Riyad, Saudi-Arabië (AST)' },
+    { value: 'Asia/Tehran', label: 'Teheran, Iran (IRST)' },
+  ]},
+  { group: 'Azië', options: [
+    { value: 'Asia/Karachi', label: 'Karachi, Pakistan (PKT)' },
+    { value: 'Asia/Kolkata', label: 'Mumbai / Delhi, India (IST)' },
+    { value: 'Asia/Dhaka', label: 'Dhaka, Bangladesh (BST)' },
+    { value: 'Asia/Bangkok', label: 'Bangkok, Thailand (ICT)' },
+    { value: 'Asia/Jakarta', label: 'Jakarta, Indonesië (WIB)' },
+    { value: 'Asia/Singapore', label: 'Singapore (SGT)' },
+    { value: 'Asia/Shanghai', label: 'Peking / Shanghai, China (CST)' },
+    { value: 'Asia/Tokyo', label: 'Tokio, Japan (JST)' },
+    { value: 'Asia/Seoul', label: 'Seoul, Zuid-Korea (KST)' },
+    { value: 'Asia/Taipei', label: 'Taipei, Taiwan (CST)' },
+  ]},
+  { group: 'Australazië', options: [
+    { value: 'Australia/Perth', label: 'Perth, Australië (AWST)' },
+    { value: 'Australia/Adelaide', label: 'Adelaide, Australië (ACST)' },
+    { value: 'Australia/Sydney', label: 'Sydney, Australië (AEST)' },
+    { value: 'Pacific/Auckland', label: 'Auckland, Nieuw-Zeeland (NZST)' },
+  ]},
+  { group: 'Amerika', options: [
+    { value: 'America/New_York', label: 'New York, VS (EST/EDT)' },
+    { value: 'America/Chicago', label: 'Chicago, VS (CST/CDT)' },
+    { value: 'America/Denver', label: 'Denver, VS (MST/MDT)' },
+    { value: 'America/Los_Angeles', label: 'Los Angeles, VS (PST/PDT)' },
+    { value: 'America/Sao_Paulo', label: 'São Paulo, Brazilië (BRT)' },
+    { value: 'America/Argentina/Buenos_Aires', label: 'Buenos Aires, Argentinië (ART)' },
+    { value: 'America/Toronto', label: 'Toronto, Canada (EST/EDT)' },
+    { value: 'America/Vancouver', label: 'Vancouver, Canada (PST/PDT)' },
+    { value: 'America/Mexico_City', label: 'Mexico City, Mexico (CST/CDT)' },
+  ]},
+  { group: 'Universeel', options: [
+    { value: 'UTC', label: 'UTC — Gecoördineerde Wereldtijd (UTC+0)' },
+  ]},
+];
+
+const LANGUAGES = [
+  { code: 'nl', label: 'Nederlands', flag: '🇳🇱' },
+  { code: 'en', label: 'English', flag: '🇬🇧' },
+  { code: 'de', label: 'Deutsch', flag: '🇩🇪' },
+  { code: 'fr', label: 'Français', flag: '🇫🇷' },
+  { code: 'es', label: 'Español', flag: '🇪🇸' },
+  { code: 'ar', label: 'العربية', flag: '🇸🇦' },
+  { code: 'zh', label: '中文 (简体)', flag: '🇨🇳' },
+  { code: 'ja', label: '日本語', flag: '🇯🇵' },
+  { code: 'id', label: 'Bahasa Indonesia', flag: '🇮🇩' },
+  { code: 'tr', label: 'Türkçe', flag: '🇹🇷' },
+];
 export function SettingsPage() {
   const { tab } = useParams();
   const navigate = useNavigate();
@@ -38,6 +122,7 @@ export function SettingsPage() {
   const { data: weather } = useWeatherSettings();
   const { data: splash } = useSplashScreen();
   const { data: banners } = useHeroBanner();
+  const { data: localization } = useLocalizationSettings();
   const settingsMutation = useSettingsMutation();
   const contactMutation = useContactMutation();
   const termsMutation = useTermsMutation();
@@ -46,6 +131,7 @@ export function SettingsPage() {
   const weatherMutation = useWeatherMutation();
   const splashMutation = useSplashMutation();
   const bannerMutation = useBannerMutation();
+  const localizationMutation = useLocalizationMutation();
   const [formData, setFormData] = useState<Record<string, any>>({});
   const [showWifiPass, setShowWifiPass] = useState(false);
   const [activeTermsTab, setActiveTermsTab] = useState<'edit' | 'preview'>('edit');
@@ -68,13 +154,40 @@ export function SettingsPage() {
         language: settings.language || 'English',
         theme: settings.theme || 'system',
         ocrPrecision: settings.ocrPrecision || 'high',
+        // localization (with safe defaults)
+        timezone: localization?.timezone ?? 'Europe/Amsterdam',
+        location: localization?.location ?? 'Amsterdam',
+        country: localization?.country ?? 'Nederland',
+        languages: localization?.languages ?? ['nl', 'en'],
+        dateFormat: localization?.dateFormat ?? 'DD-MM-YYYY',
+        timeFormat: localization?.timeFormat ?? '24h',
+        currency: localization?.currency ?? 'EUR',
+        currencySymbol: localization?.currencySymbol ?? '€',
+        firstDayOfWeek: localization?.firstDayOfWeek ?? 'monday',
+        localizationStatus: localization?.status ?? 'active',
+        localizationUpdatedAt: localization?.updatedAt ?? null,
+        localizationUpdatedBy: localization?.updatedBy ?? null,
       });
     }
-  }, [settings, contact, terms, privacy, wifi, weather, splash, banners]);
+  }, [settings, contact, terms, privacy, wifi, weather, splash, banners, localization]);
   const handleSave = async (section: string) => {
     try {
-      if (['appearance', 'localization', 'advanced', 'security'].includes(section)) {
+      if (['appearance', 'advanced', 'security'].includes(section)) {
         await settingsMutation.mutateAsync(formData as any);
+      } else if (section === 'localization') {
+        await localizationMutation.mutateAsync({
+          timezone: formData.timezone,
+          location: formData.location,
+          country: formData.country,
+          languages: formData.languages,
+          dateFormat: formData.dateFormat,
+          timeFormat: formData.timeFormat,
+          currency: formData.currency,
+          currencySymbol: formData.currencySymbol,
+          firstDayOfWeek: formData.firstDayOfWeek,
+          status: formData.localizationStatus,
+          updatedBy: 'Nexus Admin',
+        } as any);
       } else if (section === 'contact') {
         await contactMutation.mutateAsync(formData as any);
       } else if (section === 'terms') {
@@ -164,31 +277,186 @@ export function SettingsPage() {
             {/* Localization Tab */}
             <TabsContent value="localization" className="m-0 space-y-6">
               <Card className="rounded-3xl border-none shadow-soft overflow-hidden">
-                <CardHeader className="bg-slate-50/50 border-b"><CardTitle>Language & Region</CardTitle></CardHeader>
-                <CardContent className="pt-8 space-y-6">
-                  <div className="grid md:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <Label className="font-bold">Default Display Language</Label>
-                      <Select value={formData.language} onValueChange={(v) => updateField('language', v)}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="English">English (US)</SelectItem>
-                          <SelectItem value="Indonesian">Bahasa Indonesia</SelectItem>
-                          <SelectItem value="Mandarin">Mandarin (Simplified)</SelectItem>
-                        </SelectContent>
-                      </Select>
+                <CardHeader className="bg-slate-50/50 border-b">
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                    <div>
+                      <CardTitle>Taal & Regio</CardTitle>
+                      <CardDescription>Configureer tijdzone, locatie en ondersteunde talen voor het platform.</CardDescription>
                     </div>
-                    <div className="space-y-2">
-                      <Label className="font-bold">Primary Timezone</Label>
-                      <Select defaultValue="Asia/Jakarta">
-                        <SelectTrigger><SelectValue /></SelectTrigger>
+                    <div className="flex items-center gap-3">
+                      {formData.localizationUpdatedAt && (
+                        <span className="text-xs text-muted-foreground flex items-center gap-1">
+                          <Clock className="h-3 w-3" />
+                          {new Date(formData.localizationUpdatedAt).toLocaleString('nl-NL', { dateStyle: 'short', timeStyle: 'short' })}
+                        </span>
+                      )}
+                      <Select value={formData.localizationStatus} onValueChange={(v) => updateField('localizationStatus', v)}>
+                        <SelectTrigger className="h-8 w-36 text-xs">
+                          <SelectValue />
+                        </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="Asia/Jakarta">Jakarta (GMT+7)</SelectItem>
-                          <SelectItem value="Asia/Singapore">Singapore (GMT+8)</SelectItem>
+                          <SelectItem value="active">
+                            <span className="flex items-center gap-2"><CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" /> Actief</span>
+                          </SelectItem>
+                          <SelectItem value="draft">
+                            <span className="flex items-center gap-2"><Clock className="h-3.5 w-3.5 text-amber-500" /> Concept</span>
+                          </SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
                   </div>
+                </CardHeader>
+                <CardContent className="pt-8 space-y-8">
+                  {/* Timezone */}
+                  <div className="space-y-2">
+                    <Label className="font-bold text-base">Tijdzone</Label>
+                    <Select value={formData.timezone} onValueChange={(v) => updateField('timezone', v)}>
+                      <SelectTrigger className="h-11"><SelectValue placeholder="Selecteer tijdzone..." /></SelectTrigger>
+                      <SelectContent className="max-h-80">
+                        {TIMEZONES.map((group) => (
+                          <React.Fragment key={group.group}>
+                            <div className="px-2 py-1.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground bg-slate-50">{group.group}</div>
+                            {group.options.map((tz) => (
+                              <SelectItem key={tz.value} value={tz.value}>{tz.label}</SelectItem>
+                            ))}
+                          </React.Fragment>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {formData.timezone && (
+                      <p className="text-xs text-muted-foreground flex items-center gap-1.5 mt-1">
+                        <Clock className="h-3 w-3" />
+                        Huidige tijd: <span className="font-mono font-bold">
+                          {new Date().toLocaleTimeString('nl-NL', { timeZone: formData.timezone, hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                        </span> — {formData.timezone}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Country + Location */}
+                  <div className="grid md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <Label className="font-bold text-base">Land</Label>
+                      <Input value={formData.country ?? ''} onChange={(e) => updateField('country', e.target.value)} placeholder="bijv. Nederland" className="h-11" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="font-bold text-base">Locatie / Stad</Label>
+                      <Input value={formData.location ?? ''} onChange={(e) => updateField('location', e.target.value)} placeholder="bijv. Amsterdam" className="h-11" />
+                    </div>
+                  </div>
+
+                  {/* Languages */}
+                  <div className="space-y-3">
+                    <Label className="font-bold text-base">Ondersteunde Talen</Label>
+                    <p className="text-sm text-muted-foreground">Selecteer alle talen die beschikbaar zijn in de member app.</p>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                      {LANGUAGES.map((lang) => {
+                        const isSelected = (formData.languages ?? []).includes(lang.code);
+                        return (
+                          <label
+                            key={lang.code}
+                            className={cn(
+                              'flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all',
+                              isSelected ? 'bg-indigo-50 border-indigo-300 dark:bg-indigo-950/30' : 'hover:bg-slate-50'
+                            )}
+                          >
+                            <Checkbox
+                              checked={isSelected}
+                              onCheckedChange={(checked) => {
+                                const current: string[] = formData.languages ?? [];
+                                updateField('languages', checked
+                                  ? [...current, lang.code]
+                                  : current.filter((l) => l !== lang.code)
+                                );
+                              }}
+                            />
+                            <span className="text-sm font-medium">{lang.flag} {lang.label}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                    {(formData.languages ?? []).length === 0 && (
+                      <p className="text-xs text-rose-500">Selecteer minimaal één taal.</p>
+                    )}
+                  </div>
+
+                  {/* Date + Time format */}
+                  <div className="grid md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <Label className="font-bold text-base">Datumnotatie</Label>
+                      <Select value={formData.dateFormat} onValueChange={(v) => updateField('dateFormat', v)}>
+                        <SelectTrigger className="h-11"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="DD-MM-YYYY">DD-MM-YYYY (Nederland)</SelectItem>
+                          <SelectItem value="DD.MM.YYYY">DD.MM.YYYY (Duitsland / Rusland)</SelectItem>
+                          <SelectItem value="MM/DD/YYYY">MM/DD/YYYY (Verenigde Staten)</SelectItem>
+                          <SelectItem value="YYYY-MM-DD">YYYY-MM-DD (ISO 8601)</SelectItem>
+                          <SelectItem value="D MMMM YYYY">D MMMM YYYY (Lang formaat)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground">Voorbeeld: {new Date().toLocaleDateString('nl-NL')}</p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="font-bold text-base">Tijdnotatie</Label>
+                      <Select value={formData.timeFormat} onValueChange={(v) => updateField('timeFormat', v)}>
+                        <SelectTrigger className="h-11"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="24h">24-uurs klok (14:30)</SelectItem>
+                          <SelectItem value="12h">12-uurs klok (2:30 PM)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground">Voorbeeld: {new Date().toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' })}</p>
+                    </div>
+                  </div>
+
+                  {/* Currency + First day of week */}
+                  <div className="grid md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <Label className="font-bold text-base">Valuta</Label>
+                      <Select value={formData.currency} onValueChange={(v) => {
+                        const symbols: Record<string, string> = { EUR: '€', USD: '$', GBP: '£', IDR: 'Rp', SGD: 'S$', AED: 'AED', CHF: 'CHF', JPY: '¥', CNY: '¥' };
+                        updateField('currency', v);
+                        updateField('currencySymbol', symbols[v] ?? v);
+                      }}>
+                        <SelectTrigger className="h-11"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="EUR">EUR — Euro (€)</SelectItem>
+                          <SelectItem value="USD">USD — US Dollar ($)</SelectItem>
+                          <SelectItem value="GBP">GBP — Brits Pond (£)</SelectItem>
+                          <SelectItem value="CHF">CHF — Zwitserse Frank (CHF)</SelectItem>
+                          <SelectItem value="AED">AED — Emirati Dirham (AED)</SelectItem>
+                          <SelectItem value="SGD">SGD — Singapore Dollar (S$)</SelectItem>
+                          <SelectItem value="IDR">IDR — Indonesische Rupiah (Rp)</SelectItem>
+                          <SelectItem value="JPY">JPY — Japanse Yen (¥)</SelectItem>
+                          <SelectItem value="CNY">CNY — Chinese Yuan (¥)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="font-bold text-base">Eerste dag van de week</Label>
+                      <Select value={formData.firstDayOfWeek} onValueChange={(v) => updateField('firstDayOfWeek', v)}>
+                        <SelectTrigger className="h-11"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="monday">Maandag (Europa)</SelectItem>
+                          <SelectItem value="sunday">Zondag (VS / Midden-Oosten)</SelectItem>
+                          <SelectItem value="saturday">Zaterdag (sommige islamitische landen)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  {/* Metadata footer */}
+                  {formData.localizationUpdatedAt && (
+                    <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900 border text-xs text-muted-foreground flex flex-col gap-1">
+                      <div className="flex items-center gap-1.5">
+                        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+                        Laatste wijziging: {new Date(formData.localizationUpdatedAt).toLocaleString('nl-NL', { dateStyle: 'full', timeStyle: 'short' })}
+                      </div>
+                      {formData.localizationUpdatedBy && (
+                        <div className="ml-5">Door: <span className="font-medium text-foreground">{formData.localizationUpdatedBy}</span></div>
+                      )}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>

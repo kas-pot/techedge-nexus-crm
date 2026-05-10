@@ -3,7 +3,7 @@ import type {
   Venue, Outlet, Mission, InterestTag, Leaderboard, ApprovalTask,
   Partner, Badge, SystemSettings, Ad, MarketingTicket, NewsItem, GiftCard, FaqItem, Member,
   ContactSettings, LegalDocument, WifiSettings, Campaign, WeatherConfig, WeatherRecommendation,
-  SplashScreenConfig, HeroBannerConfig, PushCampaign, ActivityLog
+  SplashScreenConfig, HeroBannerConfig, PushCampaign, ActivityLog, LocalizationSettings
 } from './types';
 const FIRST_NAMES = ["James", "Sarah", "Michael", "Elena", "David", "Ahmad", "Siti", "Budi", "Dewi", "Kevin", "Rina", "Aditya", "Jessica", "Robert", "Linda", "Maya", "Oscar", "Zoe", "Liam", "Hana"];
 const LAST_NAMES = ["Wilson", "Chen", "Scott", "Rodriguez", "Kim", "Pratama", "Sari", "Wijaya", "Kusuma", "Tan", "Lau", "Nguyen", "Murphy", "Santoso", "Hidayat", "Zhuang", "Lee", "Miller", "Garcia", "Wong"];
@@ -288,6 +288,21 @@ export const MOCK_WIFI_SETTINGS: WifiSettings = {
   ssid: 'TechEdge_Guest_WiFi',
   password: 'techedge_loyalty_2024',
   isVisible: true
+};
+export const MOCK_LOCALIZATION_SETTINGS: LocalizationSettings = {
+  id: 'global',
+  timezone: 'Europe/Amsterdam',
+  location: 'Amsterdam',
+  country: 'Nederland',
+  languages: ['nl', 'en'],
+  dateFormat: 'DD-MM-YYYY',
+  timeFormat: '24h',
+  currency: 'EUR',
+  currencySymbol: '\u20ac',
+  firstDayOfWeek: 'monday',
+  status: 'active',
+  updatedAt: new Date().toISOString(),
+  updatedBy: 'System',
 };
 export const MOCK_SYSTEM_SETTINGS: SystemSettings = {
   id: 'global',
