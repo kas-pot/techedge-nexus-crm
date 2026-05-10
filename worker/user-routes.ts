@@ -196,51 +196,54 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
   /**
    * POST /api/auth/otp/request
    * Body: { email: string }
-   * Checks if email belongs to an active admin user — if not, silently returns
-   * success (to avoid email enumeration). Only sends OTP to known admins.
+   * Always stores a new OTP in D1 (invalidating any previous unused code) and
+   * sends the email. The admin-access gate is enforced at /api/auth/otp/verify.
    */
   app.post('/api/auth/otp/request', async (c) => {
-    try {
-      const ip = getClientIp(c.req.raw);
+    const ip = getClientIp(c.req.raw);
 
-      if (await isIpBlocked(ip, c.env)) {
-        return c.json({ success: false, error: 'IP blocked.' }, 403);
-      }
-
-      let email: string;
-      try {
-        const body = await c.req.json<{ email?: string }>();
-        email = (body.email ?? '').trim().toLowerCase();
-      } catch {
-        return bad(c, 'Ongeldig verzoek');
-      }
-
-      if (!email || !/^[^@]+@[^@]+\.[^@]+$/.test(email)) {
-        return bad(c, 'Voer een geldig e-mailadres in.');
-      }
-
-      // Security: always return the same generic response regardless of whether
-      // the email exists — prevents email enumeration attacks.
-      const adminExists = await isAdminEmail(email, c.env);
-      if (adminExists) {
-        const adminUser = await getAdminUser(email, c.env);
-        const name = adminUser?.name ?? email;
-        const otp = await storeOtp(email, c.env);
-        // Email failures are isolated — OTP is already stored in D1 even if send fails
-        try {
-          await sendOtpEmail(email, otp, name, c.env);
-        } catch (emailErr) {
-          console.error('[OTP] sendOtpEmail threw:', emailErr);
-        }
-      }
-
-      // Always return 200 to prevent email enumeration
-      return c.json({ success: true, message: 'Als dit e-mailadres bekend is, ontvangt u een code.' });
-    } catch (err) {
-      console.error('[OTP] /api/auth/otp/request error:', err instanceof Error ? err.message : String(err), err);
-      // Still return 200 to prevent enumeration — but error is now in wrangler tail
-      return c.json({ success: true, message: 'Als dit e-mailadres bekend is, ontvangt u een code.' });
+    if (await isIpBlocked(ip, c.env)) {
+      return c.json({ success: false, error: 'IP blocked.' }, 403);
     }
+
+    let email: string;
+    try {
+      const body = await c.req.json<{ email?: string }>();
+      email = (body.email ?? '').trim().toLowerCase();
+    } catch {
+      return bad(c, 'Ongeldig verzoek');
+    }
+
+    if (!email || !/^[^@]+@[^@]+\.[^@]+$/.test(email)) {
+      return bad(c, 'Voer een geldig e-mailadres in.');
+    }
+
+    // Always store a fresh OTP and send the email — regardless of whether the address
+    // is a registered admin. The admin check is enforced at the /verify step.
+    // This ensures:
+    //  • A new record is always created in D1 (any previous unused codes are invalidated first)
+    //  • The email is always sent
+    //  • No silent no-ops that leave the user wondering why nothing arrived
+    let otp: string;
+    try {
+      otp = await storeOtp(email, c.env);
+    } catch (storeErr) {
+      console.error('[OTP] storeOtp failed for', email, storeErr);
+      return c.json({ success: false, error: 'Kon de verificatiecode niet opslaan. Probeer het opnieuw.' }, 500);
+    }
+
+    const adminUser = await getAdminUser(email, c.env).catch(() => null);
+    const name = adminUser?.name ?? email;
+
+    try {
+      await sendOtpEmail(email, otp, name, c.env);
+    } catch (emailErr) {
+      console.error('[OTP] sendOtpEmail failed for', email, emailErr);
+      // OTP is already stored — log the failure but still return success so the
+      // user can try the verify flow (e.g. if the email arrived on a retry)
+    }
+
+    return c.json({ success: true, message: 'Verificatiecode verstuurd. Controleer uw e-mail.' });
   });
 
   /**
@@ -274,8 +277,18 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         const { blocked } = await recordFailedAttempt(ip, ua, c.env);
         const msg = blocked
           ? 'IP blocked after too many failed attempts.'
-          : (result.reason ?? 'Ongeldige code.');
+          : (result.reason ?? 'Ongeldige of verlopen code.');
         return c.json({ success: false, error: msg }, 401);
+      }
+
+      // Gate: only registered active admin users may complete login.
+      // (OTP was stored for any email to prevent enumeration at request time;
+      //  the real access control lives here.)
+      const isAdmin = await isAdminEmail(email, c.env);
+      if (!isAdmin) {
+        const ua = c.req.header('User-Agent') ?? '';
+        await recordFailedAttempt(ip, ua, c.env);
+        return c.json({ success: false, error: 'Dit e-mailadres heeft geen toegang tot Nexus CRM.' }, 403);
       }
 
       // Clear failure counter on success
