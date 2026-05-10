@@ -707,7 +707,10 @@ function getDO(env) {
 function b64UrlDecode(s) {
   const b64 = s.replace(/-/g, "+").replace(/_/g, "/");
   const padded = b64 + "=".repeat((4 - b64.length % 4) % 4);
-  return Uint8Array.from(atob(padded), (c) => c.charCodeAt(0));
+  const binary = atob(padded);
+  const arr = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) arr[i] = binary.charCodeAt(i);
+  return arr;
 }
 async function importRsaKey(jwk) {
   return crypto.subtle.importKey(
@@ -925,13 +928,23 @@ async function storeOtp(email, env) {
   const normalized = email.toLowerCase().trim();
   const db = env.THEPOT_DB;
   if (db) {
-    await db.prepare(
-      `UPDATE user_verification_codes SET is_used = 1 WHERE email = ? AND code_type = 'admin_login' AND is_used = 0`
-    ).bind(normalized).run();
-    await db.prepare(
-      `INSERT INTO user_verification_codes (email, code, code_type, expires_at, is_used, created_at)
-             VALUES (?, ?, 'admin_login', datetime('now', '+10 minutes'), 0, datetime('now'))`
-    ).bind(normalized, otp).run();
+    try {
+      await db.prepare(
+        `UPDATE user_verification_codes SET is_used = 1 WHERE email = ? AND code_type = 'login' AND is_used = 0`
+      ).bind(normalized).run();
+    } catch (e) {
+      console.error("[OTP] storeOtp UPDATE failed:", e);
+      throw e;
+    }
+    try {
+      await db.prepare(
+        `INSERT INTO user_verification_codes (email, code, code_type, expires_at, is_used, created_at)
+                 VALUES (?, ?, 'login', datetime('now', '+10 minutes'), 0, datetime('now'))`
+      ).bind(normalized, otp).run();
+    } catch (e) {
+      console.error("[OTP] storeOtp INSERT failed:", e);
+      throw e;
+    }
   } else {
     const stub = getDO(env);
     const key = otpKey(normalized);
@@ -953,7 +966,7 @@ async function verifyOtp(email, token, env) {
   if (db) {
     const row = await db.prepare(
       `SELECT id, code FROM user_verification_codes
-             WHERE email = ? AND code_type = 'admin_login' AND is_used = 0 AND expires_at > datetime('now')
+             WHERE email = ? AND code_type = 'login' AND is_used = 0 AND expires_at > datetime('now')
              ORDER BY id DESC LIMIT 1`
     ).bind(normalized).first();
     if (!row) return { valid: false, reason: "Code niet gevonden of verlopen \u2014 vraag een nieuwe aan." };
@@ -1015,19 +1028,25 @@ async function sendOtpEmail(email, otp, name, env) {
     console.warn(`[OTP] RESEND_API_KEY not set \u2014 OTP for ${email}: ${otp}`);
     return;
   }
-  const res = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${resendApiKey}`,
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      from: "Nexus CRM <noreply@the-pot.nl>",
-      to: [email],
-      subject: `${otp} \u2014 Uw inlogcode voor Nexus CRM`,
-      html
-    })
-  });
+  let res;
+  try {
+    res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${resendApiKey}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        from: "Nexus CRM <noreply@the-pot.nl>",
+        to: [email],
+        subject: `${otp} \u2014 Uw inlogcode voor Nexus CRM`,
+        html
+      })
+    });
+  } catch (fetchErr) {
+    console.error("[OTP] fetch to Resend threw:", fetchErr);
+    throw fetchErr;
+  }
   if (!res.ok) {
     console.error("[OTP] Email send failed:", await res.text());
   }
@@ -1186,67 +1205,81 @@ function userRoutes(app) {
     return new Response(null, { status: 302, headers });
   });
   app.post("/api/auth/otp/request", async (c) => {
-    const ip = getClientIp(c.req.raw);
-    if (await isIpBlocked(ip, c.env)) {
-      return c.json({ success: false, error: "IP blocked." }, 403);
-    }
-    let email;
     try {
-      const body = await c.req.json();
-      email = (body.email ?? "").trim().toLowerCase();
-    } catch {
-      return bad(c, "Ongeldig verzoek");
-    }
-    if (!email || !/^[^@]+@[^@]+\.[^@]+$/.test(email)) {
-      return bad(c, "Voer een geldig e-mailadres in.");
-    }
-    const adminExists = await isAdminEmail(email, c.env);
-    if (adminExists) {
-      const adminUser = await getAdminUser(email, c.env);
-      const name = adminUser?.name ?? email;
-      const otp = await storeOtp(email, c.env);
-      await sendOtpEmail(email, otp, name, c.env);
-    }
-    return c.json({ success: true, message: "Als dit e-mailadres bekend is, ontvangt u een code." });
-  });
-  app.post("/api/auth/otp/verify", async (c) => {
-    const ip = getClientIp(c.req.raw);
-    if (await isIpBlocked(ip, c.env)) {
-      return c.json({ success: false, error: "IP blocked." }, 403);
-    }
-    let email, token;
-    try {
-      const body = await c.req.json();
-      email = (body.email ?? "").trim().toLowerCase();
-      token = (body.token ?? "").trim();
-    } catch {
-      return bad(c, "Ongeldig verzoek");
-    }
-    if (!email || !token) return bad(c, "E-mailadres en code zijn verplicht.");
-    const result = await verifyOtp(email, token, c.env);
-    if (!result.valid) {
-      const ua = c.req.header("User-Agent") ?? "";
-      const { blocked } = await recordFailedAttempt(ip, ua, c.env);
-      const msg = blocked ? "IP blocked after too many failed attempts." : result.reason ?? "Ongeldige code.";
-      return c.json({ success: false, error: msg }, 401);
-    }
-    await clearAttempts(ip, c.env);
-    const adminUser = await getAdminUser(email, c.env);
-    const name = adminUser?.name ?? email;
-    const sessionToken = await createOtpSession(email, name, c.env);
-    const isProduction = !getAuthConfig(c.env).devMode;
-    const cookieFlags = isProduction ? "; Secure" : "";
-    const cookieValue = `nexus_session=${sessionToken}; Path=/; Max-Age=${8 * 3600}; SameSite=Lax; HttpOnly${cookieFlags}`;
-    return new Response(
-      JSON.stringify({ success: true, data: { email, name, sub: email } }),
-      {
-        status: 200,
-        headers: {
-          "Content-Type": "application/json",
-          "Set-Cookie": cookieValue
+      const ip = getClientIp(c.req.raw);
+      if (await isIpBlocked(ip, c.env)) {
+        return c.json({ success: false, error: "IP blocked." }, 403);
+      }
+      let email;
+      try {
+        const body = await c.req.json();
+        email = (body.email ?? "").trim().toLowerCase();
+      } catch {
+        return bad(c, "Ongeldig verzoek");
+      }
+      if (!email || !/^[^@]+@[^@]+\.[^@]+$/.test(email)) {
+        return bad(c, "Voer een geldig e-mailadres in.");
+      }
+      const adminExists = await isAdminEmail(email, c.env);
+      if (adminExists) {
+        const adminUser = await getAdminUser(email, c.env);
+        const name = adminUser?.name ?? email;
+        const otp = await storeOtp(email, c.env);
+        try {
+          await sendOtpEmail(email, otp, name, c.env);
+        } catch (emailErr) {
+          console.error("[OTP] sendOtpEmail threw:", emailErr);
         }
       }
-    );
+      return c.json({ success: true, message: "Als dit e-mailadres bekend is, ontvangt u een code." });
+    } catch (err) {
+      console.error("[OTP] /api/auth/otp/request error:", err instanceof Error ? err.message : String(err), err);
+      return c.json({ success: true, message: "Als dit e-mailadres bekend is, ontvangt u een code." });
+    }
+  });
+  app.post("/api/auth/otp/verify", async (c) => {
+    try {
+      const ip = getClientIp(c.req.raw);
+      if (await isIpBlocked(ip, c.env)) {
+        return c.json({ success: false, error: "IP blocked." }, 403);
+      }
+      let email, token;
+      try {
+        const body = await c.req.json();
+        email = (body.email ?? "").trim().toLowerCase();
+        token = (body.token ?? "").trim();
+      } catch {
+        return bad(c, "Ongeldig verzoek");
+      }
+      if (!email || !token) return bad(c, "E-mailadres en code zijn verplicht.");
+      const result = await verifyOtp(email, token, c.env);
+      if (!result.valid) {
+        const ua = c.req.header("User-Agent") ?? "";
+        const { blocked } = await recordFailedAttempt(ip, ua, c.env);
+        const msg = blocked ? "IP blocked after too many failed attempts." : result.reason ?? "Ongeldige code.";
+        return c.json({ success: false, error: msg }, 401);
+      }
+      await clearAttempts(ip, c.env);
+      const adminUser = await getAdminUser(email, c.env);
+      const name = adminUser?.name ?? email;
+      const sessionToken = await createOtpSession(email, name, c.env);
+      const isProduction = !getAuthConfig(c.env).devMode;
+      const cookieFlags = isProduction ? "; Secure" : "";
+      const cookieValue = `nexus_session=${sessionToken}; Path=/; Max-Age=${8 * 3600}; SameSite=Lax; HttpOnly${cookieFlags}`;
+      return new Response(
+        JSON.stringify({ success: true, data: { email, name, sub: email } }),
+        {
+          status: 200,
+          headers: {
+            "Content-Type": "application/json",
+            "Set-Cookie": cookieValue
+          }
+        }
+      );
+    } catch (err) {
+      console.error("[OTP] /api/auth/otp/verify error:", err instanceof Error ? err.message : String(err), err);
+      return c.json({ success: false, error: "Er is een interne fout opgetreden. Probeer het opnieuw." }, 500);
+    }
   });
   app.get("/api/auth/admin-users", async (c) => {
     const users = await listAdminUsers(c.env);
