@@ -529,7 +529,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         status TEXT NOT NULL DEFAULT 'active',
         updated_at TEXT,
         updated_by TEXT
-      )`).run().catch(() => {});
+      )`).run().catch(() => { });
       const row = await db.prepare(
         `SELECT * FROM admin_localization_settings WHERE admin_email = ?`
       ).bind(authUser.email.toLowerCase()).first<any>();
@@ -575,7 +575,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         status TEXT NOT NULL DEFAULT 'active',
         updated_at TEXT,
         updated_by TEXT
-      )`).run().catch(() => {});
+      )`).run().catch(() => { });
       const email = authUser.email.toLowerCase();
       await db.prepare(`
         INSERT INTO admin_localization_settings
@@ -706,15 +706,27 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     const page = Number(c.req.query('page') ?? 1);
     const limit = Number(c.req.query('limit') ?? 50);
     const offset = (page - 1) * limit;
+    const userId = c.req.query('user_id');
     const [rows, total] = await Promise.all([
-      db.prepare(`
-        SELECT g.*, u.email as user_email, u.first_name as user_first_name, u.last_name as user_last_name,
-          (SELECT COUNT(*) FROM game_rounds gr WHERE gr.game_id = g.id) as round_count
-        FROM games g
-        LEFT JOIN users u ON u.id = g.user_id
-        ORDER BY g.id DESC LIMIT ? OFFSET ?
-      `).bind(limit, offset).all(),
-      db.prepare('SELECT COUNT(*) as cnt FROM games').first<{ cnt: number }>(),
+      userId
+        ? db.prepare(`
+            SELECT g.*, u.email as user_email, u.first_name as user_first_name, u.last_name as user_last_name,
+              (SELECT COUNT(*) FROM game_rounds gr WHERE gr.game_id = g.id) as round_count
+            FROM games g
+            LEFT JOIN users u ON u.id = g.user_id
+            WHERE g.user_id = ?
+            ORDER BY g.id DESC LIMIT ? OFFSET ?
+          `).bind(userId, limit, offset).all()
+        : db.prepare(`
+            SELECT g.*, u.email as user_email, u.first_name as user_first_name, u.last_name as user_last_name,
+              (SELECT COUNT(*) FROM game_rounds gr WHERE gr.game_id = g.id) as round_count
+            FROM games g
+            LEFT JOIN users u ON u.id = g.user_id
+            ORDER BY g.id DESC LIMIT ? OFFSET ?
+          `).bind(limit, offset).all(),
+      userId
+        ? db.prepare('SELECT COUNT(*) as cnt FROM games WHERE user_id = ?').bind(userId).first<{ cnt: number }>()
+        : db.prepare('SELECT COUNT(*) as cnt FROM games').first<{ cnt: number }>(),
     ]);
     return ok(c, { items: rows.results, total: total?.cnt ?? 0, page, limit });
   });
@@ -722,16 +734,47 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
   app.get('/api/thepot/games/:id', async (c) => {
     const db = getDb(c);
     if (!db) return notFound(c, 'Not available in this environment');
+    const gameId = c.req.param('id');
     const [game, teams, rounds] = await Promise.all([
       db.prepare(`
         SELECT g.*, u.email as user_email, u.first_name as user_first_name, u.last_name as user_last_name
         FROM games g LEFT JOIN users u ON u.id = g.user_id WHERE g.id=?
-      `).bind(c.req.param('id')).first(),
-      db.prepare('SELECT * FROM game_teams WHERE game_id=? ORDER BY team_index').bind(c.req.param('id')).all(),
-      db.prepare('SELECT * FROM game_rounds WHERE game_id=? ORDER BY round_number').bind(c.req.param('id')).all(),
+      `).bind(gameId).first(),
+      db.prepare('SELECT * FROM game_teams WHERE game_id=? ORDER BY team_index').bind(gameId).all(),
+      db.prepare('SELECT * FROM game_rounds WHERE game_id=? ORDER BY round_number').bind(gameId).all(),
     ]);
     if (!game) return notFound(c);
-    return ok(c, { ...game as object, teams: teams.results, rounds: rounds.results });
+
+    // Enrich rounds: compute duration if started_at/ended_at columns exist
+    const enrichedRounds = (rounds.results as any[]).map((r: any) => ({
+      ...r,
+      duration_ms: (r.started_at && r.ended_at)
+        ? new Date(r.ended_at).getTime() - new Date(r.started_at).getTime()
+        : null,
+    }));
+
+    // Try to fetch players per team (gracefully handles missing table)
+    let teamPlayers: any[] = [];
+    try {
+      const teamIds = (teams.results as any[]).map((t: any) => t.id).filter(Boolean);
+      if (teamIds.length > 0) {
+        const placeholders = teamIds.map(() => '?').join(',');
+        const playerRows = await db.prepare(
+          `SELECT tp.team_id, tp.user_id, u.first_name, u.last_name, u.email, u.profile_image
+           FROM team_players tp
+           LEFT JOIN users u ON u.id = tp.user_id
+           WHERE tp.team_id IN (${placeholders})`
+        ).bind(...teamIds).all();
+        teamPlayers = playerRows.results;
+      }
+    } catch { /* team_players table may not exist in this schema */ }
+
+    const teamsWithPlayers = (teams.results as any[]).map((team: any) => ({
+      ...team,
+      players: teamPlayers.filter((p: any) => p.team_id === team.id),
+    }));
+
+    return ok(c, { ...game as object, teams: teamsWithPlayers, rounds: enrichedRounds });
   });
 
   app.delete('/api/thepot/games/:id', async (c) => {

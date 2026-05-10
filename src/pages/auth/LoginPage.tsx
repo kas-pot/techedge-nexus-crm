@@ -9,12 +9,12 @@ import { Separator } from '@/components/ui/separator';
 import { Shield, Zap, Lock, Mail, ArrowRight, Loader2, AlertCircle } from 'lucide-react';
 
 const OAUTH_ERRORS: Record<string, string> = {
-  google_not_configured: 'Google OAuth is nog niet geconfigureerd. Gebruik e-mail inloggen.',
-  google_cancelled: 'Google aanmelding geannuleerd.',
-  google_token_failed: 'Google authenticatie mislukt. Probeer het opnieuw.',
-  google_no_email: 'Geen e-mailadres ontvangen van Google.',
-  google_error: 'Er is een fout opgetreden met Google aanmelden.',
-  not_authorized: 'Dit account heeft geen toegang tot Nexus CRM.',
+    google_not_configured: 'Google OAuth is nog niet geconfigureerd. Gebruik e-mail inloggen.',
+    google_cancelled: 'Google aanmelding geannuleerd.',
+    google_token_failed: 'Google authenticatie mislukt. Probeer het opnieuw.',
+    google_no_email: 'Geen e-mailadres ontvangen van Google.',
+    google_error: 'Er is een fout opgetreden met Google aanmelden.',
+    not_authorized: 'Dit account heeft geen toegang tot Nexus CRM.',
 };
 
 export function LoginPage() {

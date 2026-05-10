@@ -1672,31 +1672,63 @@ function userRoutes(app) {
     const page = Number(c.req.query("page") ?? 1);
     const limit = Number(c.req.query("limit") ?? 50);
     const offset = (page - 1) * limit;
+    const userId = c.req.query("user_id");
     const [rows, total] = await Promise.all([
-      db.prepare(`
-        SELECT g.*, u.email as user_email, u.first_name as user_first_name, u.last_name as user_last_name,
-          (SELECT COUNT(*) FROM game_rounds gr WHERE gr.game_id = g.id) as round_count
-        FROM games g
-        LEFT JOIN users u ON u.id = g.user_id
-        ORDER BY g.id DESC LIMIT ? OFFSET ?
-      `).bind(limit, offset).all(),
-      db.prepare("SELECT COUNT(*) as cnt FROM games").first()
+      userId ? db.prepare(`
+            SELECT g.*, u.email as user_email, u.first_name as user_first_name, u.last_name as user_last_name,
+              (SELECT COUNT(*) FROM game_rounds gr WHERE gr.game_id = g.id) as round_count
+            FROM games g
+            LEFT JOIN users u ON u.id = g.user_id
+            WHERE g.user_id = ?
+            ORDER BY g.id DESC LIMIT ? OFFSET ?
+          `).bind(userId, limit, offset).all() : db.prepare(`
+            SELECT g.*, u.email as user_email, u.first_name as user_first_name, u.last_name as user_last_name,
+              (SELECT COUNT(*) FROM game_rounds gr WHERE gr.game_id = g.id) as round_count
+            FROM games g
+            LEFT JOIN users u ON u.id = g.user_id
+            ORDER BY g.id DESC LIMIT ? OFFSET ?
+          `).bind(limit, offset).all(),
+      userId ? db.prepare("SELECT COUNT(*) as cnt FROM games WHERE user_id = ?").bind(userId).first() : db.prepare("SELECT COUNT(*) as cnt FROM games").first()
     ]);
     return ok(c, { items: rows.results, total: total?.cnt ?? 0, page, limit });
   });
   app.get("/api/thepot/games/:id", async (c) => {
     const db = getDb(c);
     if (!db) return notFound(c, "Not available in this environment");
+    const gameId = c.req.param("id");
     const [game, teams, rounds] = await Promise.all([
       db.prepare(`
         SELECT g.*, u.email as user_email, u.first_name as user_first_name, u.last_name as user_last_name
         FROM games g LEFT JOIN users u ON u.id = g.user_id WHERE g.id=?
-      `).bind(c.req.param("id")).first(),
-      db.prepare("SELECT * FROM game_teams WHERE game_id=? ORDER BY team_index").bind(c.req.param("id")).all(),
-      db.prepare("SELECT * FROM game_rounds WHERE game_id=? ORDER BY round_number").bind(c.req.param("id")).all()
+      `).bind(gameId).first(),
+      db.prepare("SELECT * FROM game_teams WHERE game_id=? ORDER BY team_index").bind(gameId).all(),
+      db.prepare("SELECT * FROM game_rounds WHERE game_id=? ORDER BY round_number").bind(gameId).all()
     ]);
     if (!game) return notFound(c);
-    return ok(c, { ...game, teams: teams.results, rounds: rounds.results });
+    const enrichedRounds = rounds.results.map((r) => ({
+      ...r,
+      duration_ms: r.started_at && r.ended_at ? new Date(r.ended_at).getTime() - new Date(r.started_at).getTime() : null
+    }));
+    let teamPlayers = [];
+    try {
+      const teamIds = teams.results.map((t) => t.id).filter(Boolean);
+      if (teamIds.length > 0) {
+        const placeholders = teamIds.map(() => "?").join(",");
+        const playerRows = await db.prepare(
+          `SELECT tp.team_id, tp.user_id, u.first_name, u.last_name, u.email, u.profile_image
+           FROM team_players tp
+           LEFT JOIN users u ON u.id = tp.user_id
+           WHERE tp.team_id IN (${placeholders})`
+        ).bind(...teamIds).all();
+        teamPlayers = playerRows.results;
+      }
+    } catch {
+    }
+    const teamsWithPlayers = teams.results.map((team) => ({
+      ...team,
+      players: teamPlayers.filter((p) => p.team_id === team.id)
+    }));
+    return ok(c, { ...game, teams: teamsWithPlayers, rounds: enrichedRounds });
   });
   app.delete("/api/thepot/games/:id", async (c) => {
     const db = getDb(c);

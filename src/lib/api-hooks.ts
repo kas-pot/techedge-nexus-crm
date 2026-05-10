@@ -238,9 +238,13 @@ export const usePotUserMutations = () => {
   return { create, update, deactivate };
 };
 
-export const usePotGames = (page = 1) => useQuery({
-  queryKey: ['pot-games', page],
-  queryFn: () => api<PotListResponse<ThePotGame>>(`/api/thepot/games?page=${page}&limit=50`),
+export const usePotGames = (page = 1, userId?: number | null) => useQuery({
+  queryKey: ['pot-games', page, userId ?? null],
+  queryFn: () => {
+    const params = new URLSearchParams({ page: String(page), limit: '50' });
+    if (userId) params.set('user_id', String(userId));
+    return api<PotListResponse<ThePotGame>>(`/api/thepot/games?${params}`);
+  },
   staleTime: 10 * 1000,
 });
 
