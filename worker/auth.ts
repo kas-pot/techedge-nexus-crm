@@ -393,28 +393,44 @@ export async function listAdminUsers(
 
 /**
  * Store a freshly generated OTP for the given email.
+ * Uses D1 user_verification_codes table when available; falls back to Durable Object in local dev.
  * Returns the OTP so the caller can email it.
  */
 export async function storeOtp(email: string, env: Env): Promise<string> {
     const otp = generateOtp();
     const normalized = email.toLowerCase().trim();
-    const stub = getDO(env);
-    const key = otpKey(normalized);
-    const existing = await stub.getDoc<any>(key);
-    // CAS retry loop
-    for (let i = 0; i < 5; i++) {
-        const result = await stub.casPut(key, existing?.v ?? 0, {
-            otp,
-            createdAt: Date.now(),
-            attempts: 0,
-        });
-        if (result.ok) break;
+    const db = (env as any).THEPOT_DB as D1Database | undefined;
+
+    if (db) {
+        // Invalidate any previous unused codes for this email first (only one active code at a time)
+        await db.prepare(
+            `UPDATE user_verification_codes SET is_used = 1 WHERE email = ? AND code_type = 'admin_login' AND is_used = 0`,
+        ).bind(normalized).run();
+        // Insert the new OTP; expires_at is computed by SQLite so timezone is always UTC
+        await db.prepare(
+            `INSERT INTO user_verification_codes (email, code, code_type, expires_at, is_used, created_at)
+             VALUES (?, ?, 'admin_login', datetime('now', '+10 minutes'), 0, datetime('now'))`,
+        ).bind(normalized, otp).run();
+    } else {
+        // Fallback: Durable Object (local dev without D1 binding)
+        const stub = getDO(env);
+        const key = otpKey(normalized);
+        const existing = await stub.getDoc<any>(key);
+        for (let i = 0; i < 5; i++) {
+            const result = await stub.casPut(key, existing?.v ?? 0, {
+                otp,
+                createdAt: Date.now(),
+                attempts: 0,
+            });
+            if (result.ok) break;
+        }
     }
     return otp;
 }
 
 /**
  * Verify a submitted OTP token against the stored one.
+ * Uses D1 user_verification_codes table when available; falls back to Durable Object in local dev.
  * Returns { valid, reason } — invalid attempts also count toward IP blocking.
  */
 export async function verifyOtp(
@@ -423,38 +439,58 @@ export async function verifyOtp(
     env: Env,
 ): Promise<{ valid: boolean; reason?: string }> {
     const normalized = email.toLowerCase().trim();
-    const stub = getDO(env);
-    const key = otpKey(normalized);
-    const doc = await stub.getDoc<{ otp: string; createdAt: number; attempts: number }>(key);
+    const db = (env as any).THEPOT_DB as D1Database | undefined;
 
-    if (!doc) return { valid: false, reason: 'Geen actieve code — vraag een nieuwe aan.' };
+    if (db) {
+        // Look up the most recent valid (unused, non-expired) code for this email
+        const row = await db.prepare(
+            `SELECT id, code FROM user_verification_codes
+             WHERE email = ? AND code_type = 'admin_login' AND is_used = 0 AND expires_at > datetime('now')
+             ORDER BY id DESC LIMIT 1`,
+        ).bind(normalized).first<{ id: number; code: string }>();
 
-    const { otp, createdAt, attempts } = doc.data;
+        if (!row) return { valid: false, reason: 'Code niet gevonden of verlopen — vraag een nieuwe aan.' };
+        if (row.code !== token.trim()) return { valid: false, reason: 'Ongeldige code.' };
 
-    if (Date.now() - createdAt > OTP_TTL_MS) {
-        await stub.del(key);
-        return { valid: false, reason: 'Code verlopen — vraag een nieuwe aan.' };
-    }
+        // Mark as used (single-use)
+        await db.prepare(
+            `UPDATE user_verification_codes SET is_used = 1, used_at = datetime('now') WHERE id = ?`,
+        ).bind(row.id).run();
 
-    if (attempts >= 5) {
-        await stub.del(key);
-        return { valid: false, reason: 'Te veel pogingen — vraag een nieuwe code aan.' };
-    }
+        return { valid: true };
+    } else {
+        // Fallback: Durable Object (local dev without D1 binding)
+        const stub = getDO(env);
+        const key = otpKey(normalized);
+        const doc = await stub.getDoc<{ otp: string; createdAt: number; attempts: number }>(key);
 
-    if (token.trim() !== otp) {
-        // Increment attempt counter
-        for (let i = 0; i < 5; i++) {
-            const fresh = await stub.getDoc<{ otp: string; createdAt: number; attempts: number }>(key);
-            if (!fresh) break;
-            const res = await stub.casPut(key, fresh.v, { ...fresh.data, attempts: fresh.data.attempts + 1 });
-            if (res.ok) break;
+        if (!doc) return { valid: false, reason: 'Geen actieve code — vraag een nieuwe aan.' };
+
+        const { otp, createdAt, attempts } = doc.data;
+
+        if (Date.now() - createdAt > OTP_TTL_MS) {
+            await stub.del(key);
+            return { valid: false, reason: 'Code verlopen — vraag een nieuwe aan.' };
         }
-        return { valid: false, reason: 'Ongeldige code.' };
-    }
 
-    // Valid — delete OTP immediately (single-use)
-    await stub.del(key);
-    return { valid: true };
+        if (attempts >= 5) {
+            await stub.del(key);
+            return { valid: false, reason: 'Te veel pogingen — vraag een nieuwe code aan.' };
+        }
+
+        if (token.trim() !== otp) {
+            for (let i = 0; i < 5; i++) {
+                const fresh = await stub.getDoc<{ otp: string; createdAt: number; attempts: number }>(key);
+                if (!fresh) break;
+                const res = await stub.casPut(key, fresh.v, { ...fresh.data, attempts: fresh.data.attempts + 1 });
+                if (res.ok) break;
+            }
+            return { valid: false, reason: 'Ongeldige code.' };
+        }
+
+        await stub.del(key);
+        return { valid: true };
+    }
 }
 
 /**
