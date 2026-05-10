@@ -200,36 +200,47 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
    * success (to avoid email enumeration). Only sends OTP to known admins.
    */
   app.post('/api/auth/otp/request', async (c) => {
-    const ip = getClientIp(c.req.raw);
-
-    if (await isIpBlocked(ip, c.env)) {
-      return c.json({ success: false, error: 'IP blocked.' }, 403);
-    }
-
-    let email: string;
     try {
-      const body = await c.req.json<{ email?: string }>();
-      email = (body.email ?? '').trim().toLowerCase();
-    } catch {
-      return bad(c, 'Ongeldig verzoek');
-    }
+      const ip = getClientIp(c.req.raw);
 
-    if (!email || !/^[^@]+@[^@]+\.[^@]+$/.test(email)) {
-      return bad(c, 'Voer een geldig e-mailadres in.');
-    }
+      if (await isIpBlocked(ip, c.env)) {
+        return c.json({ success: false, error: 'IP blocked.' }, 403);
+      }
 
-    // Security: always return the same generic response regardless of whether
-    // the email exists — prevents email enumeration attacks.
-    const adminExists = await isAdminEmail(email, c.env);
-    if (adminExists) {
-      const adminUser = await getAdminUser(email, c.env);
-      const name = adminUser?.name ?? email;
-      const otp = await storeOtp(email, c.env);
-      await sendOtpEmail(email, otp, name, c.env);
-    }
+      let email: string;
+      try {
+        const body = await c.req.json<{ email?: string }>();
+        email = (body.email ?? '').trim().toLowerCase();
+      } catch {
+        return bad(c, 'Ongeldig verzoek');
+      }
 
-    // Always return 200 to prevent email enumeration
-    return c.json({ success: true, message: 'Als dit e-mailadres bekend is, ontvangt u een code.' });
+      if (!email || !/^[^@]+@[^@]+\.[^@]+$/.test(email)) {
+        return bad(c, 'Voer een geldig e-mailadres in.');
+      }
+
+      // Security: always return the same generic response regardless of whether
+      // the email exists — prevents email enumeration attacks.
+      const adminExists = await isAdminEmail(email, c.env);
+      if (adminExists) {
+        const adminUser = await getAdminUser(email, c.env);
+        const name = adminUser?.name ?? email;
+        const otp = await storeOtp(email, c.env);
+        // Email failures are isolated — OTP is already stored in D1 even if send fails
+        try {
+          await sendOtpEmail(email, otp, name, c.env);
+        } catch (emailErr) {
+          console.error('[OTP] sendOtpEmail threw:', emailErr);
+        }
+      }
+
+      // Always return 200 to prevent email enumeration
+      return c.json({ success: true, message: 'Als dit e-mailadres bekend is, ontvangt u een code.' });
+    } catch (err) {
+      console.error('[OTP] /api/auth/otp/request error:', err instanceof Error ? err.message : String(err), err);
+      // Still return 200 to prevent enumeration — but error is now in wrangler tail
+      return c.json({ success: true, message: 'Als dit e-mailadres bekend is, ontvangt u een code.' });
+    }
   });
 
   /**
@@ -238,58 +249,63 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
    * On success sets a nexus_session cookie and returns the AuthUser.
    */
   app.post('/api/auth/otp/verify', async (c) => {
-    const ip = getClientIp(c.req.raw);
-
-    if (await isIpBlocked(ip, c.env)) {
-      return c.json({ success: false, error: 'IP blocked.' }, 403);
-    }
-
-    let email: string, token: string;
     try {
-      const body = await c.req.json<{ email?: string; token?: string }>();
-      email = (body.email ?? '').trim().toLowerCase();
-      token = (body.token ?? '').trim();
-    } catch {
-      return bad(c, 'Ongeldig verzoek');
-    }
+      const ip = getClientIp(c.req.raw);
 
-    if (!email || !token) return bad(c, 'E-mailadres en code zijn verplicht.');
+      if (await isIpBlocked(ip, c.env)) {
+        return c.json({ success: false, error: 'IP blocked.' }, 403);
+      }
 
-    const result = await verifyOtp(email, token, c.env);
-    if (!result.valid) {
-      // Count as failed attempt toward IP blocking
-      const ua = c.req.header('User-Agent') ?? '';
-      const { blocked } = await recordFailedAttempt(ip, ua, c.env);
-      const msg = blocked
-        ? 'IP blocked after too many failed attempts.'
-        : (result.reason ?? 'Ongeldige code.');
-      return c.json({ success: false, error: msg }, 401);
-    }
+      let email: string, token: string;
+      try {
+        const body = await c.req.json<{ email?: string; token?: string }>();
+        email = (body.email ?? '').trim().toLowerCase();
+        token = (body.token ?? '').trim();
+      } catch {
+        return bad(c, 'Ongeldig verzoek');
+      }
 
-    // Clear failure counter on success
-    await clearAttempts(ip, c.env);
+      if (!email || !token) return bad(c, 'E-mailadres en code zijn verplicht.');
 
-    // Look up the admin user info
-    const adminUser = await getAdminUser(email, c.env);
-    const name = adminUser?.name ?? email;
+      const result = await verifyOtp(email, token, c.env);
+      if (!result.valid) {
+        // Count as failed attempt toward IP blocking
+        const ua = c.req.header('User-Agent') ?? '';
+        const { blocked } = await recordFailedAttempt(ip, ua, c.env);
+        const msg = blocked
+          ? 'IP blocked after too many failed attempts.'
+          : (result.reason ?? 'Ongeldige code.');
+        return c.json({ success: false, error: msg }, 401);
+      }
 
-    // Create session
-    const sessionToken = await createOtpSession(email, name, c.env);
+      // Clear failure counter on success
+      await clearAttempts(ip, c.env);
 
-    const isProduction = !getAuthConfig(c.env).devMode;
-    const cookieFlags = isProduction ? '; Secure' : '';
-    const cookieValue = `nexus_session=${sessionToken}; Path=/; Max-Age=${8 * 3600}; SameSite=Lax; HttpOnly${cookieFlags}`;
+      // Look up the admin user info
+      const adminUser = await getAdminUser(email, c.env);
+      const name = adminUser?.name ?? email;
 
-    return new Response(
-      JSON.stringify({ success: true, data: { email, name, sub: email } }),
-      {
-        status: 200,
-        headers: {
-          'Content-Type': 'application/json',
-          'Set-Cookie': cookieValue,
+      // Create session
+      const sessionToken = await createOtpSession(email, name, c.env);
+
+      const isProduction = !getAuthConfig(c.env).devMode;
+      const cookieFlags = isProduction ? '; Secure' : '';
+      const cookieValue = `nexus_session=${sessionToken}; Path=/; Max-Age=${8 * 3600}; SameSite=Lax; HttpOnly${cookieFlags}`;
+
+      return new Response(
+        JSON.stringify({ success: true, data: { email, name, sub: email } }),
+        {
+          status: 200,
+          headers: {
+            'Content-Type': 'application/json',
+            'Set-Cookie': cookieValue,
+          },
         },
-      },
-    );
+      );
+    } catch (err) {
+      console.error('[OTP] /api/auth/otp/verify error:', err instanceof Error ? err.message : String(err), err);
+      return c.json({ success: false, error: 'Er is een interne fout opgetreden. Probeer het opnieuw.' }, 500);
+    }
   });
 
   /**

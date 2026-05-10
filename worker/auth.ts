@@ -403,14 +403,24 @@ export async function storeOtp(email: string, env: Env): Promise<string> {
 
     if (db) {
         // Invalidate any previous unused codes for this email first (only one active code at a time)
-        await db.prepare(
-            `UPDATE user_verification_codes SET is_used = 1 WHERE email = ? AND code_type = 'admin_login' AND is_used = 0`,
-        ).bind(normalized).run();
+        try {
+            await db.prepare(
+                `UPDATE user_verification_codes SET is_used = 1 WHERE email = ? AND code_type = 'admin_login' AND is_used = 0`,
+            ).bind(normalized).run();
+        } catch (e) {
+            console.error('[OTP] storeOtp UPDATE failed:', e);
+            throw e;
+        }
         // Insert the new OTP; expires_at is computed by SQLite so timezone is always UTC
-        await db.prepare(
-            `INSERT INTO user_verification_codes (email, code, code_type, expires_at, is_used, created_at)
-             VALUES (?, ?, 'admin_login', datetime('now', '+10 minutes'), 0, datetime('now'))`,
-        ).bind(normalized, otp).run();
+        try {
+            await db.prepare(
+                `INSERT INTO user_verification_codes (email, code, code_type, expires_at, is_used, created_at)
+                 VALUES (?, ?, 'admin_login', datetime('now', '+10 minutes'), 0, datetime('now'))`,
+            ).bind(normalized, otp).run();
+        } catch (e) {
+            console.error('[OTP] storeOtp INSERT failed:', e);
+            throw e;
+        }
     } else {
         // Fallback: Durable Object (local dev without D1 binding)
         const stub = getDO(env);
@@ -526,19 +536,25 @@ export async function sendOtpEmail(email: string, otp: string, name: string, env
         return;
     }
 
-    const res = await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: {
-            Authorization: `Bearer ${resendApiKey}`,
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            from: 'Nexus CRM <noreply@the-pot.nl>',
-            to: [email],
-            subject: `${otp} — Uw inlogcode voor Nexus CRM`,
-            html,
-        }),
-    });
+    let res: Response;
+    try {
+        res = await fetch('https://api.resend.com/emails', {
+            method: 'POST',
+            headers: {
+                Authorization: `Bearer ${resendApiKey}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                from: 'Nexus CRM <noreply@the-pot.nl>',
+                to: [email],
+                subject: `${otp} — Uw inlogcode voor Nexus CRM`,
+                html,
+            }),
+        });
+    } catch (fetchErr) {
+        console.error('[OTP] fetch to Resend threw:', fetchErr);
+        throw fetchErr;
+    }
 
     if (!res.ok) {
         console.error('[OTP] Email send failed:', await res.text());
