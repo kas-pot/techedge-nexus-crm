@@ -245,7 +245,7 @@ export function MemberListPage() {
             <form onSubmit={handleCreate}>
               <DialogHeader>
                 <DialogTitle>Register Member</DialogTitle>
-                <DialogDescription>Manually add a member to the Nexus ecosystem.</DialogDescription>
+                <DialogDescription>Manually add a member to the TechEdge Nexus ecosystem.</DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-6">
                 <div className="grid gap-2">

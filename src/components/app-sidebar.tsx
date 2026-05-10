@@ -131,7 +131,7 @@ export function AppSidebar(): JSX.Element {
       <SidebarHeader className="h-16 flex items-center px-4">
         <div className="flex items-center gap-3">
           <div className="h-8 w-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white font-bold shrink-0">N</div>
-          <span className="font-bold text-lg tracking-tight group-data-[collapsible=icon]:hidden whitespace-nowrap">Nexus <span className="text-indigo-600">CRM</span></span>
+          <span className="font-bold text-lg tracking-tight group-data-[collapsible=icon]:hidden whitespace-nowrap">TechEdge <span className="text-indigo-600">Nexus</span></span>
         </div>
       </SidebarHeader>
       <SidebarContent>

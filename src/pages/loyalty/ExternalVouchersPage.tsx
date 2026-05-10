@@ -31,7 +31,7 @@ export function ExternalVouchersPage() {
       if (syncIntervalRef.current) clearInterval(syncIntervalRef.current);
     };
   }, []);
-  const externalVouchers = (data?.items || []).filter(v => 
+  const externalVouchers = (data?.items || []).filter(v =>
     v.isExternal && v.title.toLowerCase().includes(search.toLowerCase())
   );
   const partners = partnersData?.items || [];
@@ -172,7 +172,7 @@ export function ExternalVouchersPage() {
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
               <DialogTitle>Partner Reward Import</DialogTitle>
-              <DialogDescription>Select a partner ecosystem to synchronize available rewards into Nexus CRM.</DialogDescription>
+              <DialogDescription>Select a partner ecosystem to synchronize available rewards into TechEdge Nexus.</DialogDescription>
             </DialogHeader>
             <div className="space-y-6 py-4">
               <div className="space-y-2">

@@ -129,7 +129,7 @@ export function SettingsPage() {
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center border-b pb-8 gap-4">
           <div className="space-y-1">
             <h1 className="text-4xl font-black tracking-tighter">System Mastery</h1>
-            <p className="text-muted-foreground font-medium">Enterprise controls for the Nexus CRM mobile experience.</p>
+            <p className="text-muted-foreground font-medium">Enterprise controls for the TechEdge Nexus mobile experience.</p>
           </div>
           <Button className="bg-indigo-600 hover:bg-indigo-700 h-11 px-8 rounded-xl shadow-lg font-bold" onClick={() => handleSave(currentTab)}>
             <Save className="mr-2 h-4 w-4" /> Save Configuration
@@ -146,20 +146,20 @@ export function SettingsPage() {
           <div className="flex-1 min-w-0">
             {/* Appearance Tab */}
             <TabsContent value="appearance" className="m-0 space-y-6">
-               <Card className="rounded-3xl border-none shadow-soft overflow-hidden">
-                  <CardHeader className="bg-slate-50/50 border-b"><CardTitle>Global Themes</CardTitle></CardHeader>
-                  <CardContent className="pt-8 space-y-4">
-                    <Label className="font-bold">System Theme</Label>
-                    <Select value={formData.theme} onValueChange={(v) => updateField('theme', v)}>
-                       <SelectTrigger className="h-11"><SelectValue /></SelectTrigger>
-                       <SelectContent>
-                          <SelectItem value="light">Light Mode</SelectItem>
-                          <SelectItem value="dark">Dark Mode</SelectItem>
-                          <SelectItem value="system">Follow System</SelectItem>
-                       </SelectContent>
-                    </Select>
-                  </CardContent>
-               </Card>
+              <Card className="rounded-3xl border-none shadow-soft overflow-hidden">
+                <CardHeader className="bg-slate-50/50 border-b"><CardTitle>Global Themes</CardTitle></CardHeader>
+                <CardContent className="pt-8 space-y-4">
+                  <Label className="font-bold">System Theme</Label>
+                  <Select value={formData.theme} onValueChange={(v) => updateField('theme', v)}>
+                    <SelectTrigger className="h-11"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="light">Light Mode</SelectItem>
+                      <SelectItem value="dark">Dark Mode</SelectItem>
+                      <SelectItem value="system">Follow System</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </CardContent>
+              </Card>
             </TabsContent>
             {/* Localization Tab */}
             <TabsContent value="localization" className="m-0 space-y-6">
@@ -220,11 +220,11 @@ export function SettingsPage() {
                   <div className="flex flex-col items-center gap-4">
                     <Label className="text-xs uppercase font-bold text-muted-foreground">Mobile Preview</Label>
                     <div className="relative w-64 aspect-[9/19] rounded-[3rem] border-[8px] border-slate-900 shadow-2xl overflow-hidden flex items-center justify-center" style={{ backgroundColor: formData.splashBgColor }}>
-                       <img src={formData.splashImageUrl} alt="Splash Logo" className="w-32 h-auto floating" />
-                       <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex items-center gap-2">
-                          <div className="h-4 w-4 rounded-full border-2 border-white/20 border-t-white animate-spin" />
-                          <span className="text-[10px] text-white/50 font-bold tracking-widest">LOADING...</span>
-                       </div>
+                      <img src={formData.splashImageUrl} alt="Splash Logo" className="w-32 h-auto floating" />
+                      <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex items-center gap-2">
+                        <div className="h-4 w-4 rounded-full border-2 border-white/20 border-t-white animate-spin" />
+                        <span className="text-[10px] text-white/50 font-bold tracking-widest">LOADING...</span>
+                      </div>
                     </div>
                   </div>
                 </CardContent>
@@ -254,9 +254,9 @@ export function SettingsPage() {
                             updateField('bannersList', next);
                           }} />
                           <Input placeholder="Subtitle" value={banner.subtitle} onChange={(e) => {
-                             const next = [...formData.bannersList];
-                             next[idx].subtitle = e.target.value;
-                             updateField('bannersList', next);
+                            const next = [...formData.bannersList];
+                            next[idx].subtitle = e.target.value;
+                            updateField('bannersList', next);
                           }} />
                         </div>
                       </div>

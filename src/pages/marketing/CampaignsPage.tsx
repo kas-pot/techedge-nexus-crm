@@ -105,9 +105,9 @@ export function CampaignsPage() {
             </TabsList>
             <div className="relative w-full md:w-72">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <input 
-                placeholder="Search campaigns..." 
-                className="w-full bg-white border border-input rounded-md py-2 pl-9 pr-4 text-sm outline-none focus:ring-2 focus:ring-indigo-500" 
+              <input
+                placeholder="Search campaigns..."
+                className="w-full bg-white border border-input rounded-md py-2 pl-9 pr-4 text-sm outline-none focus:ring-2 focus:ring-indigo-500"
               />
             </div>
           </div>
@@ -286,7 +286,7 @@ export function CampaignsPage() {
                   <div className="h-12 w-12 rounded-full bg-indigo-600 mx-auto flex items-center justify-center">
                     <Bell className="h-6 w-6 text-white" />
                   </div>
-                  <div className="text-white font-bold text-sm">Nexus CRM</div>
+                  <div className="text-white font-bold text-sm">TechEdge Nexus</div>
                   <div className="text-slate-400 text-xs">This is how your message will appear as a push notification to users.</div>
                 </div>
               </div>

@@ -121,13 +121,13 @@ export function PushNotificationsPage() {
                 <AreaChart data={PUSH_ANALYTICS_DATA}>
                   <defs>
                     <linearGradient id="colorOpen" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#4F46E5" stopOpacity={0.3}/>
-                      <stop offset="95%" stopColor="#4F46E5" stopOpacity={0}/>
+                      <stop offset="5%" stopColor="#4F46E5" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="#4F46E5" stopOpacity={0} />
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.1} />
-                  <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{fontSize: 10, fill: '#94a3b8'}} />
-                  <YAxis axisLine={false} tickLine={false} tick={{fontSize: 10, fill: '#94a3b8'}} />
+                  <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#94a3b8' }} />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#94a3b8' }} />
                   <Tooltip contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }} />
                   <Area type="monotone" dataKey="openRate" stroke="#4F46E5" fillOpacity={1} fill="url(#colorOpen)" strokeWidth={3} name="Open Rate %" />
                 </AreaChart>
@@ -188,7 +188,7 @@ export function PushNotificationsPage() {
                   </TableHeader>
                   <TableBody>
                     {isLoading ? (
-                      [1,2,3].map(i => (
+                      [1, 2, 3].map(i => (
                         <TableRow key={i}><TableCell colSpan={5} className="h-16 animate-pulse bg-muted/10" /></TableRow>
                       ))
                     ) : filteredCampaigns.map((c) => (
@@ -248,8 +248,8 @@ export function PushNotificationsPage() {
                     <Label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Grouped Templates</Label>
                     <div className="grid grid-cols-2 gap-3">
                       {TEMPLATES.map((tpl) => (
-                        <Card 
-                          key={tpl.category} 
+                        <Card
+                          key={tpl.category}
                           className="cursor-pointer hover:border-indigo-500 transition-all border-dashed"
                           onClick={() => applyTemplate(tpl)}
                         >
@@ -321,9 +321,9 @@ export function PushNotificationsPage() {
                         </div>
                         <div className="flex items-center gap-3">
                           <span className="text-[10px] font-black uppercase text-muted-foreground">Broadcast</span>
-                          <Switch 
-                            checked={targetType === 'Segmented'} 
-                            onCheckedChange={(checked) => setValue('targetingType', checked ? 'Segmented' : 'Global Broadcast')} 
+                          <Switch
+                            checked={targetType === 'Segmented'}
+                            onCheckedChange={(checked) => setValue('targetingType', checked ? 'Segmented' : 'Global Broadcast')}
                           />
                           <span className="text-[10px] font-black uppercase text-indigo-600">Segmented</span>
                         </div>
@@ -364,7 +364,7 @@ export function PushNotificationsPage() {
                             <div className="flex items-center justify-between mb-2">
                               <div className="flex items-center gap-2">
                                 <div className="h-5 w-5 rounded-lg bg-indigo-600 flex items-center justify-center text-[10px] text-white font-bold">N</div>
-                                <span className="text-[10px] font-bold text-slate-800 uppercase tracking-tight">Nexus CRM</span>
+                                <span className="text-[10px] font-bold text-slate-800 uppercase tracking-tight">TechEdge Nexus</span>
                               </div>
                               <span className="text-[9px] text-slate-500 font-bold">NOW</span>
                             </div>

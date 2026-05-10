@@ -24,7 +24,7 @@ export function PlaceholderPage({ title, category, description }: PlaceholderPag
           )}
           <h1 className="text-3xl font-bold tracking-tight">{title}</h1>
           <p className="text-muted-foreground max-w-md mx-auto">
-            {description || `The ${title} module is currently under active development. This core component of the ${category || 'Nexus CRM'} suite will be available in the next phase.`}
+            {description || `The ${title} module is currently under active development. This core component of the ${category || 'TechEdge Nexus'} suite will be available in the next phase.`}
           </p>
         </div>
         <div className="flex gap-4">

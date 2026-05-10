@@ -58,7 +58,7 @@ export const MOCK_DASHBOARD_STATS = {
 };
 export const MOCK_CAMPAIGNS: Campaign[] = Array.from({ length: 22 }, (_, i) => ({
   id: `camp-${i + 1}`,
-  name: i % 3 === 0 ? `Summer Flash Sale ${Math.floor(i/3) + 1}` : i % 3 === 1 ? `Weekend Points Boost ${Math.floor(i/3) + 1}` : `Exclusive Member Invite ${Math.floor(i/3) + 1}`,
+  name: i % 3 === 0 ? `Summer Flash Sale ${Math.floor(i / 3) + 1}` : i % 3 === 1 ? `Weekend Points Boost ${Math.floor(i / 3) + 1}` : `Exclusive Member Invite ${Math.floor(i / 3) + 1}`,
   startDate: `2024-06-${(i % 15) + 1 < 10 ? '0' : ''}${(i % 15) + 1}`,
   endDate: `2024-07-${(i % 15) + 1 < 10 ? '0' : ''}${(i % 15) + 1}`,
   channel: i % 4 === 0 ? 'push' : i % 4 === 1 ? 'email' : i % 4 === 2 ? 'sms' : 'ads',
@@ -250,15 +250,15 @@ export const MOCK_CONTACT_SETTINGS: ContactSettings = {
   whatsapp: '+628123456789',
   whatsappUrl: 'https://wa.me/628123456789',
   websiteUrl: 'https://amantara.com/',
-  facebookUrl: 'https://facebook.com/nexus.crm',
-  instagramUrl: 'https://instagram.com/nexus.crm'
+  facebookUrl: 'https://facebook.com/techedge.nexus',
+  instagramUrl: 'https://instagram.com/techedge.nexus'
 };
 export const MOCK_TERMS_CONTENT: LegalDocument = {
   id: 'terms',
   title: 'Loyalty Program Terms & Conditions',
   content: `LOYALTY PROGRAM TERMS & CONDITIONS MEMBERSHIP
 1. Acceptance of Terms
-By registering for the Nexus CRM Loyalty Program, members agree to be bound by these terms and conditions.
+By registering for the TechEdge Nexus Loyalty Program, members agree to be bound by these terms and conditions.
 2. Membership Eligibility
 Membership is open to individuals aged 17 and above. Corporations and legal entities are not eligible for individual membership.
 3. Earning Points
@@ -285,8 +285,8 @@ We do not sell your personal data. Data may be shared with authorized partners o
 };
 export const MOCK_WIFI_SETTINGS: WifiSettings = {
   id: 'global',
-  ssid: 'Nexus_Guest_WiFi',
-  password: 'nexus_loyalty_2024',
+  ssid: 'TechEdge_Guest_WiFi',
+  password: 'techedge_loyalty_2024',
   isVisible: true
 };
 export const MOCK_SYSTEM_SETTINGS: SystemSettings = {
@@ -294,11 +294,11 @@ export const MOCK_SYSTEM_SETTINGS: SystemSettings = {
   theme: 'system',
   language: 'English',
   ssoEnabled: true,
-  ssoEntityId: 'nexus-crm-main-id',
-  ssoMetadataUrl: 'https://idp.nexus.com/metadata',
+  ssoEntityId: 'techedge-nexus-main-id',
+  ssoMetadataUrl: 'https://idp.techedge-nexus.com/metadata',
   ocrPrecision: 'high',
-  wifiSsid: 'Nexus_Guest_WiFi',
-  notificationEmail: 'admin@nexus-crm.com',
+  wifiSsid: 'TechEdge_Guest_WiFi',
+  notificationEmail: 'admin@techedge-nexus.com',
   splashBgColor: '#4F46E5'
 };
 export const MOCK_CATEGORIES = CATEGORIES;

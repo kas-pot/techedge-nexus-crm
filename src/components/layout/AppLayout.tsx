@@ -21,7 +21,7 @@ export function AppLayout({ children, container = false, className, contentClass
   const formatBreadcrumb = (segment: string) => {
     return segment
       .charAt(0).toUpperCase() + segment.slice(1)
-      .replace(/-/g, ' ');
+        .replace(/-/g, ' ');
   };
   return (
     <SidebarProvider defaultOpen={true}>
@@ -36,7 +36,7 @@ export function AppLayout({ children, container = false, className, contentClass
               <BreadcrumbList>
                 <BreadcrumbItem>
                   <BreadcrumbLink asChild>
-                    <Link to="/" className="font-bold text-indigo-600">Nexus CRM</Link>
+                    <Link to="/" className="font-bold text-indigo-600">TechEdge Nexus</Link>
                   </BreadcrumbLink>
                 </BreadcrumbItem>
                 {pathSegments.map((segment, index) => {
@@ -62,8 +62,8 @@ export function AppLayout({ children, container = false, className, contentClass
             </Breadcrumb>
           </div>
           <div className="flex items-center gap-4">
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               className="hidden lg:flex items-center gap-4 bg-slate-100/50 hover:bg-slate-200/50 border-none rounded-full h-9 px-4 text-muted-foreground font-medium transition-all"
               onClick={() => {
                 const e = new KeyboardEvent('keydown', { key: 'k', metaKey: true });

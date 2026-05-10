@@ -10,8 +10,8 @@ import { useFaq } from '@/lib/api-hooks';
 export function HelpFAQPage() {
   const { data, isLoading } = useFaq();
   const [search, setSearch] = useState('');
-  const faqs = (data?.items || []).filter(f => 
-    f.question.toLowerCase().includes(search.toLowerCase()) || 
+  const faqs = (data?.items || []).filter(f =>
+    f.question.toLowerCase().includes(search.toLowerCase()) ||
     f.category.toLowerCase().includes(search.toLowerCase())
   );
   return (
@@ -41,7 +41,7 @@ export function HelpFAQPage() {
               <CardContent className="pt-6">
                 {isLoading ? (
                   <div className="space-y-4 animate-pulse">
-                    {[1,2,3].map(i => <div key={i} className="h-12 bg-muted rounded-lg" />)}
+                    {[1, 2, 3].map(i => <div key={i} className="h-12 bg-muted rounded-lg" />)}
                   </div>
                 ) : (
                   <Accordion type="single" collapsible className="w-full">
@@ -76,7 +76,7 @@ export function HelpFAQPage() {
               <CardContent className="space-y-4">
                 <div className="flex items-center gap-3 p-3 rounded-lg bg-slate-50 dark:bg-slate-900 border">
                   <Mail className="h-4 w-4 text-indigo-600" />
-                  <div className="text-sm font-medium">support@nexus-crm.com</div>
+                  <div className="text-sm font-medium">support@techedge-nexus.com</div>
                 </div>
                 <div className="flex items-center gap-3 p-3 rounded-lg bg-slate-50 dark:bg-slate-900 border">
                   <Phone className="h-4 w-4 text-amber-600" />
