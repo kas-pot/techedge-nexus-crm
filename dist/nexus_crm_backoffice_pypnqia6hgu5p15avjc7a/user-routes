@@ -1,0 +1,1018 @@
+// worker/core-utils.ts
+import { DurableObject } from "cloudflare:workers";
+var Entity = class {
+  _state;
+  _version = 0;
+  stub;
+  _id;
+  entityName;
+  env;
+  constructor(env, id) {
+    this.env = env;
+    this._id = id;
+    const Ctor = this.constructor;
+    this.entityName = Ctor.entityName;
+    const instanceName = `${this.entityName}:${this._id}`;
+    const doId = env.GlobalDurableObject.idFromName(instanceName);
+    this.stub = env.GlobalDurableObject.get(doId);
+  }
+  /** Synchronous accessors */
+  get id() {
+    return this._id;
+  }
+  get state() {
+    return this._state;
+  }
+  /** Storage key for this entity document. */
+  key() {
+    return `${this.entityName}:${this._id}`;
+  }
+  /** Save and refresh cache. */
+  async save(next) {
+    for (let i = 0; i < 4; i++) {
+      await this.ensureState();
+      const res = await this.stub.casPut(this.key(), this._version, next);
+      if (res.ok) {
+        this._version = res.v;
+        this._state = next;
+        return;
+      }
+    }
+    throw new Error("Concurrent modification detected");
+  }
+  async ensureState() {
+    const Ctor = this.constructor;
+    const doc = await this.stub.getDoc(this.key());
+    if (doc == null) {
+      this._version = 0;
+      this._state = Ctor.initialState;
+      return this._state;
+    }
+    this._version = doc.v;
+    this._state = doc.data;
+    return this._state;
+  }
+  async mutate(updater) {
+    for (let i = 0; i < 4; i++) {
+      const current = await this.ensureState();
+      const startV = this._version;
+      const next = updater(current);
+      const res = await this.stub.casPut(this.key(), startV, next);
+      if (res.ok) {
+        this._version = res.v;
+        this._state = next;
+        return next;
+      }
+    }
+    throw new Error("Concurrent modification detected");
+  }
+  async getState() {
+    return this.ensureState();
+  }
+  async patch(p) {
+    await this.mutate((s) => ({ ...s, ...p }));
+  }
+  async exists() {
+    return this.stub.has(this.key());
+  }
+  /** Delete the entity. */
+  async delete() {
+    const ok2 = await this.stub.del(this.key());
+    if (ok2) {
+      const Ctor = this.constructor;
+      this._version = 0;
+      this._state = Ctor.initialState;
+    }
+    return ok2;
+  }
+};
+var Index = class extends Entity {
+  static entityName = "sys-index-root";
+  constructor(env, name) {
+    super(env, `index:${name}`);
+  }
+  /**
+   * Adds a batch of items to the index transactionally.
+   */
+  async addBatch(itemsToAdd) {
+    if (itemsToAdd.length === 0) return;
+    await this.stub.indexAddBatch(itemsToAdd);
+  }
+  async add(item) {
+    return this.addBatch([item]);
+  }
+  async remove(item) {
+    const removed = await this.removeBatch([item]);
+    return removed > 0;
+  }
+  async removeBatch(itemsToRemove) {
+    if (itemsToRemove.length === 0) return 0;
+    return this.stub.indexRemoveBatch(itemsToRemove);
+  }
+  async clear() {
+    await this.stub.indexDrop(this.key());
+  }
+  async page(cursor, limit) {
+    const { keys, next } = await this.stub.listPrefix("i:", cursor ?? null, limit);
+    return { items: keys.map((k) => k.slice(2)), next };
+  }
+  async list() {
+    const { keys } = await this.stub.listPrefix("i:");
+    return keys.map((k) => k.slice(2));
+  }
+};
+var IndexedEntity = class extends Entity {
+  static indexName;
+  static keyOf(state) {
+    return state.id;
+  }
+  // Static helpers infer S from `this` and the arguments
+  static async create(env, state) {
+    const id = this.keyOf(state);
+    const inst = new this(env, id);
+    await inst.save(state);
+    const idx = new Index(env, this.indexName);
+    await idx.add(id);
+    return state;
+  }
+  static async list(env, cursor, limit) {
+    const idx = new Index(env, this.indexName);
+    const { items: ids, next } = await idx.page(cursor, limit);
+    const rows = await Promise.all(ids.map((id) => new this(env, id).getState()));
+    return { items: rows, next };
+  }
+  static async ensureSeed(env) {
+    const idx = new Index(env, this.indexName);
+    const ids = await idx.list();
+    const seeds = this.seedData;
+    if (ids.length === 0 && seeds && seeds.length > 0) {
+      await Promise.all(seeds.map((s) => new this(env, this.keyOf(s)).save(s)));
+      await idx.addBatch(seeds.map((s) => this.keyOf(s)));
+    }
+  }
+  /** Delete an entity document and remove its id from the index. */
+  static async delete(env, id) {
+    const inst = new this(env, id);
+    const existed = await inst.delete();
+    const idx = new Index(env, this.indexName);
+    await idx.remove(id);
+    return existed;
+  }
+  /** Delete many entities and prune their ids from the index. Returns number of docs removed. */
+  static async deleteMany(env, ids) {
+    if (ids.length === 0) return 0;
+    const results = await Promise.all(ids.map(async (id) => new this(env, id).delete()));
+    const idx = new Index(env, this.indexName);
+    await idx.removeBatch(ids);
+    return results.filter(Boolean).length;
+  }
+  /** Remove only the id from the index; does not delete the entity document. */
+  static async removeFromIndex(env, id) {
+    const idx = new Index(env, this.indexName);
+    await idx.remove(id);
+  }
+  async ensureState() {
+    const s = await super.ensureState();
+    if (!s.id) {
+      const withId = { ...s, id: this.id };
+      this._state = withId;
+      return withId;
+    }
+    return s;
+  }
+};
+var ok = (c, data) => c.json({ success: true, data });
+var bad = (c, error) => c.json({ success: false, error }, 400);
+var notFound = (c, error = "not found") => c.json({ success: false, error }, 404);
+
+// shared/mock-data.ts
+var FIRST_NAMES = ["James", "Sarah", "Michael", "Elena", "David", "Ahmad", "Siti", "Budi", "Dewi", "Kevin", "Rina", "Aditya", "Jessica", "Robert", "Linda", "Maya", "Oscar", "Zoe", "Liam", "Hana"];
+var LAST_NAMES = ["Wilson", "Chen", "Scott", "Rodriguez", "Kim", "Pratama", "Sari", "Wijaya", "Kusuma", "Tan", "Lau", "Nguyen", "Murphy", "Santoso", "Hidayat", "Zhuang", "Lee", "Miller", "Garcia", "Wong"];
+var MOCK_USERS = Array.from({ length: 20 }, (_, i) => ({
+  id: `u${i + 1}`,
+  name: `${FIRST_NAMES[i % FIRST_NAMES.length]} ${LAST_NAMES[i % LAST_NAMES.length]}`
+}));
+var MOCK_CHATS = [
+  { id: "c1", title: "General Support" },
+  { id: "c2", title: "Tier Upgrade Assistance" },
+  { id: "c3", title: "Voucher Redemptions" }
+];
+var MOCK_CHAT_MESSAGES = [
+  { id: "m1", chatId: "c1", userId: "u1", text: "Hello, I need help with my points.", ts: Date.now() - 1e5 },
+  { id: "m2", chatId: "c1", userId: "u2", text: "Where can I see my history?", ts: Date.now() - 5e4 }
+];
+var MOCK_TRANSACTION_INSIGHTS = [
+  { date: "Jul 23", transactions: 950, revenueIdr: 32e7 },
+  { date: "Aug 23", transactions: 1100, revenueIdr: 38e7 },
+  { date: "Sep 23", transactions: 1050, revenueIdr: 35e7 },
+  { date: "Oct 23", transactions: 1400, revenueIdr: 48e7 },
+  { date: "Nov 23", transactions: 1800, revenueIdr: 59e7 },
+  { date: "Dec 23", transactions: 2500, revenueIdr: 85e7 },
+  { date: "Jan 24", transactions: 1200, revenueIdr: 45e7 },
+  { date: "Feb 24", transactions: 1500, revenueIdr: 52e7 },
+  { date: "Mar 24", transactions: 1100, revenueIdr: 39e7 },
+  { date: "Apr 24", transactions: 1800, revenueIdr: 61e7 },
+  { date: "May 24", transactions: 2100, revenueIdr: 75e7 },
+  { date: "Jun 24", transactions: 1900, revenueIdr: 68e7 }
+];
+var MOCK_DASHBOARD_STATS = {
+  totalMembers: [
+    { name: "Gold", value: 850, fill: "#4F46E5" },
+    { name: "Silver", value: 2400, fill: "#818CF8" },
+    { name: "Bronze", value: 6800, fill: "#C7D2FE" }
+  ],
+  activeMembers: MOCK_TRANSACTION_INSIGHTS.map((item) => ({
+    date: item.date,
+    active: Math.floor(item.transactions * 2.2),
+    new: Math.floor(item.transactions / 4)
+  })),
+  pointsLog: [
+    { date: "Mon", earned: 4500, burnt: 2100 },
+    { date: "Tue", earned: 5200, burnt: 1800 },
+    { date: "Wed", earned: 4800, burnt: 3200 },
+    { date: "Thu", earned: 6100, burnt: 2800 },
+    { date: "Fri", earned: 5900, burnt: 4100 },
+    { date: "Sat", earned: 8200, burnt: 5500 },
+    { date: "Sun", earned: 7500, burnt: 4800 }
+  ],
+  insights: MOCK_TRANSACTION_INSIGHTS
+};
+var MOCK_CAMPAIGNS = Array.from({ length: 22 }, (_, i) => ({
+  id: `camp-${i + 1}`,
+  name: i % 3 === 0 ? `Summer Flash Sale ${Math.floor(i / 3) + 1}` : i % 3 === 1 ? `Weekend Points Boost ${Math.floor(i / 3) + 1}` : `Exclusive Member Invite ${Math.floor(i / 3) + 1}`,
+  startDate: `2024-06-${i % 15 + 1 < 10 ? "0" : ""}${i % 15 + 1}`,
+  endDate: `2024-07-${i % 15 + 1 < 10 ? "0" : ""}${i % 15 + 1}`,
+  channel: i % 4 === 0 ? "push" : i % 4 === 1 ? "email" : i % 4 === 2 ? "sms" : "ads",
+  status: i < 5 ? "running" : i < 15 ? "completed" : "scheduled",
+  reach: 5e3 + Math.floor(Math.random() * 1e4),
+  openRate: 5 + Math.random() * 20,
+  ctr: 1 + Math.random() * 7
+}));
+var MOCK_WEATHER_CONFIG = {
+  id: "global",
+  isEnabled: true,
+  locationName: "PIK, Jakarta North",
+  activeCondition: "sunny",
+  autoRotation: true,
+  lastUpdated: (/* @__PURE__ */ new Date()).toISOString()
+};
+var MOCK_SPLASH_CONFIG = {
+  id: "global",
+  imageUrl: "https://images.unsplash.com/photo-1549212628-971c26f02213?q=80&w=800",
+  backgroundColor: "#4F46E5",
+  displayDuration: 3e3
+};
+var MOCK_HERO_BANNER_CONFIG = {
+  id: "global",
+  isEnabled: true,
+  autoRotationSpeed: 5e3,
+  banners: [
+    { id: "h1", title: "Summer Festival 2024", subtitle: "Exclusive rewards await you at PIK Avenue.", imageUrl: "https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?q=80&w=1200", actionUrl: "/marketing/events", order: 1 },
+    { id: "h2", title: "Double Points Weekend", subtitle: "Earn 2x XP on all F&B Dining this weekend only.", imageUrl: "https://images.unsplash.com/photo-1550966841-3ee5ad6070d8?q=80&w=1200", actionUrl: "/loyalty/earn-points", order: 2 },
+    { id: "h3", title: "VIP Lounge Access", subtitle: "New Gold Tier benefit unlocked. Visit Nexus Tower.", imageUrl: "https://images.unsplash.com/photo-1560624052-449f5ddf0c31?q=80&w=1200", actionUrl: "/tiers", order: 3 }
+  ]
+};
+var MOCK_TIERS = [
+  { id: "t1", name: "Bronze", minPoints: 0, benefits: ["Standard support", "Birthday treat"], color: "#CD7F32" },
+  { id: "t2", name: "Silver", minPoints: 5e3, benefits: ["Standard support", "5% discount", "Early sale access"], color: "#C0C0C0" },
+  { id: "t3", name: "Gold", minPoints: 15e3, benefits: ["Priority support", "10% discount", "Lounge access", "Concierge service"], color: "#FFD700" }
+];
+var MOCK_VOUCHERS = Array.from({ length: 50 }, (_, i) => ({
+  id: `v-${i + 1}`,
+  title: i % 2 === 0 ? `Brand Reward ${i + 1}` : `Partner Discount ${i + 1}`,
+  code: `REWARD-${1e3 + i}`,
+  discountType: i % 3 === 0 ? "percentage" : "fixed",
+  value: i % 3 === 0 ? i % 2 === 0 ? 10 : 20 : i % 2 === 0 ? 5e4 : 1e5,
+  expiryDate: `2025-${i % 12 + 1 < 10 ? "0" : ""}${i % 12 + 1}-28`,
+  status: i % 10 === 0 ? "expired" : "active",
+  isExternal: i % 5 === 0,
+  sourcePartnerId: i % 5 === 0 ? `p${i % 2 + 1}` : void 0
+}));
+var MOCK_VENUES = [
+  { id: "ven1", name: "Sedayu Mall A", location: "Jakarta North", type: "Mall", isActive: true, pointClaimEligible: true },
+  { id: "ven2", name: "Nexus Tower", location: "Jakarta CBD", type: "Office", isActive: true, pointClaimEligible: false },
+  { id: "ven3", name: "The Residency Plaza", location: "Jakarta South", type: "Residential", isActive: true, pointClaimEligible: true }
+];
+var CATEGORIES = ["F&B Dining", "Fashion & Accessories", "Electronics", "Supermarket", "Cosmetics & Beauty", "Home & Living"];
+var MOCK_OUTLETS = Array.from({ length: 60 }, (_, i) => ({
+  id: `out-${i + 1}`,
+  venueId: `ven${i % 10 + 1}`,
+  name: `${CATEGORIES[i % CATEGORIES.length]} Outlet ${i + 1}`,
+  category: CATEGORIES[i % CATEGORIES.length],
+  tenantName: `${LAST_NAMES[i % LAST_NAMES.length]} Corp`,
+  floor: i % 5 === 0 ? "G" : `${i % 5}th`
+}));
+var MOCK_MISSIONS = [
+  { id: "m1", title: "Complete Profile", type: "onboarding", pointsReward: 100, status: "active", rewardType: "points", rewardValue: 100, instructions: "Fill in all mandatory fields." },
+  { id: "m2", title: "Invite a Friend", type: "referral", pointsReward: 500, status: "active", rewardType: "points", rewardValue: 500, instructions: "Your friend must sign up." }
+];
+var MOCK_INTERESTS = [
+  { id: "int1", name: "Coffee", color: "#78350f", category: "F&B", count: 4200 },
+  { id: "int2", name: "Fashion", color: "#065f46", category: "Lifestyle", count: 3100 }
+];
+var MOCK_LEADERBOARDS = [
+  {
+    id: "lb-weekly",
+    title: "Weekly Top Earners",
+    period: "weekly",
+    entries: Array.from({ length: 20 }, (_, i) => ({
+      rank: i + 1,
+      memberName: `${FIRST_NAMES[i % FIRST_NAMES.length]} ${LAST_NAMES[i % LAST_NAMES.length]}`,
+      points: 5e3 - i * 150,
+      change: i % 3 === 0 ? "up" : i % 3 === 1 ? "down" : "neutral"
+    }))
+  }
+];
+var MOCK_MEMBERS = Array.from({ length: 100 }, (_, i) => ({
+  id: `MEM-${1e3 + i}`,
+  name: `${FIRST_NAMES[i % FIRST_NAMES.length]} ${LAST_NAMES[i % LAST_NAMES.length]}`,
+  email: `${FIRST_NAMES[i % FIRST_NAMES.length].toLowerCase()}.${LAST_NAMES[i % LAST_NAMES.length].toLowerCase()}${i}@example.com`,
+  tier: i % 10 === 0 ? "Gold" : i % 4 === 0 ? "Silver" : "Bronze",
+  points: Math.floor(Math.random() * 5e4),
+  status: Math.random() > 0.05 ? "Active" : "Inactive",
+  joinedDate: new Date(2023, i % 12, i % 28 + 1).toLocaleDateString()
+}));
+var MOCK_APPROVALS = Array.from({ length: 30 }, (_, i) => ({
+  id: `apr-${i + 1}`,
+  type: i % 2 === 0 ? "points_claim" : "membership",
+  memberName: `${FIRST_NAMES[i % FIRST_NAMES.length]} ${LAST_NAMES[i % LAST_NAMES.length]}`,
+  amount: i % 2 === 0 ? 500 : 0,
+  status: i < 5 ? "pending" : i < 20 ? "approved" : "rejected",
+  date: "2024-06-" + (i % 15 + 1).toString().padStart(2, "0"),
+  description: i % 2 === 0 ? "Receipt Scan Claim" : "Tier Upgrade Request",
+  ocrResult: i % 2 === 0 ? {
+    mallName: "Sedayu Mall A",
+    totalAmount: 500,
+    receiptDate: "2024-06-" + (i % 15 + 1).toString().padStart(2, "0"),
+    receiptId: `REC-${1e4 + i}`,
+    confidenceScore: i % 4 === 0 ? 0.98 : 0.65
+  } : void 0
+}));
+var MOCK_ACTIVITY_LOGS = Array.from({ length: 25 }, (_, i) => ({
+  id: `log-${i + 1}`,
+  action: ["Created", "Updated", "Redeemed", "Sent", "Approved", "Joined"][i % 6],
+  entityType: ["member", "voucher", "campaign", "approval"][i % 4],
+  entityId: `id-${i}`,
+  userName: FIRST_NAMES[i % FIRST_NAMES.length],
+  timestamp: new Date(Date.now() - i * 36e5).toISOString(),
+  details: `System event related to ${["member", "voucher", "campaign", "approval"][i % 4]} entity processing.`
+}));
+var MOCK_PARTNERS = [
+  { id: "p1", name: "Global Bank Inc", type: "bank", status: "active", contactEmail: "partnerships@globalbank.com", agreementLevel: "Platinum", joinedDate: "2022-01-15" }
+];
+var MOCK_BADGES = [
+  { id: "b1", name: "Early Bird", description: "Joined in the first month", icon: "zap", color: "#4F46E5", requirementPoints: 0, earnedCount: 1240 }
+];
+var MOCK_ADS = Array.from({ length: 15 }, (_, i) => ({
+  id: `ad${i + 1}`,
+  name: `Campaign Asset ${i + 1}`,
+  imageUrl: `https://images.unsplash.com/photo-${1483985988e3 + i * 1e5}?q=80&w=800`,
+  placement: i % 3 === 0 ? "banner" : i % 3 === 1 ? "popup" : "sidebar",
+  targetTier: i % 2 === 0 ? "Gold" : "Silver",
+  targetCategory: CATEGORIES[i % CATEGORIES.length],
+  status: "active"
+}));
+var MOCK_TICKETS = Array.from({ length: 20 }, (_, i) => ({
+  id: `tk${i + 1}`,
+  eventName: i % 2 === 0 ? "VIP Gala" : "Store Opening",
+  memberName: `${FIRST_NAMES[i % FIRST_NAMES.length]} ${LAST_NAMES[i % LAST_NAMES.length]}`,
+  ticketCode: `T-${1e4 + i}`,
+  status: i % 5 === 0 ? "used" : "valid",
+  issueDate: "2024-06-01"
+}));
+var MOCK_NEWS = Array.from({ length: 15 }, (_, i) => ({
+  id: `nw${i + 1}`,
+  title: `News Update ${i + 1}`,
+  content: `Content for enterprise news update ${i + 1}.`,
+  category: i % 2 === 0 ? "Announcement" : "Promotion",
+  publishDate: "2024-06-" + (i % 15 + 1).toString().padStart(2, "0"),
+  status: i < 10 ? "published" : "draft"
+}));
+var MOCK_GIFT_CARDS = Array.from({ length: 50 }, (_, i) => ({
+  id: `gc${i + 1}`,
+  serial: `NXS-${Math.random().toString(36).substring(2, 10).toUpperCase()}`,
+  value: (i % 5 + 1) * 1e5,
+  balance: i % 3 === 0 ? 0 : (i % 5 + 1) * 1e5,
+  status: i % 3 === 0 ? "redeemed" : "active",
+  expiryDate: "2025-12-31"
+}));
+var MOCK_FAQ = Array.from({ length: 30 }, (_, i) => ({
+  id: `fq${i + 1}`,
+  question: `Frequently Asked Question #${i + 1}?`,
+  answer: `This is a detailed answer for the knowledge base item #${i + 1}.`,
+  category: i % 4 === 0 ? "Points" : i % 4 === 1 ? "Membership" : i % 4 === 2 ? "Technical" : "Security"
+}));
+var MOCK_WIFI_SETTINGS = {
+  id: "global",
+  ssid: "TechEdge_Guest_WiFi",
+  password: "techedge_loyalty_2024",
+  isVisible: true
+};
+var MOCK_SYSTEM_SETTINGS = {
+  id: "global",
+  theme: "system",
+  language: "English",
+  ssoEnabled: true,
+  ssoEntityId: "techedge-nexus-main-id",
+  ssoMetadataUrl: "https://idp.techedge-nexus.com/metadata",
+  ocrPrecision: "high",
+  wifiSsid: "TechEdge_Guest_WiFi",
+  notificationEmail: "admin@techedge-nexus.com",
+  splashBgColor: "#4F46E5"
+};
+var MOCK_PUSH_CAMPAIGNS = [
+  {
+    id: "push-1",
+    name: "Weekend Flash Sale",
+    channel: "push",
+    status: "sent",
+    reach: 12050,
+    openRate: 32.4,
+    ctr: 8.1,
+    category: "Announcement",
+    startDate: "2024-05-10",
+    endDate: "2024-05-12",
+    messageTitle: "Flash Sale is LIVE! \u{1F6CD}\uFE0F",
+    messageBody: "Get 20% off all fashion brands this weekend only. Open to see your exclusive codes.",
+    targetSegment: "All Members",
+    targetingType: "Global Broadcast",
+    triggerType: "Scheduled",
+    scheduledFor: "2024-05-10T09:00:00Z",
+    sentAt: "2024-05-10T09:00:05Z",
+    imageUrl: "https://images.unsplash.com/photo-1483985988000-0e9567e62ef5?q=80&w=800"
+  },
+  {
+    id: "push-2",
+    name: "Gold Tier Exclusive",
+    channel: "push",
+    status: "sent",
+    reach: 850,
+    openRate: 58.2,
+    ctr: 14.5,
+    category: "Announcement",
+    startDate: "2024-05-15",
+    endDate: "2024-05-15",
+    messageTitle: "Private Lounge Access ",
+    messageBody: "As a Gold Member, enjoy complimentary snacks at the VIP Lounge today.",
+    targetSegment: "Gold Tier",
+    targetingType: "Segmented",
+    triggerType: "Manual",
+    scheduledFor: "2024-05-15T14:00:00Z",
+    sentAt: "2024-05-15T14:00:02Z",
+    imageUrl: "https://images.unsplash.com/photo-1560624052-449f5ddf0c31?q=80&w=1200"
+  },
+  {
+    id: "push-3",
+    name: "Birthday Shoutout",
+    channel: "push",
+    status: "scheduled",
+    reach: 120,
+    openRate: 0,
+    ctr: 0,
+    category: "Birthday",
+    startDate: "2024-06-01",
+    endDate: "2024-06-01",
+    messageTitle: "Happy Birthday! \u{1F382}",
+    messageBody: "Enjoy a complimentary coffee and 500 bonus XP on your special day.",
+    targetSegment: "All Members",
+    targetingType: "Segmented",
+    triggerType: "Event-Based",
+    scheduledFor: "2024-06-01T08:00:00Z",
+    imageUrl: "https://images.unsplash.com/photo-1464349095431-e9a21285b5f3?q=80&w=800"
+  },
+  {
+    id: "push-4",
+    name: "Mission: Mystery Shopper",
+    channel: "push",
+    status: "draft",
+    reach: 0,
+    openRate: 0,
+    ctr: 0,
+    category: "Mission",
+    startDate: "2024-06-10",
+    endDate: "2024-06-12",
+    messageTitle: "New Mission: Shopper \u{1F575}\uFE0F",
+    messageBody: "Complete 3 purchases at PIK Avenue to unlock the secret badge.",
+    targetSegment: "Silver Tier",
+    targetingType: "Segmented",
+    triggerType: "Scheduled",
+    scheduledFor: "2024-06-10T10:00:00Z",
+    imageUrl: "https://images.unsplash.com/photo-1556742044-3c52d6e88c62?q=80&w=800"
+  },
+  {
+    id: "push-5",
+    name: "Points Claim Approved",
+    channel: "push",
+    status: "sent",
+    reach: 1,
+    openRate: 100,
+    ctr: 85,
+    category: "Approval",
+    startDate: "2024-05-20",
+    endDate: "2024-05-20",
+    messageTitle: "Claim Approved! \u2705",
+    messageBody: "Your receipt scan from Sedayu Mall has been verified. 250 XP added.",
+    targetSegment: "All Members",
+    targetingType: "Segmented",
+    triggerType: "Event-Based",
+    scheduledFor: "2024-05-20T12:00:00Z",
+    sentAt: "2024-05-20T12:00:01Z"
+  }
+];
+var PUSH_ANALYTICS_DATA = Array.from({ length: 30 }, (_, i) => ({
+  day: i + 1,
+  openRate: 15 + Math.sin(i * 0.5) * 10 + Math.random() * 10,
+  deliverySuccess: 95 + Math.random() * 4
+}));
+
+// worker/entities.ts
+var UserEntity = class extends IndexedEntity {
+  static entityName = "member";
+  static indexName = "members";
+  static initialState = { id: "", name: "", email: "", tier: "Bronze", points: 0, status: "Active", joinedDate: "" };
+  static seedData = MOCK_MEMBERS;
+};
+var SEED_CHAT_BOARDS = MOCK_CHATS.map((c) => ({
+  ...c,
+  messages: MOCK_CHAT_MESSAGES.filter((m) => m.chatId === c.id)
+}));
+var TierEntity = class extends IndexedEntity {
+  static entityName = "tier";
+  static indexName = "tiers";
+  static initialState = { id: "", name: "", minPoints: 0, benefits: [], color: "" };
+  static seedData = MOCK_TIERS;
+};
+var VoucherEntity = class extends IndexedEntity {
+  static entityName = "voucher";
+  static indexName = "vouchers";
+  static initialState = { id: "", title: "", code: "", discountType: "fixed", value: 0, expiryDate: "", status: "draft" };
+  static seedData = MOCK_VOUCHERS;
+};
+var VenueEntity = class extends IndexedEntity {
+  static entityName = "venue";
+  static indexName = "venues";
+  static initialState = { id: "", name: "", location: "", type: "Mall", isActive: true, pointClaimEligible: true };
+  static seedData = MOCK_VENUES;
+};
+var OutletEntity = class extends IndexedEntity {
+  static entityName = "outlet";
+  static indexName = "outlets";
+  static initialState = { id: "", venueId: "", name: "", category: "", tenantName: "", floor: "" };
+  static seedData = MOCK_OUTLETS;
+};
+var MissionEntity = class extends IndexedEntity {
+  static entityName = "mission";
+  static indexName = "missions";
+  static initialState = { id: "", title: "", type: "general", pointsReward: 0, status: "inactive", rewardType: "none" };
+  static seedData = MOCK_MISSIONS;
+};
+var CampaignEntity = class extends IndexedEntity {
+  static entityName = "campaign";
+  static indexName = "campaigns";
+  static initialState = { id: "", name: "", startDate: "", endDate: "", channel: "push", status: "scheduled" };
+  static seedData = MOCK_CAMPAIGNS;
+};
+var PushCampaignEntity = class extends IndexedEntity {
+  static entityName = "push_campaign";
+  static indexName = "push_campaigns";
+  static initialState = { id: "", name: "", startDate: "", endDate: "", channel: "push", status: "draft", category: "General", messageTitle: "", messageBody: "", targetSegment: "All Members", targetingType: "Global Broadcast", triggerType: "Manual", scheduledFor: "" };
+  static seedData = MOCK_PUSH_CAMPAIGNS;
+};
+var InterestEntity = class extends IndexedEntity {
+  static entityName = "interest";
+  static indexName = "interests";
+  static initialState = { id: "", name: "", color: "#ccc", category: "Uncategorized", count: 0 };
+  static seedData = MOCK_INTERESTS;
+};
+var LeaderboardEntity = class extends IndexedEntity {
+  static entityName = "leaderboard";
+  static indexName = "leaderboards";
+  static initialState = { id: "", title: "", period: "weekly", entries: [] };
+  static seedData = MOCK_LEADERBOARDS;
+};
+var ApprovalEntity = class extends IndexedEntity {
+  static entityName = "approval";
+  static indexName = "approvals";
+  static initialState = { id: "", type: "points_claim", memberName: "", amount: 0, status: "pending", date: "" };
+  static seedData = MOCK_APPROVALS;
+};
+var ActivityLogEntity = class extends IndexedEntity {
+  static entityName = "activity_log";
+  static indexName = "activity_logs";
+  static initialState = { id: "", action: "Joined", entityType: "system", entityId: "", userName: "System", timestamp: "" };
+  static seedData = MOCK_ACTIVITY_LOGS;
+};
+var PartnerEntity = class extends IndexedEntity {
+  static indexName = "partners";
+  static entityName = "partner";
+  static initialState = { id: "", name: "", type: "retail", status: "inactive", contactEmail: "", agreementLevel: "Standard", joinedDate: "" };
+  static seedData = MOCK_PARTNERS;
+};
+var BadgeEntity = class extends IndexedEntity {
+  static entityName = "badge";
+  static indexName = "badges";
+  static initialState = { id: "", name: "", description: "", icon: "star", color: "#ccc", requirementPoints: 0, earnedCount: 0 };
+  static seedData = MOCK_BADGES;
+};
+var AdEntity = class extends IndexedEntity {
+  static entityName = "ad";
+  static indexName = "ads";
+  static initialState = { id: "", name: "", imageUrl: "", placement: "banner", targetTier: "Bronze", targetCategory: "", status: "inactive" };
+  static seedData = MOCK_ADS;
+};
+var TicketEntity = class extends IndexedEntity {
+  static entityName = "ticket";
+  static indexName = "tickets";
+  static initialState = { id: "", eventName: "", memberName: "", ticketCode: "", status: "valid", issueDate: "" };
+  static seedData = MOCK_TICKETS;
+};
+var NewsEntity = class extends IndexedEntity {
+  static entityName = "news";
+  static indexName = "news_list";
+  static initialState = { id: "", title: "", content: "", category: "Announcement", publishDate: "", status: "draft" };
+  static seedData = MOCK_NEWS;
+};
+var GiftCardEntity = class extends IndexedEntity {
+  static entityName = "gift_card";
+  static indexName = "gift_cards";
+  static initialState = { id: "", serial: "", value: 0, balance: 0, status: "active", expiryDate: "" };
+  static seedData = MOCK_GIFT_CARDS;
+};
+var FaqEntity = class extends IndexedEntity {
+  static entityName = "faq";
+  static indexName = "faqs";
+  static initialState = { id: "", question: "", answer: "", category: "Points" };
+  static seedData = MOCK_FAQ;
+};
+var SystemSettingsEntity = class _SystemSettingsEntity extends Entity {
+  static entityName = "system_settings";
+  static initialState = MOCK_SYSTEM_SETTINGS;
+  static async getGlobal(env) {
+    const inst = new _SystemSettingsEntity(env, "global");
+    return inst.getState();
+  }
+};
+var WifiEntity = class _WifiEntity extends Entity {
+  static entityName = "wifi_config";
+  static initialState = MOCK_WIFI_SETTINGS;
+  static async getGlobal(env) {
+    const inst = new _WifiEntity(env, "global");
+    return inst.getState();
+  }
+};
+var WeatherSettingsEntity = class _WeatherSettingsEntity extends Entity {
+  static entityName = "weather_settings";
+  static initialState = MOCK_WEATHER_CONFIG;
+  static async getGlobal(env) {
+    const inst = new _WeatherSettingsEntity(env, "global");
+    return inst.getState();
+  }
+};
+var SplashScreenEntity = class _SplashScreenEntity extends Entity {
+  static entityName = "splash_screen_config";
+  static initialState = MOCK_SPLASH_CONFIG;
+  static async getGlobal(env) {
+    const inst = new _SplashScreenEntity(env, "global");
+    return inst.getState();
+  }
+};
+var HeroBannerEntity = class _HeroBannerEntity extends Entity {
+  static entityName = "hero_banner_config";
+  static initialState = MOCK_HERO_BANNER_CONFIG;
+  static async getGlobal(env) {
+    const inst = new _HeroBannerEntity(env, "global");
+    return inst.getState();
+  }
+};
+
+// worker/user-routes.ts
+var ENTITY_MAP = {
+  users: UserEntity,
+  tiers: TierEntity,
+  vouchers: VoucherEntity,
+  venues: VenueEntity,
+  outlets: OutletEntity,
+  missions: MissionEntity,
+  campaigns: CampaignEntity,
+  interests: InterestEntity,
+  leaderboards: LeaderboardEntity,
+  approvals: ApprovalEntity,
+  partners: PartnerEntity,
+  badges: BadgeEntity,
+  ads: AdEntity,
+  tickets: TicketEntity,
+  news: NewsEntity,
+  "gift-cards": GiftCardEntity,
+  "push-campaigns": PushCampaignEntity,
+  "activity-logs": ActivityLogEntity,
+  faqs: FaqEntity
+};
+async function logActivity(env, action, type, id) {
+  let attempt = 0;
+  const maxAttempts = 3;
+  while (attempt < maxAttempts) {
+    try {
+      await ActivityLogEntity.create(env, {
+        id: crypto.randomUUID(),
+        action,
+        entityType: type,
+        entityId: id,
+        userName: "Nexus Admin",
+        timestamp: (/* @__PURE__ */ new Date()).toISOString(),
+        details: `Automatic audit for ${action} event on ${type}:${id}`
+      });
+      return;
+    } catch (e) {
+      attempt++;
+      if (attempt >= maxAttempts) {
+        console.error("Logging failed after", maxAttempts, "attempts:", e);
+        return;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    }
+  }
+}
+function userRoutes(app) {
+  app.post("/api/gift-cards/batch", async (c) => {
+    const { count, value, expiryDate } = await c.req.json();
+    if (!count || count <= 0) return bad(c, "Invalid count");
+    const results = [];
+    for (let i = 0; i < count; i++) {
+      const id = crypto.randomUUID();
+      const serial = `NXS-${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
+      const card = await GiftCardEntity.create(c.env, {
+        id,
+        serial,
+        value: Number(value) || 0,
+        balance: Number(value) || 0,
+        status: "active",
+        expiryDate: expiryDate || "2025-12-31"
+      });
+      results.push(card);
+    }
+    await logActivity(c.env, "Created", "gift_card_batch", "batch_mint");
+    return ok(c, results);
+  });
+  app.get("/api/:entityType", async (c) => {
+    const type = c.req.param("entityType");
+    const EntityClass = ENTITY_MAP[type];
+    if (!EntityClass) return notFound(c, `Entity type ${type} not found`);
+    await EntityClass.ensureSeed(c.env);
+    const channel = c.req.query("channel");
+    const cursor = c.req.query("cursor");
+    const limitParam = c.req.query("limit");
+    const limit = limitParam ? Math.max(1, Number(limitParam) | 0) : void 0;
+    const page = await EntityClass.list(c.env, cursor ?? null, limit);
+    if (channel && type === "campaigns") {
+      page.items = page.items.filter((item) => item.channel === channel);
+    }
+    return ok(c, page);
+  });
+  app.post("/api/:entityType", async (c) => {
+    const type = c.req.param("entityType");
+    const data = await c.req.json();
+    const EntityClass = ENTITY_MAP[type];
+    if (!EntityClass) return notFound(c);
+    const id = data.id || crypto.randomUUID();
+    const result = await EntityClass.create(c.env, { ...data, id });
+    await logActivity(c.env, "Created", type, id);
+    return ok(c, result);
+  });
+  app.put("/api/:entityType/:id", async (c) => {
+    const type = c.req.param("entityType");
+    const id = c.req.param("id");
+    const data = await c.req.json();
+    const EntityClass = ENTITY_MAP[type];
+    if (!EntityClass) return notFound(c);
+    const inst = new EntityClass(c.env, id);
+    if (!await inst.exists()) return notFound(c);
+    await inst.patch(data);
+    await logActivity(c.env, "Updated", type, id);
+    return ok(c, await inst.getState());
+  });
+  app.delete("/api/:entityType/:id", async (c) => {
+    const type = c.req.param("entityType");
+    const id = c.req.param("id");
+    const EntityClass = ENTITY_MAP[type];
+    if (!EntityClass) return notFound(c);
+    const deleted = await EntityClass.delete(c.env, id);
+    if (deleted) await logActivity(c.env, "Deleted", type, id);
+    return deleted ? ok(c, { success: true }) : notFound(c);
+  });
+  app.get("/api/system/settings", async (c) => ok(c, await SystemSettingsEntity.getGlobal(c.env)));
+  app.put("/api/system/settings", async (c) => {
+    const data = await c.req.json();
+    const inst = new SystemSettingsEntity(c.env, "global");
+    await inst.patch(data);
+    return ok(c, await inst.getState());
+  });
+  app.get("/api/system/weather", async (c) => ok(c, await WeatherSettingsEntity.getGlobal(c.env)));
+  app.put("/api/system/weather", async (c) => {
+    const data = await c.req.json();
+    const inst = new WeatherSettingsEntity(c.env, "global");
+    await inst.patch(data);
+    return ok(c, await inst.getState());
+  });
+  app.get("/api/reseed-all", async (c) => {
+    let count = 0;
+    for (const [type, EntityClass] of Object.entries(ENTITY_MAP)) {
+      const indexName = EntityClass.indexName;
+      if (indexName) {
+        if (type === "activity-logs") continue;
+        const idx = new Index(c.env, indexName);
+        await idx.clear();
+        await EntityClass.ensureSeed(c.env);
+        count++;
+      }
+    }
+    await new SplashScreenEntity(c.env, "global").save(MOCK_SPLASH_CONFIG);
+    await new HeroBannerEntity(c.env, "global").save(MOCK_HERO_BANNER_CONFIG);
+    await new WifiEntity(c.env, "global").save(MOCK_WIFI_SETTINGS);
+    return ok(c, { reseeded: count, message: "All mock entities force-reseeded" });
+  });
+  function getDb(c) {
+    return c.env.THEPOT_DB ?? null;
+  }
+  app.get("/api/thepot/users", async (c) => {
+    const db = getDb(c);
+    if (!db) return notFound(c, "Not available in this environment");
+    const page = Number(c.req.query("page") ?? 1);
+    const limit = Number(c.req.query("limit") ?? 50);
+    const offset = (page - 1) * limit;
+    const search = c.req.query("search") ?? "";
+    const where = search ? `WHERE u.email LIKE ? OR u.first_name LIKE ? OR u.last_name LIKE ?` : "";
+    const params = search ? [`%${search}%`, `%${search}%`, `%${search}%`] : [];
+    const [rows, total] = await Promise.all([
+      db.prepare(`SELECT * FROM users ${where} ORDER BY id DESC LIMIT ? OFFSET ?`).bind(...params, limit, offset).all(),
+      db.prepare(`SELECT COUNT(*) as cnt FROM users ${where}`).bind(...params).first()
+    ]);
+    return ok(c, { items: rows.results, total: total?.cnt ?? 0, page, limit });
+  });
+  app.get("/api/thepot/users/:id", async (c) => {
+    const db = getDb(c);
+    if (!db) return notFound(c, "Not available in this environment");
+    const user = await db.prepare("SELECT * FROM users WHERE id = ?").bind(c.req.param("id")).first();
+    return user ? ok(c, user) : notFound(c);
+  });
+  app.post("/api/thepot/users", async (c) => {
+    const db = getDb(c);
+    if (!db) return bad(c, "Not available in this environment");
+    const { first_name, last_name, email, birth_date, gender, user_role, is_active } = await c.req.json();
+    if (!first_name || !last_name || !email) return bad(c, "first_name, last_name and email are required");
+    const existing = await db.prepare("SELECT id FROM users WHERE email=?").bind(email).first();
+    if (existing) return bad(c, "A user with this email already exists");
+    await db.prepare(
+      `INSERT INTO users (email, first_name, last_name, birth_date, gender, is_email_verified, is_active, user_role, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, 0, ?, ?, datetime('now'), datetime('now'))`
+    ).bind(email, first_name, last_name, birth_date ?? null, gender ?? null, is_active ?? 1, user_role ?? "user").run();
+    const created = await db.prepare("SELECT * FROM users WHERE email=? ORDER BY id DESC LIMIT 1").bind(email).first();
+    return ok(c, created);
+  });
+  app.put("/api/thepot/users/:id", async (c) => {
+    const db = getDb(c);
+    if (!db) return bad(c, "Not available in this environment");
+    const { first_name, last_name, email, birth_date, gender, is_active, user_role } = await c.req.json();
+    await db.prepare(
+      `UPDATE users SET first_name=?, last_name=?, email=?, birth_date=?, gender=?, is_active=?, user_role=?, updated_at=datetime('now') WHERE id=?`
+    ).bind(first_name, last_name, email, birth_date ?? null, gender ?? null, is_active ?? 1, user_role ?? "user", c.req.param("id")).run();
+    const updated = await db.prepare("SELECT * FROM users WHERE id = ?").bind(c.req.param("id")).first();
+    return ok(c, updated);
+  });
+  app.delete("/api/thepot/users/:id", async (c) => {
+    const db = getDb(c);
+    if (!db) return bad(c, "Not available in this environment");
+    await db.prepare(`UPDATE users SET is_active=0, updated_at=datetime('now') WHERE id=?`).bind(c.req.param("id")).run();
+    return ok(c, { success: true });
+  });
+  app.get("/api/thepot/games", async (c) => {
+    const db = getDb(c);
+    if (!db) return notFound(c, "Not available in this environment");
+    const page = Number(c.req.query("page") ?? 1);
+    const limit = Number(c.req.query("limit") ?? 50);
+    const offset = (page - 1) * limit;
+    const [rows, total] = await Promise.all([
+      db.prepare(`
+        SELECT g.*, u.email as user_email, u.first_name as user_first_name, u.last_name as user_last_name,
+          (SELECT COUNT(*) FROM game_rounds gr WHERE gr.game_id = g.id) as round_count
+        FROM games g
+        LEFT JOIN users u ON u.id = g.user_id
+        ORDER BY g.id DESC LIMIT ? OFFSET ?
+      `).bind(limit, offset).all(),
+      db.prepare("SELECT COUNT(*) as cnt FROM games").first()
+    ]);
+    return ok(c, { items: rows.results, total: total?.cnt ?? 0, page, limit });
+  });
+  app.get("/api/thepot/games/:id", async (c) => {
+    const db = getDb(c);
+    if (!db) return notFound(c, "Not available in this environment");
+    const [game, teams, rounds] = await Promise.all([
+      db.prepare(`
+        SELECT g.*, u.email as user_email, u.first_name as user_first_name, u.last_name as user_last_name
+        FROM games g LEFT JOIN users u ON u.id = g.user_id WHERE g.id=?
+      `).bind(c.req.param("id")).first(),
+      db.prepare("SELECT * FROM game_teams WHERE game_id=? ORDER BY team_index").bind(c.req.param("id")).all(),
+      db.prepare("SELECT * FROM game_rounds WHERE game_id=? ORDER BY round_number").bind(c.req.param("id")).all()
+    ]);
+    if (!game) return notFound(c);
+    return ok(c, { ...game, teams: teams.results, rounds: rounds.results });
+  });
+  app.delete("/api/thepot/games/:id", async (c) => {
+    const db = getDb(c);
+    if (!db) return bad(c, "Not available in this environment");
+    await db.prepare("DELETE FROM games WHERE id=?").bind(c.req.param("id")).run();
+    return ok(c, { success: true });
+  });
+  app.get("/api/thepot/challenges", async (c) => {
+    const db = getDb(c);
+    if (!db) return notFound(c, "Not available in this environment");
+    const rows = await db.prepare(`
+      SELECT c.*, (SELECT COUNT(*) FROM sub_challenges sc WHERE sc.challenge_id = c.challenge_id) as sub_challenge_count
+      FROM challenges c ORDER BY c.is_default DESC, c.id ASC
+    `).all();
+    return ok(c, { items: rows.results, total: rows.results.length });
+  });
+  app.post("/api/thepot/challenges", async (c) => {
+    const db = getDb(c);
+    if (!db) return bad(c, "Not available in this environment");
+    const { name, user_id } = await c.req.json();
+    if (!name) return bad(c, "name is required");
+    const challenge_id = Date.now().toString();
+    await db.prepare(
+      `INSERT INTO challenges (challenge_id, name, is_active, is_default, user_id, created_at, updated_at) VALUES (?, ?, 0, 0, ?, datetime('now'), datetime('now'))`
+    ).bind(challenge_id, name, user_id ?? null).run();
+    const created = await db.prepare("SELECT * FROM challenges WHERE challenge_id=?").bind(challenge_id).first();
+    return ok(c, created);
+  });
+  app.put("/api/thepot/challenges/:id", async (c) => {
+    const db = getDb(c);
+    if (!db) return bad(c, "Not available in this environment");
+    const { name, is_active } = await c.req.json();
+    await db.prepare(
+      `UPDATE challenges SET name=?, is_active=?, updated_at=datetime('now') WHERE id=?`
+    ).bind(name, is_active ?? 0, c.req.param("id")).run();
+    const updated = await db.prepare("SELECT * FROM challenges WHERE id=?").bind(c.req.param("id")).first();
+    return ok(c, updated);
+  });
+  app.delete("/api/thepot/challenges/:id", async (c) => {
+    const db = getDb(c);
+    if (!db) return bad(c, "Not available in this environment");
+    await db.prepare("DELETE FROM challenges WHERE id=? AND is_default=0").bind(c.req.param("id")).run();
+    return ok(c, { success: true });
+  });
+  app.get("/api/thepot/challenges/:challengeId/sub-challenges", async (c) => {
+    const db = getDb(c);
+    if (!db) return notFound(c, "Not available in this environment");
+    const rows = await db.prepare(
+      "SELECT * FROM sub_challenges WHERE challenge_id=? ORDER BY id ASC"
+    ).bind(c.req.param("challengeId")).all();
+    return ok(c, { items: rows.results, total: rows.results.length });
+  });
+  app.post("/api/thepot/challenges/:challengeId/sub-challenges", async (c) => {
+    const db = getDb(c);
+    if (!db) return bad(c, "Not available in this environment");
+    const { name } = await c.req.json();
+    if (!name) return bad(c, "name is required");
+    const sub_challenge_id = `custom-${Date.now()}`;
+    const challengeId = c.req.param("challengeId");
+    await db.prepare(
+      `INSERT INTO sub_challenges (sub_challenge_id, challenge_id, name, is_default, created_at, updated_at) VALUES (?, ?, ?, 0, datetime('now'), datetime('now'))`
+    ).bind(sub_challenge_id, challengeId, name).run();
+    const created = await db.prepare("SELECT * FROM sub_challenges WHERE sub_challenge_id=?").bind(sub_challenge_id).first();
+    return ok(c, created);
+  });
+  app.put("/api/thepot/sub-challenges/:id", async (c) => {
+    const db = getDb(c);
+    if (!db) return bad(c, "Not available in this environment");
+    const { name } = await c.req.json();
+    await db.prepare(
+      `UPDATE sub_challenges SET name=?, updated_at=datetime('now') WHERE id=?`
+    ).bind(name, c.req.param("id")).run();
+    const updated = await db.prepare("SELECT * FROM sub_challenges WHERE id=?").bind(c.req.param("id")).first();
+    return ok(c, updated);
+  });
+  app.delete("/api/thepot/sub-challenges/:id", async (c) => {
+    const db = getDb(c);
+    if (!db) return bad(c, "Not available in this environment");
+    await db.prepare("DELETE FROM sub_challenges WHERE id=? AND is_default=0").bind(c.req.param("id")).run();
+    return ok(c, { success: true });
+  });
+  app.get("/api/thepot/stats", async (c) => {
+    const db = getDb(c);
+    if (!db) return notFound(c, "Not available in this environment");
+    const [users, games, challenges, subChallenges] = await Promise.all([
+      db.prepare("SELECT COUNT(*) as cnt FROM users").first(),
+      db.prepare("SELECT COUNT(*) as cnt FROM games").first(),
+      db.prepare("SELECT COUNT(*) as cnt FROM challenges").first(),
+      db.prepare("SELECT COUNT(*) as cnt FROM sub_challenges").first()
+    ]);
+    return ok(c, {
+      users: users?.cnt ?? 0,
+      games: games?.cnt ?? 0,
+      challenges: challenges?.cnt ?? 0,
+      subChallenges: subChallenges?.cnt ?? 0
+    });
+  });
+}
+export {
+  userRoutes
+};
