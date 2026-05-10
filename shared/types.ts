@@ -17,6 +17,19 @@ export interface AuthConfig {
   loginUrl: string;
   devMode: boolean;
 }
+
+/**
+ * Admin / CRM user that is allowed to log in via email OTP.
+ * These are stored under the 'admin-users' entity namespace.
+ */
+export interface AdminUser {
+  id: string;
+  email: string;
+  name: string;
+  role: 'super_admin' | 'admin' | 'viewer';
+  isActive: boolean;
+  createdAt: string;
+}
 export interface User {
   id: string;
   name: string;

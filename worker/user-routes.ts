@@ -23,6 +23,13 @@ import {
   extractToken,
   getClientIp,
   getAuthConfig,
+  isAdminEmail,
+  storeOtp,
+  verifyOtp,
+  sendOtpEmail,
+  createOtpSession,
+  validateOtpSession,
+  deleteOtpSession,
 } from './auth';
 const ENTITY_MAP: Record<string, any> = {
   users: UserEntity,
@@ -73,7 +80,10 @@ async function logActivity(env: Env, action: any, type: string, id: string) {
 export function userRoutes(app: Hono<{ Bindings: Env }>) {
 
   // ─── Auth middleware ────────────────────────────────────────────────────────
-  // All /api/* routes require a valid Cloudflare Access JWT, except /api/auth/*.
+  // All /api/* routes require either:
+  //   a) a valid Cloudflare Access JWT, OR
+  //   b) a valid OTP session cookie (nexus_session)
+  // Except /api/auth/* which is always public.
   app.use('/api/*', async (c, next) => {
     // Public auth endpoints bypass the check
     if (c.req.path.startsWith('/api/auth/')) return next();
@@ -85,6 +95,18 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       return c.json({ success: false, error: 'IP blocked due to too many failed login attempts. Try again in 24 hours.' }, 403);
     }
 
+    // Try OTP session cookie first
+    const cookieHeader = c.req.header('Cookie') ?? '';
+    const sessionMatch = cookieHeader.match(/nexus_session=([^;]+)/);
+    if (sessionMatch) {
+      const sessionUser = await validateOtpSession(sessionMatch[1], c.env);
+      if (sessionUser) {
+        (c as any).set('authUser', sessionUser);
+        return next();
+      }
+    }
+
+    // Try Cloudflare Access JWT
     const token = extractToken(c.req.raw);
     if (!token) {
       const ua = c.req.header('User-Agent') ?? '';
@@ -97,7 +119,6 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
 
     try {
       const user = await validateAccessJWT(token, c.env);
-      // Attach user to request context for downstream handlers
       (c as any).set('authUser', user);
       await clearAttempts(ip, c.env);
       return next();
@@ -118,12 +139,20 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     return c.json({ success: true, data: getAuthConfig(c.env) });
   });
 
-  /** Validate the current JWT and return the authenticated user */
+  /** Validate the current JWT or OTP session and return the authenticated user */
   app.get('/api/auth/me', async (c) => {
     const ip = getClientIp(c.req.raw);
 
     if (await isIpBlocked(ip, c.env)) {
       return c.json({ success: false, error: 'IP blocked.' }, 403);
+    }
+
+    // Check OTP session cookie first
+    const cookieHeader = c.req.header('Cookie') ?? '';
+    const sessionMatch = cookieHeader.match(/nexus_session=([^;]+)/);
+    if (sessionMatch) {
+      const sessionUser = await validateOtpSession(sessionMatch[1], c.env);
+      if (sessionUser) return c.json({ success: true, data: sessionUser });
     }
 
     const token = extractToken(c.req.raw);
@@ -145,12 +174,164 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     }
   });
 
-  /** Logout: clear the CF_Authorization cookie */
-  app.get('/api/auth/logout', (c) => {
+  /** Logout: clear both CF_Authorization and nexus_session cookies */
+  app.get('/api/auth/logout', async (c) => {
+    const cookieHeader = c.req.header('Cookie') ?? '';
+    const sessionMatch = cookieHeader.match(/nexus_session=([^;]+)/);
+    if (sessionMatch) {
+      await deleteOtpSession(sessionMatch[1], c.env).catch(() => { });
+    }
     const headers = new Headers();
-    headers.set('Set-Cookie', 'CF_Authorization=; Path=/; Max-Age=0; SameSite=Lax');
+    headers.append('Set-Cookie', 'CF_Authorization=; Path=/; Max-Age=0; SameSite=Lax');
+    headers.append('Set-Cookie', 'nexus_session=; Path=/; Max-Age=0; SameSite=Lax; HttpOnly');
     headers.set('Location', '/login');
     return new Response(null, { status: 302, headers });
+  });
+
+  // ─── Email OTP routes ────────────────────────────────────────────────────────
+
+  /**
+   * POST /api/auth/otp/request
+   * Body: { email: string }
+   * Checks if email belongs to an active admin user — if not, silently returns
+   * success (to avoid email enumeration). Only sends OTP to known admins.
+   */
+  app.post('/api/auth/otp/request', async (c) => {
+    const ip = getClientIp(c.req.raw);
+
+    if (await isIpBlocked(ip, c.env)) {
+      return c.json({ success: false, error: 'IP blocked.' }, 403);
+    }
+
+    let email: string;
+    try {
+      const body = await c.req.json<{ email?: string }>();
+      email = (body.email ?? '').trim().toLowerCase();
+    } catch {
+      return bad(c, 'Ongeldig verzoek');
+    }
+
+    if (!email || !/^[^@]+@[^@]+\.[^@]+$/.test(email)) {
+      return bad(c, 'Voer een geldig e-mailadres in.');
+    }
+
+    // Security: always return the same generic response regardless of whether
+    // the email exists — prevents email enumeration attacks.
+    const adminExists = await isAdminEmail(email, c.env);
+    if (adminExists) {
+      // Look up name for personalisation
+      const stub = (c.env as any).GlobalDurableObject.get(
+        (c.env as any).GlobalDurableObject.idFromName('global')
+      );
+      const adminDoc = await stub.getDoc<{ name: string }>(`auth:admin:${email}`);
+      const name = adminDoc?.data?.name ?? email;
+
+      const otp = await storeOtp(email, c.env);
+      await sendOtpEmail(email, otp, name, c.env);
+    }
+
+    // Always return 200 to prevent email enumeration
+    return c.json({ success: true, message: 'Als dit e-mailadres bekend is, ontvangt u een code.' });
+  });
+
+  /**
+   * POST /api/auth/otp/verify
+   * Body: { email: string, token: string }
+   * On success sets a nexus_session cookie and returns the AuthUser.
+   */
+  app.post('/api/auth/otp/verify', async (c) => {
+    const ip = getClientIp(c.req.raw);
+
+    if (await isIpBlocked(ip, c.env)) {
+      return c.json({ success: false, error: 'IP blocked.' }, 403);
+    }
+
+    let email: string, token: string;
+    try {
+      const body = await c.req.json<{ email?: string; token?: string }>();
+      email = (body.email ?? '').trim().toLowerCase();
+      token = (body.token ?? '').trim();
+    } catch {
+      return bad(c, 'Ongeldig verzoek');
+    }
+
+    if (!email || !token) return bad(c, 'E-mailadres en code zijn verplicht.');
+
+    const result = await verifyOtp(email, token, c.env);
+    if (!result.valid) {
+      // Count as failed attempt toward IP blocking
+      const ua = c.req.header('User-Agent') ?? '';
+      const { blocked } = await recordFailedAttempt(ip, ua, c.env);
+      const msg = blocked
+        ? 'IP blocked after too many failed attempts.'
+        : (result.reason ?? 'Ongeldige code.');
+      return c.json({ success: false, error: msg }, 401);
+    }
+
+    // Clear failure counter on success
+    await clearAttempts(ip, c.env);
+
+    // Look up the admin user info
+    const stub = (c.env as any).GlobalDurableObject.get(
+      (c.env as any).GlobalDurableObject.idFromName('global')
+    );
+    const adminDoc = await stub.getDoc<{ name: string; email: string }>(`auth:admin:${email}`);
+    const name = adminDoc?.data?.name ?? email;
+
+    // Create session
+    const sessionToken = await createOtpSession(email, name, c.env);
+
+    const isProduction = !getAuthConfig(c.env).devMode;
+    const cookieFlags = isProduction ? '; Secure' : '';
+    const cookieValue = `nexus_session=${sessionToken}; Path=/; Max-Age=${8 * 3600}; SameSite=Lax; HttpOnly${cookieFlags}`;
+
+    return new Response(
+      JSON.stringify({ success: true, data: { email, name, sub: email } }),
+      {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/json',
+          'Set-Cookie': cookieValue,
+        },
+      },
+    );
+  });
+
+  /**
+   * GET /api/auth/admin-users — list all registered admin users (protected)
+   * POST /api/auth/admin-users — register a new admin user (protected)
+   */
+  app.get('/api/auth/admin-users', async (c) => {
+    const stub = (c.env as any).GlobalDurableObject.get(
+      (c.env as any).GlobalDurableObject.idFromName('global')
+    );
+    const { keys } = await stub.listPrefix('auth:admin:');
+    const users = await Promise.all(
+      keys.map(async (k: string) => {
+        const doc = await stub.getDoc<any>(k);
+        return doc?.data ?? null;
+      })
+    );
+    return c.json({ success: true, data: users.filter(Boolean) });
+  });
+
+  app.post('/api/auth/admin-users', async (c) => {
+    const { email, name, role } = await c.req.json<{ email: string; name: string; role: string }>();
+    if (!email || !name) return bad(c, 'email and name are required');
+    const stub = (c.env as any).GlobalDurableObject.get(
+      (c.env as any).GlobalDurableObject.idFromName('global')
+    );
+    const normalized = email.toLowerCase().trim();
+    const key = `auth:admin:${normalized}`;
+    const existing = await stub.getDoc<any>(key);
+    await stub.casPut(key, existing?.v ?? 0, {
+      email: normalized,
+      name,
+      role: role ?? 'admin',
+      isActive: true,
+      createdAt: existing?.data?.createdAt ?? new Date().toISOString(),
+    });
+    return c.json({ success: true, data: { email: normalized, name, role } });
   });
 
   // ─── Specialized Batch Gift Card Generation

@@ -309,3 +309,215 @@ export function getAuthConfig(env: Env) {
         devMode,
     };
 }
+
+// ─── Email OTP ────────────────────────────────────────────────────────────────
+
+const OTP_TTL_MS = 10 * 60 * 1_000; // 10 minutes
+const OTP_LENGTH = 6;
+const otpKey = (email: string) => `auth:otp:${email.toLowerCase().trim()}`;
+const adminUserKey = (email: string) => `auth:admin:${email.toLowerCase().trim()}`;
+
+/** Generate a cryptographically random numeric OTP */
+function generateOtp(): string {
+    const arr = new Uint32Array(1);
+    crypto.getRandomValues(arr);
+    return String(arr[0] % 10 ** OTP_LENGTH).padStart(OTP_LENGTH, '0');
+}
+
+/**
+ * Check whether an email address belongs to an active admin user.
+ * Looks up the 'admin-users' index in the Durable Object.
+ * Always allows the fallback dev email when env vars are absent.
+ */
+export async function isAdminEmail(email: string, env: Env): Promise<boolean> {
+    const normalized = email.toLowerCase().trim();
+
+    // Dev-bypass: allow any email when CF Access not configured
+    const { teamDomain } = getExtra(env);
+    if (!teamDomain) return true;
+
+    const stub = getDO(env);
+    const doc = await stub.getDoc<{ email: string; isActive: boolean }>(adminUserKey(normalized));
+    return doc ? doc.data.email === normalized && doc.data.isActive : false;
+}
+
+/**
+ * Register an admin user so they can log in via OTP.
+ * Creates or overwrites the admin record.
+ */
+export async function registerAdminUser(
+    email: string,
+    name: string,
+    role: string,
+    env: Env,
+): Promise<void> {
+    const normalized = email.toLowerCase().trim();
+    const stub = getDO(env);
+    const key = adminUserKey(normalized);
+    // CAS with v=0 to upsert (ignore version conflicts — last write wins for admin mgmt)
+    const existing = await stub.getDoc<any>(key);
+    await stub.casPut(key, existing?.v ?? 0, {
+        email: normalized,
+        name,
+        role,
+        isActive: true,
+        createdAt: existing?.data?.createdAt ?? new Date().toISOString(),
+    });
+}
+
+/**
+ * Store a freshly generated OTP for the given email.
+ * Returns the OTP so the caller can email it.
+ */
+export async function storeOtp(email: string, env: Env): Promise<string> {
+    const otp = generateOtp();
+    const normalized = email.toLowerCase().trim();
+    const stub = getDO(env);
+    const key = otpKey(normalized);
+    const existing = await stub.getDoc<any>(key);
+    // CAS retry loop
+    for (let i = 0; i < 5; i++) {
+        const result = await stub.casPut(key, existing?.v ?? 0, {
+            otp,
+            createdAt: Date.now(),
+            attempts: 0,
+        });
+        if (result.ok) break;
+    }
+    return otp;
+}
+
+/**
+ * Verify a submitted OTP token against the stored one.
+ * Returns { valid, reason } — invalid attempts also count toward IP blocking.
+ */
+export async function verifyOtp(
+    email: string,
+    token: string,
+    env: Env,
+): Promise<{ valid: boolean; reason?: string }> {
+    const normalized = email.toLowerCase().trim();
+    const stub = getDO(env);
+    const key = otpKey(normalized);
+    const doc = await stub.getDoc<{ otp: string; createdAt: number; attempts: number }>(key);
+
+    if (!doc) return { valid: false, reason: 'Geen actieve code — vraag een nieuwe aan.' };
+
+    const { otp, createdAt, attempts } = doc.data;
+
+    if (Date.now() - createdAt > OTP_TTL_MS) {
+        await stub.del(key);
+        return { valid: false, reason: 'Code verlopen — vraag een nieuwe aan.' };
+    }
+
+    if (attempts >= 5) {
+        await stub.del(key);
+        return { valid: false, reason: 'Te veel pogingen — vraag een nieuwe code aan.' };
+    }
+
+    if (token.trim() !== otp) {
+        // Increment attempt counter
+        for (let i = 0; i < 5; i++) {
+            const fresh = await stub.getDoc<{ otp: string; createdAt: number; attempts: number }>(key);
+            if (!fresh) break;
+            const res = await stub.casPut(key, fresh.v, { ...fresh.data, attempts: fresh.data.attempts + 1 });
+            if (res.ok) break;
+        }
+        return { valid: false, reason: 'Ongeldige code.' };
+    }
+
+    // Valid — delete OTP immediately (single-use)
+    await stub.del(key);
+    return { valid: true };
+}
+
+/**
+ * Send the OTP to the user via Resend.
+ * Falls back to console.log when RESEND_API_KEY is not set.
+ */
+export async function sendOtpEmail(email: string, otp: string, name: string, env: Env): Promise<void> {
+    const { resendApiKey } = getExtra(env);
+
+    const html = `
+        <div style="font-family:sans-serif;max-width:480px;margin:0 auto">
+          <div style="background:#4f46e5;padding:24px;border-radius:12px 12px 0 0;text-align:center">
+            <h1 style="color:#fff;margin:0;font-size:22px;font-weight:800">TechEdge Nexus</h1>
+            <p style="color:#c7d2fe;margin:4px 0 0;font-size:13px">Enterprise Loyalty Management</p>
+          </div>
+          <div style="background:#fff;padding:32px;border-radius:0 0 12px 12px;border:1px solid #e5e7eb;border-top:none">
+            <p style="margin:0 0 8px;font-size:15px">Hallo <strong>${name}</strong>,</p>
+            <p style="margin:0 0 24px;color:#6b7280;font-size:14px">
+              Gebruik de onderstaande eenmalige code om in te loggen. De code is <strong>10 minuten</strong> geldig.
+            </p>
+            <div style="background:#f8fafc;border:2px dashed #6366f1;border-radius:10px;padding:20px;text-align:center;margin:0 0 24px">
+              <span style="font-size:40px;font-weight:900;letter-spacing:10px;color:#4f46e5;font-family:monospace">${otp}</span>
+            </div>
+            <p style="margin:0;color:#9ca3af;font-size:12px">
+              Deel deze code nooit met anderen. Als u dit niet heeft aangevraagd, kunt u dit bericht negeren.
+            </p>
+          </div>
+        </div>
+    `;
+
+    if (!resendApiKey) {
+        console.warn(`[OTP] RESEND_API_KEY not set — OTP for ${email}: ${otp}`);
+        return;
+    }
+
+    const res = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+            Authorization: `Bearer ${resendApiKey}`,
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            from: 'Nexus CRM <noreply@the-pot.nl>',
+            to: [email],
+            subject: `${otp} — Uw inlogcode voor Nexus CRM`,
+            html,
+        }),
+    });
+
+    if (!res.ok) {
+        console.error('[OTP] Email send failed:', await res.text());
+    }
+}
+
+/**
+ * Issue a signed OTP session token (simple HMAC-SHA256 JWT-like structure).
+ * Used as a session cookie after successful OTP verification.
+ * Stored in a DO so it can be revoked on logout.
+ */
+const SESSION_TTL_MS = 8 * 60 * 60 * 1_000; // 8 hours
+const sessionKey = (token: string) => `auth:session:${token}`;
+
+export async function createOtpSession(email: string, name: string, env: Env): Promise<string> {
+    const token = Array.from(crypto.getRandomValues(new Uint8Array(32)))
+        .map((b) => b.toString(16).padStart(2, '0'))
+        .join('');
+    const stub = getDO(env);
+    await stub.casPut(sessionKey(token), 0, {
+        email,
+        name,
+        createdAt: Date.now(),
+        expiresAt: Date.now() + SESSION_TTL_MS,
+    });
+    return token;
+}
+
+export async function validateOtpSession(token: string, env: Env): Promise<AuthUser | null> {
+    if (!token) return null;
+    const stub = getDO(env);
+    const doc = await stub.getDoc<{ email: string; name: string; expiresAt: number }>(sessionKey(token));
+    if (!doc) return null;
+    if (doc.data.expiresAt < Date.now()) {
+        await stub.del(sessionKey(token));
+        return null;
+    }
+    return { email: doc.data.email, name: doc.data.name, sub: doc.data.email };
+}
+
+export async function deleteOtpSession(token: string, env: Env): Promise<void> {
+    const stub = getDO(env);
+    await stub.del(sessionKey(token));
+}
