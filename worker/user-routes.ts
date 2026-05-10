@@ -15,6 +15,15 @@ import {
   MOCK_HERO_BANNER_CONFIG,
   MOCK_WIFI_SETTINGS
 } from '@shared/mock-data';
+import {
+  validateAccessJWT,
+  isIpBlocked,
+  recordFailedAttempt,
+  clearAttempts,
+  extractToken,
+  getClientIp,
+  getAuthConfig,
+} from './auth';
 const ENTITY_MAP: Record<string, any> = {
   users: UserEntity,
   tiers: TierEntity,
@@ -62,7 +71,89 @@ async function logActivity(env: Env, action: any, type: string, id: string) {
   }
 }
 export function userRoutes(app: Hono<{ Bindings: Env }>) {
-  // Specialized Batch Gift Card Generation
+
+  // ─── Auth middleware ────────────────────────────────────────────────────────
+  // All /api/* routes require a valid Cloudflare Access JWT, except /api/auth/*.
+  app.use('/api/*', async (c, next) => {
+    // Public auth endpoints bypass the check
+    if (c.req.path.startsWith('/api/auth/')) return next();
+
+    const ip = getClientIp(c.req.raw);
+
+    // Check if IP is already blocked
+    if (await isIpBlocked(ip, c.env)) {
+      return c.json({ success: false, error: 'IP blocked due to too many failed login attempts. Try again in 24 hours.' }, 403);
+    }
+
+    const token = extractToken(c.req.raw);
+    if (!token) {
+      const ua = c.req.header('User-Agent') ?? '';
+      const { blocked } = await recordFailedAttempt(ip, ua, c.env);
+      const msg = blocked
+        ? 'IP blocked after too many failed attempts. An alert has been sent.'
+        : 'Authentication required. Please sign in.';
+      return c.json({ success: false, error: msg }, 401);
+    }
+
+    try {
+      const user = await validateAccessJWT(token, c.env);
+      // Attach user to request context for downstream handlers
+      (c as any).set('authUser', user);
+      await clearAttempts(ip, c.env);
+      return next();
+    } catch (err: any) {
+      const ua = c.req.header('User-Agent') ?? '';
+      const { blocked } = await recordFailedAttempt(ip, ua, c.env);
+      const msg = blocked
+        ? 'IP blocked after too many failed attempts. An alert has been sent.'
+        : `Invalid authentication token: ${err?.message ?? 'unknown error'}`;
+      return c.json({ success: false, error: msg }, 401);
+    }
+  });
+
+  // ─── Public auth routes (no JWT required) ──────────────────────────────────
+
+  /** Return the Cloudflare Access config so the frontend knows the login URL */
+  app.get('/api/auth/config', (c) => {
+    return c.json({ success: true, data: getAuthConfig(c.env) });
+  });
+
+  /** Validate the current JWT and return the authenticated user */
+  app.get('/api/auth/me', async (c) => {
+    const ip = getClientIp(c.req.raw);
+
+    if (await isIpBlocked(ip, c.env)) {
+      return c.json({ success: false, error: 'IP blocked.' }, 403);
+    }
+
+    const token = extractToken(c.req.raw);
+    if (!token) {
+      return c.json({ success: false, error: 'Not authenticated' }, 401);
+    }
+
+    try {
+      const user = await validateAccessJWT(token, c.env);
+      await clearAttempts(ip, c.env);
+      return c.json({ success: true, data: user });
+    } catch (err: any) {
+      const ua = c.req.header('User-Agent') ?? '';
+      const { blocked } = await recordFailedAttempt(ip, ua, c.env);
+      const msg = blocked
+        ? 'IP blocked after too many failed attempts.'
+        : 'Invalid or expired token.';
+      return c.json({ success: false, error: msg }, 401);
+    }
+  });
+
+  /** Logout: clear the CF_Authorization cookie */
+  app.get('/api/auth/logout', (c) => {
+    const headers = new Headers();
+    headers.set('Set-Cookie', 'CF_Authorization=; Path=/; Max-Age=0; SameSite=Lax');
+    headers.set('Location', '/login');
+    return new Response(null, { status: 302, headers });
+  });
+
+  // ─── Specialized Batch Gift Card Generation
   app.post('/api/gift-cards/batch', async (c) => {
     const { count, value, expiryDate } = await c.req.json();
     if (!count || count <= 0) return bad(c, 'Invalid count');

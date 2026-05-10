@@ -61,7 +61,7 @@ export function EventsPage() {
             {[1, 2, 3].map((i) => (
               <Card key={i} className="overflow-hidden group hover:shadow-xl transition-all duration-500 border-none shadow-soft">
                 <div className="aspect-video relative overflow-hidden">
-                  <img 
+                  <img
                     src={`https://images.unsplash.com/photo-${i === 1 ? '1505373877841-8d25f7d46678' : i === 2 ? '1540575861-517eaaade144' : '1511578314322-379afb476865'}?q=80&w=800&auto=format&fit=crop`}
                     className="object-cover w-full h-full group-hover:scale-110 transition-transform duration-700"
                     alt="Event"

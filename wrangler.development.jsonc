@@ -30,6 +30,20 @@
 	"observability": {
 		"enabled": true
 	},
+	// ─── Cloudflare Zero Trust / Auth configuration ──────────────────────────
+	// Set CF_ACCESS_TEAM_DOMAIN and CF_ACCESS_AUD in the Cloudflare dashboard
+	// under Workers → Settings → Variables & Secrets (use Secrets for production).
+	// CF_ACCESS_TEAM_DOMAIN  : e.g. "yourteam.cloudflareaccess.com"
+	// CF_ACCESS_AUD          : Application AUD from Access > Applications > your app
+	// RESEND_API_KEY         : API key from https://resend.com for alert emails
+	// ALERT_EMAIL            : Recipient for security alerts (default: info@kas040.nl)
+	"vars": {
+		"CF_ACCESS_TEAM_DOMAIN": "",
+		"CF_ACCESS_AUD": "",
+		"ALERT_EMAIL": "info@kas040.nl"
+	},
+	// NOTE: Set RESEND_API_KEY as a Worker Secret (never as a plain var):
+	//   npx wrangler secret put RESEND_API_KEY --config wrangler.development.jsonc
 	"durable_objects": {
 		"bindings": [
 			{

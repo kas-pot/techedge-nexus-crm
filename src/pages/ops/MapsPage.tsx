@@ -110,8 +110,8 @@ export function MapsPage() {
                       <Badge variant="outline" className={cn(
                         "text-[9px] uppercase font-bold border-none px-2",
                         poi.status === 'Open' ? "bg-emerald-100 text-emerald-700" :
-                        poi.status === 'Closed' ? "bg-rose-100 text-rose-700" :
-                        "bg-amber-100 text-amber-700"
+                          poi.status === 'Closed' ? "bg-rose-100 text-rose-700" :
+                            "bg-amber-100 text-amber-700"
                       )}>
                         {poi.status}
                       </Badge>

@@ -127,11 +127,11 @@ export function MemberListPage() {
 
   const sortedUsers = sortKey
     ? [...users].sort((a, b) => {
-        const av = a[sortKey] ?? '';
-        const bv = b[sortKey] ?? '';
-        if (av === bv) return 0;
-        return sortDir === 'asc' ? (av > bv ? 1 : -1) : (av < bv ? 1 : -1);
-      })
+      const av = a[sortKey] ?? '';
+      const bv = b[sortKey] ?? '';
+      if (av === bv) return 0;
+      return sortDir === 'asc' ? (av > bv ? 1 : -1) : (av < bv ? 1 : -1);
+    })
     : users;
 
   function sortIcon(key: keyof ThePotUser) {
@@ -285,7 +285,7 @@ export function MemberListPage() {
                         </TableCell>
                       </TableRow>
                     ))}
-                    {sortedUsers.length === 0 && !isLoading && (
+                  {sortedUsers.length === 0 && !isLoading && (
                     <TableRow>
                       <TableCell colSpan={7} className="h-64 text-center text-muted-foreground">
                         Geen gebruikers gevonden.

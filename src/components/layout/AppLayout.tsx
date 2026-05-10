@@ -7,8 +7,9 @@ import { Separator } from "@/components/ui/separator";
 import { Bell, Search, User, Settings, HelpCircle, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { CommandPalette } from "@/components/CommandPalette";
+import { useAuth } from "@/lib/auth-context";
 type AppLayoutProps = {
   children: React.ReactNode;
   container?: boolean;
@@ -17,12 +18,19 @@ type AppLayoutProps = {
 };
 export function AppLayout({ children, container = false, className, contentClassName }: AppLayoutProps): JSX.Element {
   const location = useLocation();
+  const { user, logout } = useAuth();
   const pathSegments = location.pathname.split('/').filter(Boolean);
   const formatBreadcrumb = (segment: string) => {
     return segment
       .charAt(0).toUpperCase() + segment.slice(1)
         .replace(/-/g, ' ');
   };
+  /** Derive initials from name or email */
+  const initials = user
+    ? user.name !== user.email
+      ? user.name.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase()
+      : user.email.slice(0, 2).toUpperCase()
+    : '?';
   return (
     <SidebarProvider defaultOpen={true}>
       <AppSidebar />
@@ -85,16 +93,16 @@ export function AppLayout({ children, container = false, className, contentClass
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="relative h-9 px-2 flex items-center gap-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-all">
                   <Avatar className="h-7 w-7 border border-slate-200 dark:border-slate-700">
-                    <AvatarFallback className="bg-indigo-600 text-[10px] text-white font-bold uppercase">JD</AvatarFallback>
+                    <AvatarFallback className="bg-indigo-600 text-[10px] text-white font-bold uppercase">{initials}</AvatarFallback>
                   </Avatar>
                   <div className="hidden sm:flex flex-col items-start leading-none">
-                    <span className="text-xs font-bold">Jane Doe</span>
-                    <span className="text-[9px] text-muted-foreground uppercase font-black tracking-tighter">Super Admin</span>
+                    <span className="text-xs font-bold">{user?.name ?? '…'}</span>
+                    <span className="text-[9px] text-muted-foreground uppercase font-black tracking-tighter">{user?.email ?? ''}</span>
                   </div>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56 mt-1 rounded-xl shadow-xl border-slate-200 dark:border-slate-800">
-                <DropdownMenuLabel className="font-bold">My Account</DropdownMenuLabel>
+                <DropdownMenuLabel className="font-bold">{user?.name ?? 'Mijn Account'}</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
                   <Link to="/system" className="flex items-center cursor-pointer">
@@ -112,8 +120,8 @@ export function AppLayout({ children, container = false, className, contentClass
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem className="text-destructive font-semibold">
-                  <LogOut className="mr-2 h-4 w-4" /> Sign Out
+                <DropdownMenuItem className="text-destructive font-semibold cursor-pointer" onClick={logout}>
+                  <LogOut className="mr-2 h-4 w-4" /> Afmelden
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

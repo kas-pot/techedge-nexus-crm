@@ -50,12 +50,12 @@ export function BurnRulesPage() {
                   <Label className="text-muted-foreground">Threshold Adjustment</Label>
                   <span className="text-indigo-600">{globalRate} XP</span>
                 </div>
-                <Slider 
-                  value={[globalRate]} 
-                  onValueChange={v => setGlobalRate(v[0])} 
-                  max={500} 
-                  min={10} 
-                  step={10} 
+                <Slider
+                  value={[globalRate]}
+                  onValueChange={v => setGlobalRate(v[0])}
+                  max={500}
+                  min={10}
+                  step={10}
                   className="py-4"
                 />
                 <div className="flex justify-between text-[10px] font-bold text-muted-foreground uppercase px-1">

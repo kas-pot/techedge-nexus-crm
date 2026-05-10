@@ -37,17 +37,17 @@ export function OutletsPage() {
     return sortDir === 'asc' ? ' ↑' : ' ↓';
   }
   const filteredOutlets = (outletsData?.items || []).filter(o => {
-    const matchesSearch = o.name.toLowerCase().includes(search.toLowerCase()) || 
-                         o.tenantName.toLowerCase().includes(search.toLowerCase());
+    const matchesSearch = o.name.toLowerCase().includes(search.toLowerCase()) ||
+      o.tenantName.toLowerCase().includes(search.toLowerCase());
     const matchesVenue = venueFilter === 'all' || o.venueId === venueFilter;
     return matchesSearch && matchesVenue;
   });
   const sortedOutlets = sortKey
     ? [...filteredOutlets].sort((a: any, b: any) => {
-        const av = a[sortKey] ?? ''; const bv = b[sortKey] ?? '';
-        if (av === bv) return 0;
-        return sortDir === 'asc' ? (av > bv ? 1 : -1) : (av < bv ? 1 : -1);
-      })
+      const av = a[sortKey] ?? ''; const bv = b[sortKey] ?? '';
+      if (av === bv) return 0;
+      return sortDir === 'asc' ? (av > bv ? 1 : -1) : (av < bv ? 1 : -1);
+    })
     : filteredOutlets;
   return (
     <AppLayout container>
@@ -64,8 +64,8 @@ export function OutletsPage() {
             <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
               <div className="relative w-full md:w-96">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input 
-                  placeholder="Search stores or tenants..." 
+                <Input
+                  placeholder="Search stores or tenants..."
                   className="pl-9"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}

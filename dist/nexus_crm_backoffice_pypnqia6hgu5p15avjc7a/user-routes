@@ -685,6 +685,195 @@ var HeroBannerEntity = class _HeroBannerEntity extends Entity {
   }
 };
 
+// worker/auth.ts
+var BLOCK_DURATION_MS = 24 * 60 * 60 * 1e3;
+var MAX_ATTEMPTS = 3;
+var DEFAULT_ALERT_EMAIL = "info@kas040.nl";
+var ATTEMPT_WINDOW_MS = 60 * 60 * 1e3;
+function getExtra(env) {
+  const e = env;
+  return {
+    teamDomain: e.CF_ACCESS_TEAM_DOMAIN ?? "",
+    aud: e.CF_ACCESS_AUD ?? "",
+    resendApiKey: e.RESEND_API_KEY ?? "",
+    alertEmail: e.ALERT_EMAIL ?? DEFAULT_ALERT_EMAIL
+  };
+}
+function getDO(env) {
+  const e = env;
+  const id = e.GlobalDurableObject.idFromName("global");
+  return e.GlobalDurableObject.get(id);
+}
+function b64UrlDecode(s) {
+  const b64 = s.replace(/-/g, "+").replace(/_/g, "/");
+  const padded = b64 + "=".repeat((4 - b64.length % 4) % 4);
+  return Uint8Array.from(atob(padded), (c) => c.charCodeAt(0));
+}
+async function importRsaKey(jwk) {
+  return crypto.subtle.importKey(
+    "jwk",
+    jwk,
+    { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
+    false,
+    ["verify"]
+  );
+}
+var jwksCache = null;
+async function fetchJWKS(teamDomain) {
+  const now = Date.now();
+  if (jwksCache && now - jwksCache.fetchedAt < 10 * 6e4) return jwksCache.keys;
+  const resp = await fetch(`https://${teamDomain}/cdn-cgi/access/certs`);
+  if (!resp.ok) throw new Error(`JWKS fetch failed: ${resp.status}`);
+  const body = await resp.json();
+  jwksCache = { keys: body.keys, fetchedAt: now };
+  return body.keys;
+}
+async function validateAccessJWT(token, env) {
+  const { teamDomain, aud } = getExtra(env);
+  if (!teamDomain || !aud) {
+    console.warn("[Auth] Dev-bypass: CF_ACCESS_TEAM_DOMAIN / CF_ACCESS_AUD not set.");
+    return { email: "dev@localhost", name: "Dev User", sub: "dev-bypass" };
+  }
+  const parts = token.split(".");
+  if (parts.length !== 3) throw new Error("Malformed JWT");
+  const [headerB64, payloadB64, sigB64] = parts;
+  const header = JSON.parse(new TextDecoder().decode(b64UrlDecode(headerB64)));
+  const payload = JSON.parse(new TextDecoder().decode(b64UrlDecode(payloadB64)));
+  const now = Math.floor(Date.now() / 1e3);
+  if (payload.exp && payload.exp < now) throw new Error("Token expired");
+  const audiences = Array.isArray(payload.aud) ? payload.aud : [payload.aud ?? ""];
+  if (!audiences.includes(aud)) throw new Error("Invalid audience");
+  if (payload.iss && !payload.iss.includes(teamDomain)) throw new Error("Invalid issuer");
+  const keys = await fetchJWKS(teamDomain);
+  const jwk = keys.find((k) => k.kid && k.kid === header.kid) ?? keys[0];
+  if (!jwk) throw new Error("No matching JWK");
+  const key = await importRsaKey(jwk);
+  const data = new TextEncoder().encode(`${headerB64}.${payloadB64}`);
+  const valid = await crypto.subtle.verify("RSASSA-PKCS1-v1_5", key, b64UrlDecode(sigB64), data);
+  if (!valid) throw new Error("Invalid JWT signature");
+  return {
+    email: payload.email ?? payload.sub ?? "unknown",
+    name: payload.name ?? payload.email ?? "Unknown",
+    sub: payload.sub ?? payload.email ?? "unknown"
+  };
+}
+var ipBlockKey = (ip) => `auth:block:${ip}`;
+var ipAttemptKey = (ip) => `auth:attempts:${ip}`;
+async function isIpBlocked(ip, env) {
+  const stub = getDO(env);
+  const doc = await stub.getDoc(ipBlockKey(ip));
+  return doc ? doc.data.until > Date.now() : false;
+}
+async function recordFailedAttempt(ip, userAgent, env) {
+  const stub = getDO(env);
+  const key = ipAttemptKey(ip);
+  const now = Date.now();
+  for (let retry = 0; retry < 5; retry++) {
+    const doc = await stub.getDoc(key);
+    const existing = doc?.data;
+    const inWindow = existing && now - existing.first < ATTEMPT_WINDOW_MS;
+    const count = inWindow ? existing.count + 1 : 1;
+    const first = inWindow ? existing.first : now;
+    const result = await stub.casPut(key, doc?.v ?? 0, { count, first, ua: userAgent });
+    if (!result.ok) continue;
+    if (count >= MAX_ATTEMPTS) {
+      for (let br = 0; br < 5; br++) {
+        const blockDoc = await stub.getDoc(ipBlockKey(ip));
+        const bres = await stub.casPut(ipBlockKey(ip), blockDoc?.v ?? 0, {
+          until: now + BLOCK_DURATION_MS
+        });
+        if (bres.ok) break;
+      }
+      await sendAlertEmail(ip, userAgent, count, env);
+      return { blocked: true, attempts: count };
+    }
+    return { blocked: false, attempts: count };
+  }
+  return { blocked: false, attempts: 1 };
+}
+async function clearAttempts(ip, env) {
+  const stub = getDO(env);
+  await stub.del(ipAttemptKey(ip));
+}
+async function sendAlertEmail(ip, userAgent, attempts, env) {
+  const { resendApiKey, alertEmail } = getExtra(env);
+  const blockedUntil = new Date(Date.now() + BLOCK_DURATION_MS).toLocaleString("nl-NL", {
+    timeZone: "Europe/Amsterdam"
+  });
+  const html = `
+    <div style="font-family:sans-serif;max-width:600px;margin:0 auto">
+      <h2 style="color:#dc2626">\u{1F6A8} Nexus CRM \u2014 Beveiligingswaarschuwing</h2>
+      <p>
+        Na <strong>${attempts} mislukte inlogpogingen</strong> is het onderstaande IP-adres
+        automatisch geblokkeerd voor <strong>24 uur</strong>.
+      </p>
+      <table style="border-collapse:collapse;width:100%">
+        <tr><td style="padding:6px;font-weight:bold">IP-adres</td><td style="padding:6px">${ip}</td></tr>
+        <tr style="background:#f9fafb"><td style="padding:6px;font-weight:bold">Browser/Client</td><td style="padding:6px">${userAgent}</td></tr>
+        <tr><td style="padding:6px;font-weight:bold">Pogingen</td><td style="padding:6px">${attempts}</td></tr>
+        <tr style="background:#f9fafb"><td style="padding:6px;font-weight:bold">Geblokkeerd tot</td><td style="padding:6px">${blockedUntil} (Amsterdam)</td></tr>
+        <tr><td style="padding:6px;font-weight:bold">Tijdstip (UTC)</td><td style="padding:6px">${(/* @__PURE__ */ new Date()).toISOString()}</td></tr>
+      </table>
+      <hr style="margin:24px 0">
+      <p style="color:#6b7280;font-size:12px">
+        <strong>Technische noot over MAC-adres blokkering:</strong><br>
+        MAC-adressen zijn alleen zichtbaar binnen een lokaal netwerk (OSI Layer 2) en worden
+        door de eerste router-hop verwijderd. Over het internet zijn uitsluitend IP-adressen
+        beschikbaar (Layer 3). IP-adres blokkering is de industriestandaard voor
+        webapplicaties en voldoende effectief als beveiligingsmaatregel.
+      </p>
+      <p style="color:#6b7280;font-size:12px">
+        Dit bericht is automatisch verzonden door Nexus CRM Security.
+      </p>
+    </div>
+  `;
+  if (!resendApiKey) {
+    console.warn(
+      `[Auth] RESEND_API_KEY not configured \u2014 skipping alert email for blocked IP: ${ip}`
+    );
+    return;
+  }
+  try {
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${resendApiKey}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        from: "Nexus CRM Security <security@the-pot.nl>",
+        to: [alertEmail],
+        subject: `\u{1F6A8} IP geblokkeerd: ${ip} \u2014 ${attempts} mislukte inlogpogingen`,
+        html
+      })
+    });
+    if (!res.ok) {
+      console.error("[Auth] Alert email failed:", await res.text());
+    }
+  } catch (err) {
+    console.error("[Auth] Alert email error:", err);
+  }
+}
+function getClientIp(req) {
+  return req.headers.get("CF-Connecting-IP") ?? req.headers.get("X-Forwarded-For")?.split(",")[0].trim() ?? "0.0.0.0";
+}
+function extractToken(req) {
+  const h = req.headers.get("Cf-Access-Jwt-Assertion");
+  if (h) return h;
+  const cookie = req.headers.get("Cookie") ?? "";
+  const m = cookie.match(/CF_Authorization=([^;]+)/);
+  return m ? m[1] : null;
+}
+function getAuthConfig(env) {
+  const { teamDomain } = getExtra(env);
+  const devMode = !teamDomain;
+  return {
+    teamDomain,
+    loginUrl: devMode ? "/login?dev=1" : `https://${teamDomain}/cdn-cgi/access/login`,
+    devMode
+  };
+}
+
 // worker/user-routes.ts
 var ENTITY_MAP = {
   users: UserEntity,
@@ -733,6 +922,60 @@ async function logActivity(env, action, type, id) {
   }
 }
 function userRoutes(app) {
+  app.use("/api/*", async (c, next) => {
+    if (c.req.path.startsWith("/api/auth/")) return next();
+    const ip = getClientIp(c.req.raw);
+    if (await isIpBlocked(ip, c.env)) {
+      return c.json({ success: false, error: "IP blocked due to too many failed login attempts. Try again in 24 hours." }, 403);
+    }
+    const token = extractToken(c.req.raw);
+    if (!token) {
+      const ua = c.req.header("User-Agent") ?? "";
+      const { blocked } = await recordFailedAttempt(ip, ua, c.env);
+      const msg = blocked ? "IP blocked after too many failed attempts. An alert has been sent." : "Authentication required. Please sign in.";
+      return c.json({ success: false, error: msg }, 401);
+    }
+    try {
+      const user = await validateAccessJWT(token, c.env);
+      c.set("authUser", user);
+      await clearAttempts(ip, c.env);
+      return next();
+    } catch (err) {
+      const ua = c.req.header("User-Agent") ?? "";
+      const { blocked } = await recordFailedAttempt(ip, ua, c.env);
+      const msg = blocked ? "IP blocked after too many failed attempts. An alert has been sent." : `Invalid authentication token: ${err?.message ?? "unknown error"}`;
+      return c.json({ success: false, error: msg }, 401);
+    }
+  });
+  app.get("/api/auth/config", (c) => {
+    return c.json({ success: true, data: getAuthConfig(c.env) });
+  });
+  app.get("/api/auth/me", async (c) => {
+    const ip = getClientIp(c.req.raw);
+    if (await isIpBlocked(ip, c.env)) {
+      return c.json({ success: false, error: "IP blocked." }, 403);
+    }
+    const token = extractToken(c.req.raw);
+    if (!token) {
+      return c.json({ success: false, error: "Not authenticated" }, 401);
+    }
+    try {
+      const user = await validateAccessJWT(token, c.env);
+      await clearAttempts(ip, c.env);
+      return c.json({ success: true, data: user });
+    } catch (err) {
+      const ua = c.req.header("User-Agent") ?? "";
+      const { blocked } = await recordFailedAttempt(ip, ua, c.env);
+      const msg = blocked ? "IP blocked after too many failed attempts." : "Invalid or expired token.";
+      return c.json({ success: false, error: msg }, 401);
+    }
+  });
+  app.get("/api/auth/logout", (c) => {
+    const headers = new Headers();
+    headers.set("Set-Cookie", "CF_Authorization=; Path=/; Max-Age=0; SameSite=Lax");
+    headers.set("Location", "/login");
+    return new Response(null, { status: 302, headers });
+  });
   app.post("/api/gift-cards/batch", async (c) => {
     const { count, value, expiryDate } = await c.req.json();
     if (!count || count <= 0) return bad(c, "Invalid count");

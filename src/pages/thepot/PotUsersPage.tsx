@@ -37,12 +37,12 @@ export function PotUsersPage() {
     const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
 
     function toggleSort(key: keyof ThePotUser) {
-      if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
-      else { setSortKey(key); setSortDir('asc'); }
+        if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+        else { setSortKey(key); setSortDir('asc'); }
     }
     function sortIcon(key: keyof ThePotUser) {
-      if (sortKey !== key) return ' ⇅';
-      return sortDir === 'asc' ? ' ↑' : ' ↓';
+        if (sortKey !== key) return ' ⇅';
+        return sortDir === 'asc' ? ' ↑' : ' ↓';
     }
 
     const { data, isLoading, refetch } = usePotUsers(debouncedSearch || undefined);
@@ -104,12 +104,12 @@ export function PotUsersPage() {
 
     const users: ThePotUser[] = (data as any)?.items ?? [];
     const sortedUsers = sortKey
-      ? [...users].sort((a, b) => {
-          const av = a[sortKey] ?? ''; const bv = b[sortKey] ?? '';
-          if (av === bv) return 0;
-          return sortDir === 'asc' ? (av > bv ? 1 : -1) : (av < bv ? 1 : -1);
+        ? [...users].sort((a, b) => {
+            const av = a[sortKey] ?? ''; const bv = b[sortKey] ?? '';
+            if (av === bv) return 0;
+            return sortDir === 'asc' ? (av > bv ? 1 : -1) : (av < bv ? 1 : -1);
         })
-      : users;
+        : users;
 
     return (
         <div className="p-6 space-y-6">

@@ -3,6 +3,20 @@ export interface ApiResponse<T = unknown> {
   data?: T;
   error?: string;
 }
+
+/** Authenticated user returned by /api/auth/me */
+export interface AuthUser {
+  email: string;
+  name: string;
+  sub: string;
+}
+
+/** Public auth config returned by /api/auth/config */
+export interface AuthConfig {
+  teamDomain: string;
+  loginUrl: string;
+  devMode: boolean;
+}
 export interface User {
   id: string;
   name: string;

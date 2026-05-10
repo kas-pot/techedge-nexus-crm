@@ -48,10 +48,10 @@ export function CampaignsPage() {
   }
   const sortedCampaigns = sortKey
     ? [...campaigns].sort((a: any, b: any) => {
-        const av = a[sortKey] ?? ''; const bv = b[sortKey] ?? '';
-        if (av === bv) return 0;
-        return sortDir === 'asc' ? (av > bv ? 1 : -1) : (av < bv ? 1 : -1);
-      })
+      const av = a[sortKey] ?? ''; const bv = b[sortKey] ?? '';
+      if (av === bv) return 0;
+      return sortDir === 'asc' ? (av > bv ? 1 : -1) : (av < bv ? 1 : -1);
+    })
     : campaigns;
   const handleCreate = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();

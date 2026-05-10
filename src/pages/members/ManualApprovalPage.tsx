@@ -30,10 +30,10 @@ export function ManualApprovalPage() {
   }
   const sortedTasks = sortKey
     ? [...tasks].sort((a: any, b: any) => {
-        const av = a[sortKey] ?? ''; const bv = b[sortKey] ?? '';
-        if (av === bv) return 0;
-        return sortDir === 'asc' ? (av > bv ? 1 : -1) : (av < bv ? 1 : -1);
-      })
+      const av = a[sortKey] ?? ''; const bv = b[sortKey] ?? '';
+      if (av === bv) return 0;
+      return sortDir === 'asc' ? (av > bv ? 1 : -1) : (av < bv ? 1 : -1);
+    })
     : tasks;
   const handleDecision = async (status: 'approved' | 'rejected') => {
     if (!selectedTask) return;
@@ -79,7 +79,7 @@ export function ManualApprovalPage() {
                   </TableHeader>
                   <TableBody>
                     {isLoading ? (
-                      [1,2,3].map(i => <TableRow key={i}><TableCell colSpan={6} className="h-16 animate-pulse bg-muted/10" /></TableRow>)
+                      [1, 2, 3].map(i => <TableRow key={i}><TableCell colSpan={6} className="h-16 animate-pulse bg-muted/10" /></TableRow>)
                     ) : tasks.length === 0 ? (
                       <TableRow><TableCell colSpan={6} className="h-64 text-center text-muted-foreground font-medium">No pending requests in this sector.</TableCell></TableRow>
                     ) : sortedTasks.map((task) => (
