@@ -46,16 +46,29 @@ function getExtra(env: Env) {
     };
 }
 
-function getDO(env: Env) {
-    const e = env as any;
-    const id = e.GlobalDurableObject.idFromName('global');
-    return e.GlobalDurableObject.get(id);
+// Typed interface mirroring GlobalDurableObject's RPC surface.
+// Casting the untyped DO stub to this lets us use generics on getDoc/casPut.
+interface DOStub {
+    getDoc<T>(key: string): Promise<{ v: number; data: T } | null>;
+    casPut<T>(key: string, expectedV: number, data: T): Promise<{ ok: boolean; v: number }>;
+    del(key: string): Promise<boolean>;
+    has(key: string): Promise<boolean>;
+    listPrefix(prefix: string, startAfter?: string | null, limit?: number): Promise<{ keys: string[]; next: string | null }>;
 }
 
-function b64UrlDecode(s: string): Uint8Array {
+function getDO(env: Env): DOStub {
+    const e = env as any;
+    const id = e.GlobalDurableObject.idFromName('global');
+    return e.GlobalDurableObject.get(id) as DOStub;
+}
+
+function b64UrlDecode(s: string): Uint8Array<ArrayBuffer> {
     const b64 = s.replace(/-/g, '+').replace(/_/g, '/');
     const padded = b64 + '='.repeat((4 - (b64.length % 4)) % 4);
-    return Uint8Array.from(atob(padded), (c) => c.charCodeAt(0));
+    const binary = atob(padded);
+    const arr = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) arr[i] = binary.charCodeAt(i);
+    return arr;
 }
 
 async function importRsaKey(jwk: JsonWebKey): Promise<CryptoKey> {
