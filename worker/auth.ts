@@ -325,7 +325,7 @@ export function getAuthConfig(env: Env) {
 
 // ─── Email OTP ────────────────────────────────────────────────────────────────
 
-const OTP_TTL_MS = 10 * 60 * 1_000; // 10 minutes
+const OTP_TTL_MS = 5 * 60 * 1_000; // 5 minutes
 const OTP_LENGTH = 6;
 const otpKey = (email: string) => `auth:otp:${email.toLowerCase().trim()}`;
 const adminUserKey = (email: string) => `auth:admin:${email.toLowerCase().trim()}`;
@@ -428,7 +428,7 @@ export async function storeOtp(email: string, env: Env): Promise<string> {
         try {
             await db.prepare(
                 `INSERT INTO user_verification_codes (email, code, code_type, expires_at, is_used, created_at)
-                 VALUES (?, ?, 'login', datetime('now', '+10 minutes'), 0, datetime('now'))`,
+                 VALUES (?, ?, 'login', datetime('now', '+5 minutes'), 0, datetime('now'))`,
             ).bind(normalized, otp).run();
         } catch (e) {
             console.error('[OTP] storeOtp INSERT failed:', e);
@@ -532,7 +532,7 @@ export async function sendOtpEmail(email: string, otp: string, name: string, env
           <div style="background:#fff;padding:32px;border-radius:0 0 12px 12px;border:1px solid #e5e7eb;border-top:none">
             <p style="margin:0 0 8px;font-size:15px">Hallo <strong>${name}</strong>,</p>
             <p style="margin:0 0 24px;color:#6b7280;font-size:14px">
-              Gebruik de onderstaande eenmalige code om in te loggen. De code is <strong>10 minuten</strong> geldig.
+              Gebruik de onderstaande eenmalige code om in te loggen. De code is <strong>5 minuten</strong> geldig.
             </p>
             <div style="background:#f8fafc;border:2px dashed #6366f1;border-radius:10px;padding:20px;text-align:center;margin:0 0 24px">
               <span style="font-size:40px;font-weight:900;letter-spacing:10px;color:#4f46e5;font-family:monospace">${otp}</span>

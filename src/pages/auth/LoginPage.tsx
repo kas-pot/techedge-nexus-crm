@@ -6,13 +6,23 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import { Shield, Zap, Lock, Mail, ArrowRight, Loader2 } from 'lucide-react';
+import { Shield, Zap, Lock, Mail, ArrowRight, Loader2, AlertCircle } from 'lucide-react';
+
+const OAUTH_ERRORS: Record<string, string> = {
+  google_not_configured: 'Google OAuth is nog niet geconfigureerd. Gebruik e-mail inloggen.',
+  google_cancelled: 'Google aanmelding geannuleerd.',
+  google_token_failed: 'Google authenticatie mislukt. Probeer het opnieuw.',
+  google_no_email: 'Geen e-mailadres ontvangen van Google.',
+  google_error: 'Er is een fout opgetreden met Google aanmelden.',
+  not_authorized: 'Dit account heeft geen toegang tot Nexus CRM.',
+};
 
 export function LoginPage() {
     const { user, config, loading } = useAuth();
     const navigate = useNavigate();
     const [params] = useSearchParams();
     const isDev = params.get('dev') === '1';
+    const oauthError = params.get('error');
 
     const [email, setEmail] = useState('');
     const [emailError, setEmailError] = useState('');
@@ -24,12 +34,8 @@ export function LoginPage() {
     }, [loading, user, navigate]);
 
     function handleSSOLogin() {
-        if (!config) return;
-        if (config.devMode || isDev) {
-            window.location.href = '/';
-            return;
-        }
-        window.location.href = config.loginUrl;
+        // Use real Google OAuth route
+        window.location.href = '/api/auth/google';
     }
 
     async function handleRequestOtp(e: React.FormEvent) {
@@ -82,7 +88,15 @@ export function LoginPage() {
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="pt-4 space-y-5">
-                        {/* Google / Cloudflare SSO button */}
+                        {/* OAuth error */}
+                        {oauthError && OAUTH_ERRORS[oauthError] && (
+                            <div className="flex items-start gap-2.5 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs">
+                                <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                                <span>{OAUTH_ERRORS[oauthError]}</span>
+                            </div>
+                        )}
+
+                        {/* Google OAuth button */}
                         <Button
                             className="w-full h-12 bg-white hover:bg-slate-50 text-slate-800 font-semibold text-sm shadow-lg transition-all hover:shadow-xl active:scale-[0.98]"
                             onClick={handleSSOLogin}

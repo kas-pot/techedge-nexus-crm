@@ -324,6 +324,88 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     return c.json({ success: true, data: { email: email.toLowerCase().trim(), name, role: role ?? 'admin' } });
   });
 
+  // ─── Google OAuth 2.0 ─────────────────────────────────────────────────────
+  // Config is read from env vars: GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REDIRECT_URI
+  // Set these in wrangler.development.jsonc (vars) or as Worker Secrets for production.
+
+  app.get('/api/auth/google', (c) => {
+    const clientId = (c.env as any).GOOGLE_CLIENT_ID as string | undefined;
+    const redirectUri = (c.env as any).GOOGLE_REDIRECT_URI as string | undefined;
+    if (!clientId || !redirectUri) {
+      return new Response(null, { status: 302, headers: { Location: '/login?error=google_not_configured' } });
+    }
+    const params = new URLSearchParams({
+      client_id: clientId,
+      redirect_uri: redirectUri,
+      response_type: 'code',
+      scope: 'openid email profile',
+      access_type: 'online',
+      prompt: 'select_account',
+    });
+    return new Response(null, {
+      status: 302,
+      headers: { Location: `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}` },
+    });
+  });
+
+  app.get('/api/auth/google/callback', async (c) => {
+    const code = c.req.query('code');
+    const error = c.req.query('error');
+    if (error || !code) {
+      return new Response(null, { status: 302, headers: { Location: '/login?error=google_cancelled' } });
+    }
+    const clientId = (c.env as any).GOOGLE_CLIENT_ID as string | undefined;
+    const clientSecret = (c.env as any).GOOGLE_CLIENT_SECRET as string | undefined;
+    const redirectUri = (c.env as any).GOOGLE_REDIRECT_URI as string | undefined;
+    if (!clientId || !clientSecret || !redirectUri) {
+      return new Response(null, { status: 302, headers: { Location: '/login?error=google_not_configured' } });
+    }
+    try {
+      // Exchange code for tokens
+      const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({ code, client_id: clientId, client_secret: clientSecret, redirect_uri: redirectUri, grant_type: 'authorization_code' }),
+      });
+      if (!tokenRes.ok) {
+        console.error('[Google OAuth] Token exchange failed:', await tokenRes.text());
+        return new Response(null, { status: 302, headers: { Location: '/login?error=google_token_failed' } });
+      }
+      const tokens = await tokenRes.json<{ id_token?: string; error?: string }>();
+      if (!tokens.id_token) {
+        return new Response(null, { status: 302, headers: { Location: '/login?error=google_no_token' } });
+      }
+      // Decode ID token payload (signature verified by Google token endpoint — already trusted)
+      const payloadB64 = tokens.id_token.split('.')[1];
+      const padded = payloadB64.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - payloadB64.length % 4) % 4);
+      const userInfo = JSON.parse(atob(padded)) as { email?: string; name?: string; email_verified?: boolean };
+      const email = userInfo.email?.toLowerCase();
+      const name = userInfo.name ?? userInfo.email ?? 'Google User';
+      if (!email) {
+        return new Response(null, { status: 302, headers: { Location: '/login?error=google_no_email' } });
+      }
+      // Auto-register if not yet known (first login = register)
+      const exists = await isAdminEmail(email, c.env);
+      if (!exists) {
+        await registerAdminUser(email, name, 'viewer', c.env);
+      }
+      const sessionToken = await createOtpSession(email, name, c.env);
+      await logActivity(c.env, 'Login via Google OAuth', 'admin_user', email);
+      const isProduction = !getAuthConfig(c.env).devMode;
+      const cookieFlags = isProduction ? '; Secure' : '';
+      return new Response(null, {
+        status: 302,
+        headers: {
+          'Set-Cookie': `nexus_session=${sessionToken}; Path=/; Max-Age=${8 * 3600}; SameSite=Lax; HttpOnly${cookieFlags}`,
+          Location: '/',
+        },
+      });
+    } catch (err) {
+      console.error('[Google OAuth] Callback error:', err);
+      return new Response(null, { status: 302, headers: { Location: '/login?error=google_error' } });
+    }
+  });
+
   // ─── Specialized Batch Gift Card Generation
   app.post('/api/gift-cards/batch', async (c) => {
     const { count, value, expiryDate } = await c.req.json();
@@ -428,11 +510,104 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     await inst.patch(data);
     return ok(c, await inst.getState());
   });
-  app.get('/api/system/localization', async (c) => ok(c, await LocalizationSettingsEntity.getGlobal(c.env)));
+  app.get('/api/system/localization', async (c) => {
+    const db = (c.env as any).THEPOT_DB as D1Database | undefined;
+    const authUser = (c as any).get?.('authUser') as { email: string; name: string } | undefined;
+    if (db && authUser?.email) {
+      await db.prepare(`CREATE TABLE IF NOT EXISTS admin_localization_settings (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        admin_email TEXT NOT NULL UNIQUE,
+        timezone TEXT NOT NULL DEFAULT 'Europe/Amsterdam',
+        location TEXT NOT NULL DEFAULT 'Amsterdam',
+        country TEXT NOT NULL DEFAULT 'Nederland',
+        languages TEXT NOT NULL DEFAULT '["nl","en"]',
+        date_format TEXT NOT NULL DEFAULT 'DD-MM-YYYY',
+        time_format TEXT NOT NULL DEFAULT '24h',
+        currency TEXT NOT NULL DEFAULT 'EUR',
+        currency_symbol TEXT NOT NULL DEFAULT '\u20ac',
+        first_day_of_week TEXT NOT NULL DEFAULT 'monday',
+        status TEXT NOT NULL DEFAULT 'active',
+        updated_at TEXT,
+        updated_by TEXT
+      )`).run().catch(() => {});
+      const row = await db.prepare(
+        `SELECT * FROM admin_localization_settings WHERE admin_email = ?`
+      ).bind(authUser.email.toLowerCase()).first<any>();
+      if (row) {
+        return ok(c, {
+          id: 'user:' + authUser.email,
+          timezone: row.timezone,
+          location: row.location,
+          country: row.country,
+          languages: JSON.parse(row.languages ?? '["nl","en"]'),
+          dateFormat: row.date_format,
+          timeFormat: row.time_format,
+          currency: row.currency,
+          currencySymbol: row.currency_symbol,
+          firstDayOfWeek: row.first_day_of_week,
+          status: row.status,
+          updatedAt: row.updated_at,
+          updatedBy: row.updated_by,
+        });
+      }
+    }
+    return ok(c, await LocalizationSettingsEntity.getGlobal(c.env));
+  });
   app.put('/api/system/localization', async (c) => {
     const data = await c.req.json();
+    const db = (c.env as any).THEPOT_DB as D1Database | undefined;
+    const authUser = (c as any).get?.('authUser') as { email: string; name: string } | undefined;
+    const updatedAt = new Date().toISOString();
+    const updatedBy = authUser?.name ?? authUser?.email ?? 'Nexus Admin';
+    if (db && authUser?.email) {
+      await db.prepare(`CREATE TABLE IF NOT EXISTS admin_localization_settings (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        admin_email TEXT NOT NULL UNIQUE,
+        timezone TEXT NOT NULL DEFAULT 'Europe/Amsterdam',
+        location TEXT NOT NULL DEFAULT 'Amsterdam',
+        country TEXT NOT NULL DEFAULT 'Nederland',
+        languages TEXT NOT NULL DEFAULT '["nl","en"]',
+        date_format TEXT NOT NULL DEFAULT 'DD-MM-YYYY',
+        time_format TEXT NOT NULL DEFAULT '24h',
+        currency TEXT NOT NULL DEFAULT 'EUR',
+        currency_symbol TEXT NOT NULL DEFAULT '\u20ac',
+        first_day_of_week TEXT NOT NULL DEFAULT 'monday',
+        status TEXT NOT NULL DEFAULT 'active',
+        updated_at TEXT,
+        updated_by TEXT
+      )`).run().catch(() => {});
+      const email = authUser.email.toLowerCase();
+      await db.prepare(`
+        INSERT INTO admin_localization_settings
+          (admin_email, timezone, location, country, languages, date_format, time_format, currency, currency_symbol, first_day_of_week, status, updated_at, updated_by)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(admin_email) DO UPDATE SET
+          timezone=excluded.timezone, location=excluded.location, country=excluded.country,
+          languages=excluded.languages, date_format=excluded.date_format, time_format=excluded.time_format,
+          currency=excluded.currency, currency_symbol=excluded.currency_symbol,
+          first_day_of_week=excluded.first_day_of_week, status=excluded.status,
+          updated_at=excluded.updated_at, updated_by=excluded.updated_by
+      `).bind(
+        email,
+        data.timezone ?? 'Europe/Amsterdam',
+        data.location ?? 'Amsterdam',
+        data.country ?? 'Nederland',
+        JSON.stringify(data.languages ?? ['nl', 'en']),
+        data.dateFormat ?? 'DD-MM-YYYY',
+        data.timeFormat ?? '24h',
+        data.currency ?? 'EUR',
+        data.currencySymbol ?? '\u20ac',
+        data.firstDayOfWeek ?? 'monday',
+        data.status ?? 'active',
+        updatedAt,
+        updatedBy,
+      ).run();
+      await logActivity(c.env, 'Updated', 'localization_settings', email);
+      return ok(c, { ...data, id: 'user:' + email, updatedAt, updatedBy });
+    }
+    // Fallback: global DO
     const inst = new LocalizationSettingsEntity(c.env, "global");
-    await inst.patch({ ...data, updatedAt: new Date().toISOString() });
+    await inst.patch({ ...data, updatedAt, updatedBy });
     await logActivity(c.env, 'Updated', 'localization_settings', 'global');
     return ok(c, await inst.getState());
   });

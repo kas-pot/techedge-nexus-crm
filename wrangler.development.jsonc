@@ -37,10 +37,17 @@
 	// CF_ACCESS_AUD          : Application AUD from Access > Applications > your app
 	// RESEND_API_KEY         : API key from https://resend.com for alert emails
 	// ALERT_EMAIL            : Recipient for security alerts (default: info@kas040.nl)
+	// GOOGLE_CLIENT_SECRET   : Set as a Worker Secret (never as a plain var):
+	//   npx wrangler secret put GOOGLE_CLIENT_SECRET --config wrangler.development.jsonc
 	"vars": {
 		"CF_ACCESS_TEAM_DOMAIN": "",
 		"CF_ACCESS_AUD": "",
-		"ALERT_EMAIL": "info@kas040.nl"
+		"ALERT_EMAIL": "info@kas040.nl",
+		// Google OAuth 2.0 — Web Client
+		// Aanmaken via: https://console.cloud.google.com/apis/credentials
+		// Vul GOOGLE_CLIENT_ID in; stel GOOGLE_CLIENT_SECRET in als Worker Secret (zie boven)
+		"GOOGLE_CLIENT_ID": "",
+		"GOOGLE_REDIRECT_URI": "https://dev-dashboard.the-pot.nl/api/auth/google/callback"
 	},
 	// NOTE: Set RESEND_API_KEY as a Worker Secret (never as a plain var):
 	//   npx wrangler secret put RESEND_API_KEY --config wrangler.development.jsonc

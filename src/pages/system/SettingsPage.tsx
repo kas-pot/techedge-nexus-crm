@@ -31,71 +31,85 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
 const TIMEZONES = [
-  { group: 'Europa', options: [
-    { value: 'Europe/Amsterdam', label: 'Amsterdam, Nederland (CET/CEST)' },
-    { value: 'Europe/Brussels', label: 'Brussel, België (CET/CEST)' },
-    { value: 'Europe/Berlin', label: 'Berlijn, Duitsland (CET/CEST)' },
-    { value: 'Europe/Paris', label: 'Parijs, Frankrijk (CET/CEST)' },
-    { value: 'Europe/Rome', label: 'Rome, Italië (CET/CEST)' },
-    { value: 'Europe/Madrid', label: 'Madrid, Spanje (CET/CEST)' },
-    { value: 'Europe/Zurich', label: 'Zürich, Zwitserland (CET/CEST)' },
-    { value: 'Europe/Vienna', label: 'Wenen, Oostenrijk (CET/CEST)' },
-    { value: 'Europe/Warsaw', label: 'Warschau, Polen (CET/CEST)' },
-    { value: 'Europe/Stockholm', label: 'Stockholm, Zweden (CET/CEST)' },
-    { value: 'Europe/Copenhagen', label: 'Kopenhagen, Denemarken (CET/CEST)' },
-    { value: 'Europe/Oslo', label: 'Oslo, Noorwegen (CET/CEST)' },
-    { value: 'Europe/London', label: 'Londen, VK (GMT/BST)' },
-    { value: 'Europe/Lisbon', label: 'Lissabon, Portugal (WET/WEST)' },
-    { value: 'Europe/Helsinki', label: 'Helsinki, Finland (EET/EEST)' },
-    { value: 'Europe/Athens', label: 'Athene, Griekenland (EET/EEST)' },
-    { value: 'Europe/Bucharest', label: 'Boekarest, Roemenië (EET/EEST)' },
-    { value: 'Europe/Istanbul', label: 'Istanbul, Turkije (TRT)' },
-    { value: 'Europe/Moscow', label: 'Moskou, Rusland (MSK)' },
-  ]},
-  { group: 'Afrika', options: [
-    { value: 'Africa/Casablanca', label: 'Casablanca, Marokko (WET)' },
-    { value: 'Africa/Cairo', label: 'Caïro, Egypte (EET)' },
-    { value: 'Africa/Johannesburg', label: 'Johannesburg, Zuid-Afrika (SAST)' },
-    { value: 'Africa/Lagos', label: 'Lagos, Nigeria (WAT)' },
-    { value: 'Africa/Nairobi', label: 'Nairobi, Kenia (EAT)' },
-  ]},
-  { group: 'Midden-Oosten', options: [
-    { value: 'Asia/Dubai', label: 'Dubai, VAE (GST)' },
-    { value: 'Asia/Riyadh', label: 'Riyad, Saudi-Arabië (AST)' },
-    { value: 'Asia/Tehran', label: 'Teheran, Iran (IRST)' },
-  ]},
-  { group: 'Azië', options: [
-    { value: 'Asia/Karachi', label: 'Karachi, Pakistan (PKT)' },
-    { value: 'Asia/Kolkata', label: 'Mumbai / Delhi, India (IST)' },
-    { value: 'Asia/Dhaka', label: 'Dhaka, Bangladesh (BST)' },
-    { value: 'Asia/Bangkok', label: 'Bangkok, Thailand (ICT)' },
-    { value: 'Asia/Jakarta', label: 'Jakarta, Indonesië (WIB)' },
-    { value: 'Asia/Singapore', label: 'Singapore (SGT)' },
-    { value: 'Asia/Shanghai', label: 'Peking / Shanghai, China (CST)' },
-    { value: 'Asia/Tokyo', label: 'Tokio, Japan (JST)' },
-    { value: 'Asia/Seoul', label: 'Seoul, Zuid-Korea (KST)' },
-    { value: 'Asia/Taipei', label: 'Taipei, Taiwan (CST)' },
-  ]},
-  { group: 'Australazië', options: [
-    { value: 'Australia/Perth', label: 'Perth, Australië (AWST)' },
-    { value: 'Australia/Adelaide', label: 'Adelaide, Australië (ACST)' },
-    { value: 'Australia/Sydney', label: 'Sydney, Australië (AEST)' },
-    { value: 'Pacific/Auckland', label: 'Auckland, Nieuw-Zeeland (NZST)' },
-  ]},
-  { group: 'Amerika', options: [
-    { value: 'America/New_York', label: 'New York, VS (EST/EDT)' },
-    { value: 'America/Chicago', label: 'Chicago, VS (CST/CDT)' },
-    { value: 'America/Denver', label: 'Denver, VS (MST/MDT)' },
-    { value: 'America/Los_Angeles', label: 'Los Angeles, VS (PST/PDT)' },
-    { value: 'America/Sao_Paulo', label: 'São Paulo, Brazilië (BRT)' },
-    { value: 'America/Argentina/Buenos_Aires', label: 'Buenos Aires, Argentinië (ART)' },
-    { value: 'America/Toronto', label: 'Toronto, Canada (EST/EDT)' },
-    { value: 'America/Vancouver', label: 'Vancouver, Canada (PST/PDT)' },
-    { value: 'America/Mexico_City', label: 'Mexico City, Mexico (CST/CDT)' },
-  ]},
-  { group: 'Universeel', options: [
-    { value: 'UTC', label: 'UTC — Gecoördineerde Wereldtijd (UTC+0)' },
-  ]},
+  {
+    group: 'Europa', options: [
+      { value: 'Europe/Amsterdam', label: 'Amsterdam, Nederland (CET/CEST)' },
+      { value: 'Europe/Brussels', label: 'Brussel, België (CET/CEST)' },
+      { value: 'Europe/Berlin', label: 'Berlijn, Duitsland (CET/CEST)' },
+      { value: 'Europe/Paris', label: 'Parijs, Frankrijk (CET/CEST)' },
+      { value: 'Europe/Rome', label: 'Rome, Italië (CET/CEST)' },
+      { value: 'Europe/Madrid', label: 'Madrid, Spanje (CET/CEST)' },
+      { value: 'Europe/Zurich', label: 'Zürich, Zwitserland (CET/CEST)' },
+      { value: 'Europe/Vienna', label: 'Wenen, Oostenrijk (CET/CEST)' },
+      { value: 'Europe/Warsaw', label: 'Warschau, Polen (CET/CEST)' },
+      { value: 'Europe/Stockholm', label: 'Stockholm, Zweden (CET/CEST)' },
+      { value: 'Europe/Copenhagen', label: 'Kopenhagen, Denemarken (CET/CEST)' },
+      { value: 'Europe/Oslo', label: 'Oslo, Noorwegen (CET/CEST)' },
+      { value: 'Europe/London', label: 'Londen, VK (GMT/BST)' },
+      { value: 'Europe/Lisbon', label: 'Lissabon, Portugal (WET/WEST)' },
+      { value: 'Europe/Helsinki', label: 'Helsinki, Finland (EET/EEST)' },
+      { value: 'Europe/Athens', label: 'Athene, Griekenland (EET/EEST)' },
+      { value: 'Europe/Bucharest', label: 'Boekarest, Roemenië (EET/EEST)' },
+      { value: 'Europe/Istanbul', label: 'Istanbul, Turkije (TRT)' },
+      { value: 'Europe/Moscow', label: 'Moskou, Rusland (MSK)' },
+    ]
+  },
+  {
+    group: 'Afrika', options: [
+      { value: 'Africa/Casablanca', label: 'Casablanca, Marokko (WET)' },
+      { value: 'Africa/Cairo', label: 'Caïro, Egypte (EET)' },
+      { value: 'Africa/Johannesburg', label: 'Johannesburg, Zuid-Afrika (SAST)' },
+      { value: 'Africa/Lagos', label: 'Lagos, Nigeria (WAT)' },
+      { value: 'Africa/Nairobi', label: 'Nairobi, Kenia (EAT)' },
+    ]
+  },
+  {
+    group: 'Midden-Oosten', options: [
+      { value: 'Asia/Dubai', label: 'Dubai, VAE (GST)' },
+      { value: 'Asia/Riyadh', label: 'Riyad, Saudi-Arabië (AST)' },
+      { value: 'Asia/Tehran', label: 'Teheran, Iran (IRST)' },
+    ]
+  },
+  {
+    group: 'Azië', options: [
+      { value: 'Asia/Karachi', label: 'Karachi, Pakistan (PKT)' },
+      { value: 'Asia/Kolkata', label: 'Mumbai / Delhi, India (IST)' },
+      { value: 'Asia/Dhaka', label: 'Dhaka, Bangladesh (BST)' },
+      { value: 'Asia/Bangkok', label: 'Bangkok, Thailand (ICT)' },
+      { value: 'Asia/Jakarta', label: 'Jakarta, Indonesië (WIB)' },
+      { value: 'Asia/Singapore', label: 'Singapore (SGT)' },
+      { value: 'Asia/Shanghai', label: 'Peking / Shanghai, China (CST)' },
+      { value: 'Asia/Tokyo', label: 'Tokio, Japan (JST)' },
+      { value: 'Asia/Seoul', label: 'Seoul, Zuid-Korea (KST)' },
+      { value: 'Asia/Taipei', label: 'Taipei, Taiwan (CST)' },
+    ]
+  },
+  {
+    group: 'Australazië', options: [
+      { value: 'Australia/Perth', label: 'Perth, Australië (AWST)' },
+      { value: 'Australia/Adelaide', label: 'Adelaide, Australië (ACST)' },
+      { value: 'Australia/Sydney', label: 'Sydney, Australië (AEST)' },
+      { value: 'Pacific/Auckland', label: 'Auckland, Nieuw-Zeeland (NZST)' },
+    ]
+  },
+  {
+    group: 'Amerika', options: [
+      { value: 'America/New_York', label: 'New York, VS (EST/EDT)' },
+      { value: 'America/Chicago', label: 'Chicago, VS (CST/CDT)' },
+      { value: 'America/Denver', label: 'Denver, VS (MST/MDT)' },
+      { value: 'America/Los_Angeles', label: 'Los Angeles, VS (PST/PDT)' },
+      { value: 'America/Sao_Paulo', label: 'São Paulo, Brazilië (BRT)' },
+      { value: 'America/Argentina/Buenos_Aires', label: 'Buenos Aires, Argentinië (ART)' },
+      { value: 'America/Toronto', label: 'Toronto, Canada (EST/EDT)' },
+      { value: 'America/Vancouver', label: 'Vancouver, Canada (PST/PDT)' },
+      { value: 'America/Mexico_City', label: 'Mexico City, Mexico (CST/CDT)' },
+    ]
+  },
+  {
+    group: 'Universeel', options: [
+      { value: 'UTC', label: 'UTC — Gecoördineerde Wereldtijd (UTC+0)' },
+    ]
+  },
 ];
 
 const LANGUAGES = [
