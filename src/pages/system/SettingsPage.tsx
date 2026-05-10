@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import {
   Shield, Globe, Palette, Cpu, Wifi, Save, CloudSun,
   Mail, Phone, BookOpen, UserCheck, Eye, EyeOff,
-  Image as ImageIcon, Layout, Trash2, Plus, Instagram, Facebook, MessageCircle
+  Image as ImageIcon, Layout, Trash2, Plus, Share2, MessageCircle
 } from 'lucide-react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
@@ -292,7 +292,7 @@ export function SettingsPage() {
                       <Input value={formData.whatsapp} onChange={(e) => updateField('whatsapp', e.target.value)} />
                     </div>
                     <div className="space-y-2">
-                      <Label className="flex items-center gap-2"><Instagram className="h-3 w-3" /> Instagram URL</Label>
+                      <Label className="flex items-center gap-2"><Share2 className="h-3 w-3" /> Instagram URL</Label>
                       <Input value={formData.instagramUrl} onChange={(e) => updateField('instagramUrl', e.target.value)} />
                     </div>
                   </div>
