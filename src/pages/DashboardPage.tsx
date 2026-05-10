@@ -1,14 +1,19 @@
 import React from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Users, TrendingUp, Award, DollarSign, Database } from 'lucide-react';
-const stats = [
-  { label: 'Total Members', value: '—', icon: Users, color: 'text-blue-600' },
-  { label: 'Total Revenue (IDR)', value: '—', icon: DollarSign, color: 'text-indigo-600' },
-  { label: 'Active Campaigns', value: '—', icon: TrendingUp, color: 'text-amber-600' },
-  { label: 'Redemptions', value: '—', icon: Award, color: 'text-emerald-600' },
-];
+import { Users, TrendingUp, Award, CreditCard, Database } from 'lucide-react';
+import { useStats } from '@/lib/api-hooks';
+
 export function DashboardPage() {
+  const { data: statsData } = useStats();
+
+  const stats = [
+    { label: 'Total Members', value: statsData ? statsData.totalMembers.toLocaleString() : '—', icon: Users, color: 'text-blue-600' },
+    { label: 'Total Campaigns', value: statsData ? statsData.totalCampaigns.toLocaleString() : '—', icon: TrendingUp, color: 'text-amber-600' },
+    { label: 'Approval Tasks', value: statsData ? statsData.totalApprovals.toLocaleString() : '—', icon: Award, color: 'text-emerald-600' },
+    { label: 'Gift Cards Issued', value: statsData ? statsData.totalGiftCards.toLocaleString() : '—', icon: CreditCard, color: 'text-indigo-600' },
+  ];
+
   return (
     <AppLayout container>
       <div className="space-y-8 animate-fade-in">

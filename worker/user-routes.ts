@@ -345,6 +345,34 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     await logActivity(c.env, 'Created', 'gift_card_batch', 'batch_mint');
     return ok(c, results);
   });
+
+  // ─── Aggregate Stats (index-count only, no full doc fetch) ─────────────────
+  app.get('/api/stats', async (c) => {
+    try {
+      await Promise.all([
+        UserEntity.ensureSeed(c.env),
+        CampaignEntity.ensureSeed(c.env),
+        ApprovalEntity.ensureSeed(c.env),
+        GiftCardEntity.ensureSeed(c.env),
+      ].map(p => p.catch(() => {})));
+      const [memberIds, campaignIds, approvalIds, giftCardIds] = await Promise.all([
+        new Index<string>(c.env, 'members').list().catch(() => [] as string[]),
+        new Index<string>(c.env, 'campaigns').list().catch(() => [] as string[]),
+        new Index<string>(c.env, 'approvals').list().catch(() => [] as string[]),
+        new Index<string>(c.env, 'gift-cards').list().catch(() => [] as string[]),
+      ]);
+      return ok(c, {
+        totalMembers: memberIds.length,
+        totalCampaigns: campaignIds.length,
+        totalApprovals: approvalIds.length,
+        totalGiftCards: giftCardIds.length,
+      });
+    } catch (e) {
+      console.error('[Stats]', e);
+      return ok(c, { totalMembers: 0, totalCampaigns: 0, totalApprovals: 0, totalGiftCards: 0 });
+    }
+  });
+
   // Generic Entity Routes
   app.get('/api/:entityType', async (c) => {
     const type = c.req.param('entityType');

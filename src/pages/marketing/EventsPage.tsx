@@ -3,8 +3,20 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, MapPin, Users, TrendingUp, Star, ArrowRight, Share2, Database } from 'lucide-react';
+import { MapPin, Users, TrendingUp, Share2, Database, Ticket } from 'lucide-react';
+import { useTickets } from '@/lib/api-hooks';
+
 export function EventsPage() {
+  const { data: ticketsData, isLoading } = useTickets();
+
+  // Group tickets by event name to build an "events" view
+  const eventMap = (ticketsData?.items ?? []).reduce((acc, tk) => {
+    if (!acc[tk.eventName]) acc[tk.eventName] = { name: tk.eventName, tickets: [] as typeof ticketsData.items };
+    acc[tk.eventName].tickets.push(tk);
+    return acc;
+  }, {} as Record<string, { name: string; tickets: NonNullable<typeof ticketsData>['items'] }>);
+  const events = Object.values(eventMap);
+
   return (
     <AppLayout container>
       <div className="space-y-10 animate-fade-in">
@@ -37,75 +49,75 @@ export function EventsPage() {
           <div className="grid gap-4">
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">Total Attendees</CardTitle>
+                <CardTitle className="text-sm font-medium">Total Events</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold">—</div>
-                <p className="text-xs text-muted-foreground mt-1">Geen data beschikbaar</p>
+                <div className="text-3xl font-bold">{isLoading ? '—' : events.length}</div>
+                <p className="text-xs text-muted-foreground mt-1">{isLoading ? 'Laden...' : 'evenementen gevonden'}</p>
               </CardContent>
             </Card>
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">Average RSVP Rate</CardTitle>
+                <CardTitle className="text-sm font-medium">Total Tickets</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold">—</div>
-                <p className="text-xs text-muted-foreground mt-1">Geen data beschikbaar</p>
+                <div className="text-3xl font-bold">{isLoading ? '—' : (ticketsData?.items.length ?? 0)}</div>
+                <p className="text-xs text-muted-foreground mt-1">{isLoading ? 'Laden...' : 'tickets uitgegeven'}</p>
               </CardContent>
             </Card>
           </div>
         </div>
         <div className="space-y-6">
           <h2 className="text-xl font-bold">Upcoming Experiences</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {[1, 2, 3].map((i) => (
-              <Card key={i} className="overflow-hidden group hover:shadow-xl transition-all duration-500 border-none shadow-soft">
-                <div className="aspect-video relative overflow-hidden">
-                  <img
-                    src={`https://images.unsplash.com/photo-${i === 1 ? '1505373877841-8d25f7d46678' : i === 2 ? '1540575861-517eaaade144' : '1511578314322-379afb476865'}?q=80&w=800&auto=format&fit=crop`}
-                    className="object-cover w-full h-full group-hover:scale-110 transition-transform duration-700"
-                    alt="Event"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-                  <div className="absolute bottom-4 left-4 right-4 flex justify-between items-end">
-                    <Badge className="bg-white text-indigo-600 border-none hover:bg-white/90">Exclusive</Badge>
-                    <div className="bg-white/20 backdrop-blur-md rounded-lg p-2 text-white text-center min-w-[50px] border border-white/30">
-                      <div className="text-xs font-bold uppercase">Jun</div>
-                      <div className="text-xl font-bold leading-none">{12 + i * 4}</div>
+          {isLoading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {[1, 2, 3].map(i => <Card key={i} className="h-72 animate-pulse bg-muted/10" />)}
+            </div>
+          ) : events.length === 0 ? (
+            <Card className="py-16">
+              <CardContent className="flex flex-col items-center justify-center gap-3 text-muted-foreground">
+                <Ticket className="h-10 w-10 opacity-30" />
+                <p className="font-medium">Geen evenementen gevonden</p>
+                <p className="text-sm">Voeg tickets toe om evenementen te zien.</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {events.map((event) => {
+                const validTickets = event.tickets.filter(t => t.status === 'valid');
+                const usedTickets = event.tickets.filter(t => t.status === 'used');
+                const issueDate = event.tickets[0]?.issueDate ?? '';
+                return (
+                  <Card key={event.name} className="overflow-hidden group hover:shadow-xl transition-all duration-500 border-none shadow-soft">
+                    <div className="aspect-video relative overflow-hidden bg-gradient-to-br from-indigo-600 to-indigo-800 flex items-center justify-center">
+                      <Ticket className="h-16 w-16 text-white/30" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+                      <div className="absolute bottom-4 left-4 right-4 flex justify-between items-end">
+                        <Badge className="bg-white text-indigo-600 border-none hover:bg-white/90">Exclusive</Badge>
+                        {issueDate && (
+                          <div className="bg-white/20 backdrop-blur-md rounded-lg p-2 text-white text-center min-w-[50px] border border-white/30">
+                            <div className="text-xs font-bold uppercase">{new Date(issueDate).toLocaleString('nl-NL', { month: 'short' })}</div>
+                            <div className="text-xl font-bold leading-none">{new Date(issueDate).getDate()}</div>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                </div>
-                <CardHeader>
-                  <CardTitle className="group-hover:text-indigo-600 transition-colors">
-                    {i === 1 ? 'Spring Collection Showcase' : i === 2 ? 'VIP Coffee Tasting Workshop' : 'Nexus Grand Store Opening'}
-                  </CardTitle>
-                  <CardDescription className="flex items-center gap-1.5">
-                    <MapPin className="h-3.5 w-3.5 text-indigo-500" />
-                    {i === 1 ? 'Sedayu Mall A - Atrium' : i === 2 ? 'Coffee Lab - Venue 1' : 'Nexus Tower - Ground'}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-muted-foreground line-clamp-2">
-                    Join us for an exclusive afternoon exploring the latest trends and networking with fellow elite members.
-                  </p>
-                  <div className="flex items-center gap-4 mt-4">
-                    <div className="flex -space-x-2">
-                      {[1, 2, 3].map(u => (
-                        <div key={u} className="h-7 w-7 rounded-full border-2 border-background bg-slate-200 flex items-center justify-center text-[10px] font-bold">
-                          {String.fromCharCode(64 + u + i)}
-                        </div>
-                      ))}
-                    </div>
-                    <span className="text-xs text-muted-foreground font-medium">+42 attending</span>
-                  </div>
-                </CardContent>
-                <CardFooter className="pt-0 flex gap-2">
-                  <Button className="flex-1 bg-indigo-600 hover:bg-indigo-700">Manage RSVP</Button>
-                  <Button variant="outline" size="icon"><Share2 className="h-4 w-4" /></Button>
-                </CardFooter>
-              </Card>
-            ))}
-          </div>
+                    <CardHeader>
+                      <CardTitle className="group-hover:text-indigo-600 transition-colors line-clamp-1">{event.name}</CardTitle>
+                      <CardDescription className="flex items-center gap-1.5">
+                        <Users className="h-3.5 w-3.5 text-indigo-500" />
+                        {event.tickets.length} tickets · {validTickets.length} geldig · {usedTickets.length} gebruikt
+                      </CardDescription>
+                    </CardHeader>
+                    <CardFooter className="pt-0 flex gap-2">
+                      <Button className="flex-1 bg-indigo-600 hover:bg-indigo-700">Manage RSVP</Button>
+                      <Button variant="outline" size="icon"><Share2 className="h-4 w-4" /></Button>
+                    </CardFooter>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
     </AppLayout>

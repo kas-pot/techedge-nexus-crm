@@ -5,10 +5,12 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { HelpCircle, Search, Plus, Mail, Phone, MapPin, Settings, MessageSquare } from 'lucide-react';
-import { useFaq } from '@/lib/api-hooks';
+import { HelpCircle, Search, Plus, Mail, Phone, MapPin, Settings } from 'lucide-react';
+import { useFaq, useContactSettings } from '@/lib/api-hooks';
 export function HelpFAQPage() {
   const { data, isLoading } = useFaq();
+  const { data: contactData } = useContactSettings();
+  const contact = contactData;
   const [search, setSearch] = useState('');
   const faqs = (data?.items || []).filter(f =>
     f.question.toLowerCase().includes(search.toLowerCase()) ||
@@ -74,36 +76,29 @@ export function HelpFAQPage() {
                 <CardDescription>Details displayed in Member App help section.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="flex items-center gap-3 p-3 rounded-lg bg-slate-50 dark:bg-slate-900 border">
-                  <Mail className="h-4 w-4 text-indigo-600" />
-                  <div className="text-sm font-medium">support@techedge-nexus.com</div>
-                </div>
-                <div className="flex items-center gap-3 p-3 rounded-lg bg-slate-50 dark:bg-slate-900 border">
-                  <Phone className="h-4 w-4 text-amber-600" />
-                  <div className="text-sm font-medium">+62 (21) 5098-2122</div>
-                </div>
-                <div className="flex items-center gap-3 p-3 rounded-lg bg-slate-50 dark:bg-slate-900 border">
-                  <MapPin className="h-4 w-4 text-emerald-600" />
-                  <div className="text-sm font-medium">Nexus Tower, Level 42</div>
-                </div>
+                {contact?.email && (
+                  <div className="flex items-center gap-3 p-3 rounded-lg bg-slate-50 dark:bg-slate-900 border">
+                    <Mail className="h-4 w-4 text-indigo-600" />
+                    <div className="text-sm font-medium">{contact.email}</div>
+                  </div>
+                )}
+                {contact?.phone && (
+                  <div className="flex items-center gap-3 p-3 rounded-lg bg-slate-50 dark:bg-slate-900 border">
+                    <Phone className="h-4 w-4 text-amber-600" />
+                    <div className="text-sm font-medium">{contact.phone}</div>
+                  </div>
+                )}
+                {contact?.address && (
+                  <div className="flex items-center gap-3 p-3 rounded-lg bg-slate-50 dark:bg-slate-900 border">
+                    <MapPin className="h-4 w-4 text-emerald-600" />
+                    <div className="text-sm font-medium">{contact.address}</div>
+                  </div>
+                )}
+                {!contact && (
+                  <div className="text-sm text-muted-foreground text-center py-4">Geen contactgegevens beschikbaar</div>
+                )}
                 <Button variant="outline" className="w-full mt-2">
                   <Settings className="mr-2 h-4 w-4" /> Edit Details
-                </Button>
-              </CardContent>
-            </Card>
-            <Card className="shadow-soft bg-indigo-600 text-white border-none">
-              <CardHeader>
-                <CardTitle className="text-sm">Live Support Analytics</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs opacity-80">Active Queries</span>
-                  <Badge className="bg-white/20 text-white border-none">12 New</Badge>
-                </div>
-                <div className="text-3xl font-bold">4.2m</div>
-                <div className="text-xs opacity-70">Average Response Time</div>
-                <Button className="w-full mt-4 bg-white/20 hover:bg-white/30 border-none text-white shadow-none">
-                  <MessageSquare className="mr-2 h-4 w-4" /> View Chat Queue
                 </Button>
               </CardContent>
             </Card>

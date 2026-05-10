@@ -1311,6 +1311,32 @@ function userRoutes(app) {
     await logActivity(c.env, "Created", "gift_card_batch", "batch_mint");
     return ok(c, results);
   });
+  app.get("/api/stats", async (c) => {
+    try {
+      await Promise.all([
+        UserEntity.ensureSeed(c.env),
+        CampaignEntity.ensureSeed(c.env),
+        ApprovalEntity.ensureSeed(c.env),
+        GiftCardEntity.ensureSeed(c.env)
+      ].map((p) => p.catch(() => {
+      })));
+      const [memberIds, campaignIds, approvalIds, giftCardIds] = await Promise.all([
+        new Index(c.env, "members").list().catch(() => []),
+        new Index(c.env, "campaigns").list().catch(() => []),
+        new Index(c.env, "approvals").list().catch(() => []),
+        new Index(c.env, "gift-cards").list().catch(() => [])
+      ]);
+      return ok(c, {
+        totalMembers: memberIds.length,
+        totalCampaigns: campaignIds.length,
+        totalApprovals: approvalIds.length,
+        totalGiftCards: giftCardIds.length
+      });
+    } catch (e) {
+      console.error("[Stats]", e);
+      return ok(c, { totalMembers: 0, totalCampaigns: 0, totalApprovals: 0, totalGiftCards: 0 });
+    }
+  });
   app.get("/api/:entityType", async (c) => {
     const type = c.req.param("entityType");
     const EntityClass = ENTITY_MAP[type];

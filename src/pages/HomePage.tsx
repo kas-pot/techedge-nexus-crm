@@ -1,29 +1,43 @@
 import React, { useState, useEffect } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { WEATHER_PRESETS } from '@shared/mock-data';
 import { Users, TrendingUp, Award, DollarSign, Zap, Download, Sun, CloudRain, Cloud, Droplets, ArrowRight, History, Ticket, Send, ShieldCheck, Clock, Database } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import { cn } from '@/lib/utils';
-import { useWeatherSettings, useEntities } from '@/lib/api-hooks';
+import { useWeatherSettings, useEntities, useStats } from '@/lib/api-hooks';
 import { formatDistanceToNow } from 'date-fns';
-const stats = [
-  { label: 'Total Members', value: '—', icon: Users, color: 'text-indigo-600', bg: 'bg-indigo-50' },
-  { label: 'Total Revenue (IDR)', value: '—', icon: DollarSign, color: 'text-indigo-600', bg: 'bg-indigo-50' },
-  { label: 'Active Campaigns', value: '—', icon: TrendingUp, color: 'text-indigo-600', bg: 'bg-indigo-50' },
-  { label: 'Redemptions', value: '—', icon: Award, color: 'text-indigo-600', bg: 'bg-indigo-50' },
-];
+
+const WEATHER_PRESETS: Record<string, { condition: string; tips: string[]; icon: string }> = {
+  sunny: { condition: 'Sunny', tips: ['Stay hydrated — visit our water stations', 'Apply sunscreen for outdoor events', 'Enjoy rooftop dining at Venue A'], icon: 'Sun' },
+  rainy: { condition: 'Rainy', tips: ['Umbrella rentals available at Concierge', 'Enjoy indoor workshops at Sedayu Mall', 'Check out the indoor cinema promos'], icon: 'CloudRain' },
+  cloudy: { condition: 'Cloudy', tips: ['Perfect weather for a mall stroll', 'Outdoor park is open for member activities', 'Check out the new garden seating'], icon: 'Cloud' },
+  humid: { condition: 'Humid', tips: ['Cool off with 20% off all cold drinks', 'Air-conditioned lounges are available', 'Visit our indoor F&B outlets'], icon: 'Droplets' },
+};
+
 const WeatherIcons = { sunny: Sun, rainy: CloudRain, cloudy: Cloud, humid: Droplets };
-const WeatherColors = { sunny: "from-amber-400 to-orange-600", rainy: "from-indigo-500 to-blue-700", cloudy: "from-slate-400 to-slate-600", humid: "from-emerald-400 to-teal-600" };
+const WeatherColors = { sunny: 'from-amber-400 to-orange-600', rainy: 'from-indigo-500 to-blue-700', cloudy: 'from-slate-400 to-slate-600', humid: 'from-emerald-400 to-teal-600' };
 export function HomePage() {
   const [pulse, setPulse] = useState(false);
   const [recIndex, setRecIndex] = useState(0);
   const { data: weather } = useWeatherSettings();
-  const { data: logsData } = useEntities<any>('activity-logs', '/api/activity-logs', {}, 8);
+  const { data: logsData } = useEntities<any>('activity-logs', '/api/activity-logs', {}, 200);
+  const { data: statsData } = useStats();
   const currentPreset = weather ? WEATHER_PRESETS[weather.activeCondition] : WEATHER_PRESETS.sunny;
-  const WeatherIcon = weather ? WeatherIcons[weather.activeCondition] : Sun;
+  const WeatherIcon = weather ? WeatherIcons[weather.activeCondition as keyof typeof WeatherIcons] : Sun;
+
+  const statCards = [
+    { label: 'Total Members', value: statsData ? statsData.totalMembers.toLocaleString() : '—', icon: Users, color: 'text-indigo-600', bg: 'bg-indigo-50' },
+    { label: 'Total Campaigns', value: statsData ? statsData.totalCampaigns.toLocaleString() : '—', icon: TrendingUp, color: 'text-indigo-600', bg: 'bg-indigo-50' },
+    { label: 'Approval Tasks', value: statsData ? statsData.totalApprovals.toLocaleString() : '—', icon: Award, color: 'text-indigo-600', bg: 'bg-indigo-50' },
+    { label: 'Gift Cards', value: statsData ? statsData.totalGiftCards.toLocaleString() : '—', icon: DollarSign, color: 'text-indigo-600', bg: 'bg-indigo-50' },
+  ];
+
+  const sortedLogs = (logsData?.items ?? [])
+    .slice()
+    .sort((a: any, b: any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+    .slice(0, 8);
   useEffect(() => {
     const recInterval = setInterval(() => setRecIndex(prev => (prev + 1) % currentPreset.tips.length), 5000);
     const pulseInterval = setInterval(() => {
@@ -73,7 +87,7 @@ export function HomePage() {
           </div>
         )}
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-          {stats.map((s) => (
+          {statCards.map((s) => (
             <Card key={s.label} className="hover:shadow-glow transition-all duration-500 border-none shadow-soft overflow-hidden group relative rounded-[2rem]">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">{s.label}</CardTitle>
@@ -109,7 +123,12 @@ export function HomePage() {
               </CardHeader>
               <CardContent className="p-0 flex-1 overflow-y-auto custom-scrollbar max-h-[500px]">
                 <div className="divide-y divide-slate-100">
-                  {(logsData?.items ?? []).map((log: any) => (
+                  {sortedLogs.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-12 text-muted-foreground gap-2">
+                      <History className="h-8 w-8 opacity-30" />
+                      <p className="text-sm">Geen activiteit beschikbaar</p>
+                    </div>
+                  ) : sortedLogs.map((log: any) => (
                     <div key={log.id} className="p-6 flex items-start gap-4 hover:bg-slate-50/50 transition-colors group">
                       <div className={cn(
                         "h-10 w-10 rounded-2xl flex items-center justify-center shrink-0 shadow-sm",

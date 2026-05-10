@@ -4,7 +4,15 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Map, MapPin, Maximize2, MousePointer2, Layers, Plus, Store, Coffee, ShoppingBag, Utensils } from 'lucide-react';
-import { useVenues } from '@/lib/api-hooks';
+import { useVenues, useOutlets } from '@/lib/api-hooks';
+
+const categoryConfig = (category: string) => {
+  const cat = (category ?? '').toLowerCase();
+  if (cat.includes('fnb') || cat.includes('food') || cat.includes('beverage') || cat.includes('f&b')) return { icon: Utensils, color: 'text-amber-600', bg: 'bg-amber-50' };
+  if (cat.includes('fashion') || cat.includes('retail') || cat.includes('clothing')) return { icon: ShoppingBag, color: 'text-indigo-600', bg: 'bg-indigo-50' };
+  if (cat.includes('coffee') || cat.includes('cafe')) return { icon: Coffee, color: 'text-amber-600', bg: 'bg-amber-50' };
+  return { icon: Store, color: 'text-slate-600', bg: 'bg-slate-100' };
+};
 import { cn } from '@/lib/utils';
 const MapLegend = () => (
   <Card className="absolute bottom-4 left-4 z-20 bg-white/90 backdrop-blur-md border border-slate-200 shadow-xl p-4 w-48 rounded-2xl">
@@ -32,6 +40,8 @@ const MapLegend = () => (
 export function MapsPage() {
   const { data: venuesData } = useVenues();
   const venues = venuesData?.items || [];
+  const { data: outletsData } = useOutlets();
+  const outlets = outletsData?.items ?? [];
   return (
     <AppLayout container>
       <div className="space-y-8 animate-fade-in">
@@ -89,34 +99,30 @@ export function MapsPage() {
               </CardHeader>
               <CardContent className="p-0 flex-1 overflow-hidden">
                 <div className="divide-y max-h-[480px] overflow-y-auto custom-scrollbar">
-                  {[
-                    { id: '101', name: 'ZARA Premium', type: 'Retail', status: 'Open', icon: ShoppingBag, color: 'text-indigo-600', bg: 'bg-indigo-50' },
-                    { id: '102', name: 'Starbucks Reserve', type: 'F&B', status: 'Open', icon: Coffee, color: 'text-amber-600', bg: 'bg-amber-50' },
-                    { id: '103', name: 'Kitchenette', type: 'F&B', status: 'Closed', icon: Utensils, color: 'text-rose-600', bg: 'bg-rose-50' },
-                    { id: '104', name: 'H&M Global', type: 'Retail', status: 'Open', icon: ShoppingBag, color: 'text-indigo-600', bg: 'bg-indigo-50' },
-                    { id: '105', name: 'Nexus VIP Lounge', type: 'Service', status: 'Coming Soon', icon: MapPin, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-                    { id: '106', name: 'ATM Hub East', type: 'Service', status: 'Open', icon: MapPin, color: 'text-slate-600', bg: 'bg-slate-100' },
-                  ].map((poi, i) => (
-                    <div key={poi.id} className="p-5 flex items-center justify-between hover:bg-indigo-50/50 transition-colors cursor-pointer group/item">
-                      <div className="flex items-center gap-4">
-                        <div className={cn("h-10 w-10 rounded-xl flex items-center justify-center transition-transform group-hover/item:scale-110", poi.bg, poi.color)}>
-                          <poi.icon className="h-5 w-5" />
-                        </div>
-                        <div>
-                          <div className="text-sm font-bold text-foreground group-hover/item:text-indigo-600 transition-colors">{poi.name}</div>
-                          <div className="text-[10px] text-muted-foreground uppercase font-black tracking-tighter">Room {poi.id} • {poi.type}</div>
-                        </div>
-                      </div>
-                      <Badge variant="outline" className={cn(
-                        "text-[9px] uppercase font-bold border-none px-2",
-                        poi.status === 'Open' ? "bg-emerald-100 text-emerald-700" :
-                          poi.status === 'Closed' ? "bg-rose-100 text-rose-700" :
-                            "bg-amber-100 text-amber-700"
-                      )}>
-                        {poi.status}
-                      </Badge>
+                  {outlets.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-12 text-muted-foreground gap-2">
+                      <MapPin className="h-8 w-8 opacity-30" />
+                      <p className="text-sm">Geen outlets gevonden</p>
                     </div>
-                  ))}
+                  ) : outlets.map((outlet) => {
+                    const { icon: Icon, color, bg } = categoryConfig(outlet.category);
+                    return (
+                      <div key={outlet.id} className="p-5 flex items-center justify-between hover:bg-indigo-50/50 transition-colors cursor-pointer group/item">
+                        <div className="flex items-center gap-4">
+                          <div className={cn("h-10 w-10 rounded-xl flex items-center justify-center transition-transform group-hover/item:scale-110", bg, color)}>
+                            <Icon className="h-5 w-5" />
+                          </div>
+                          <div>
+                            <div className="text-sm font-bold text-foreground group-hover/item:text-indigo-600 transition-colors">{outlet.name}</div>
+                            <div className="text-[10px] text-muted-foreground uppercase font-black tracking-tighter">{outlet.floor ? `Floor ${outlet.floor} • ` : ''}{outlet.category}</div>
+                          </div>
+                        </div>
+                        <Badge variant="outline" className="text-[9px] uppercase font-bold border-none px-2 bg-emerald-100 text-emerald-700">
+                          Active
+                        </Badge>
+                      </div>
+                    );
+                  })}
                 </div>
               </CardContent>
               <div className="p-6 border-t bg-slate-50/50">

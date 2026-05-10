@@ -149,6 +149,11 @@ export const useBannerMutation = () => {
 // Common Mutations
 export const useVoucherMutations = () => useEntityMutation<Voucher>('vouchers', '/api/vouchers');
 export const useMemberMutations = () => useEntityMutation<Member>('members', '/api/users');
+export const useStats = () => useQuery({
+  queryKey: ['stats'],
+  queryFn: () => api<{ totalMembers: number; totalCampaigns: number; totalApprovals: number; totalGiftCards: number }>('/api/stats'),
+  staleTime: 60 * 1000,
+});
 export const useVenueMutations = () => useEntityMutation<Venue>('venues', '/api/venues');
 export const useOutletMutations = () => useEntityMutation<Outlet>('outlets', '/api/outlets');
 export const usePartnerMutations = () => useEntityMutation<Partner>('partners', '/api/partners');

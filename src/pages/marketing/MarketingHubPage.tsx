@@ -137,21 +137,10 @@ export function MarketingHubPage({ defaultTab = 'ads' }: MarketingHubPageProps) 
             </div>
           </TabsContent>
           <TabsContent value="videos">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              {[1, 2, 3, 4].map((i) => (
-                <Card key={i} className="overflow-hidden border-none shadow-soft">
-                  <div className="aspect-video relative bg-slate-900 flex items-center justify-center group cursor-pointer">
-                    <img src={`https://images.unsplash.com/photo-${1500000000000 + i * 100000}?q=80&w=400&auto=format&fit=crop`} className="w-full h-full object-cover opacity-60" />
-                    <div className="absolute h-12 w-12 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center text-white group-hover:scale-110 transition-transform">
-                      <MonitorPlay className="h-6 w-6" />
-                    </div>
-                  </div>
-                  <CardContent className="p-3">
-                    <p className="font-semibold text-sm line-clamp-1">Brand Campaign Spot {i}</p>
-                    <p className="text-xs text-muted-foreground">Uploaded 2 days ago • 1.2k views</p>
-                  </CardContent>
-                </Card>
-              ))}
+            <div className="flex flex-col items-center justify-center py-24 text-muted-foreground gap-3">
+              <Video className="h-10 w-10 opacity-30" />
+              <p className="font-medium">Geen videopromoties beschikbaar</p>
+              <p className="text-sm">Upload videocontent via de mediabibliotheek.</p>
             </div>
           </TabsContent>
         </Tabs>
