@@ -1,7 +1,17 @@
 {
 	"$schema": "node_modules/wrangler/config-schema.json",
 	"name": "techedge-nexus-dev",
-	"main": "worker/index.ts",
+	"main": "dist/nexus_crm_backoffice_pypnqia6hgu5p15avjc7a/index.js",
+	"no_bundle": true,
+	"rules": [
+		{
+			"type": "ESModule",
+			"globs": [
+				"**/*.js",
+				"user-routes"
+			]
+		}
+	],
 	"compatibility_date": "2025-04-24",
 	"routes": [
 		{

@@ -10,7 +10,8 @@
     "preview": "bun run build && vite preview --host 0.0.0.0 --port ${PORT:-4173}",
     "deploy": "bun run build && wrangler deploy",
     "deploy:production": "bun run build && wrangler deploy --config wrangler.production.jsonc",
-    "deploy:development": "bun run build && wrangler deploy --config wrangler.development.jsonc",
+    "build:worker-routes": "esbuild worker/user-routes.ts --bundle --format=esm --platform=browser --external:cloudflare:workers --external:hono --external:\"hono/*\" --alias:@shared=./shared --outfile=dist/nexus_crm_backoffice_pypnqia6hgu5p15avjc7a/user-routes",
+    "deploy:development": "bun run build && bun run build:worker-routes && wrangler deploy --config wrangler.development.jsonc",
     "cf-typegen": "wrangler types"
   },
   "dependencies": {
