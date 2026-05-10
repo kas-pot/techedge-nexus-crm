@@ -193,6 +193,21 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     return user ? ok(c, user) : notFound(c);
   });
 
+  app.post('/api/thepot/users', async (c) => {
+    const db = getDb(c);
+    if (!db) return bad(c, 'Not available in this environment');
+    const { first_name, last_name, email, birth_date, gender, user_role, is_active } = await c.req.json();
+    if (!first_name || !last_name || !email) return bad(c, 'first_name, last_name and email are required');
+    const existing = await db.prepare('SELECT id FROM users WHERE email=?').bind(email).first();
+    if (existing) return bad(c, 'A user with this email already exists');
+    await db.prepare(
+      `INSERT INTO users (email, first_name, last_name, birth_date, gender, is_email_verified, is_active, user_role, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, 0, ?, ?, datetime('now'), datetime('now'))`
+    ).bind(email, first_name, last_name, birth_date ?? null, gender ?? null, is_active ?? 1, user_role ?? 'user').run();
+    const created = await db.prepare('SELECT * FROM users WHERE email=? ORDER BY id DESC LIMIT 1').bind(email).first();
+    return ok(c, created);
+  });
+
   app.put('/api/thepot/users/:id', async (c) => {
     const db = getDb(c);
     if (!db) return bad(c, 'Not available in this environment');

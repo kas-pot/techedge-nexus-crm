@@ -201,6 +201,14 @@ export const usePotUsers = (search?: string, page = 1) => useQuery({
 
 export const usePotUserMutations = () => {
   const queryClient = useQueryClient();
+  const create = useMutation({
+    mutationFn: (data: { first_name: string; last_name: string; email: string; user_role?: string; is_active?: number; birth_date?: string; gender?: string }) =>
+      api<ThePotUser>('/api/thepot/users', { method: 'POST', body: JSON.stringify(data) }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['pot-users'] });
+      queryClient.invalidateQueries({ queryKey: ['pot-stats'] });
+    },
+  });
   const update = useMutation({
     mutationFn: ({ id, ...data }: Partial<ThePotUser> & { id: number }) =>
       api<ThePotUser>(`/api/thepot/users/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
@@ -210,7 +218,7 @@ export const usePotUserMutations = () => {
     mutationFn: (id: number) => api<{ success: boolean }>(`/api/thepot/users/${id}`, { method: 'DELETE' }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['pot-users'] }),
   });
-  return { update, deactivate };
+  return { create, update, deactivate };
 };
 
 export const usePotGames = (page = 1) => useQuery({

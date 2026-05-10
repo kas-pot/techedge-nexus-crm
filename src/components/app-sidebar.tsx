@@ -34,9 +34,9 @@ const navGroups = [
     ]
   },
   {
-    label: "Member Management",
+    label: "User Management",
     items: [
-      { title: "Member List", icon: Users, url: "/members" },
+      { title: "User List", icon: Users, url: "/members" },
       { title: "Membership Tiers", icon: ShieldCheck, url: "/tiers" },
       { title: "Leaderboards", icon: Trophy, url: "/leaderboards" },
       { title: "Interests", icon: Star, url: "/interests" },
