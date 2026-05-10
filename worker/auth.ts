@@ -365,6 +365,32 @@ export async function registerAdminUser(
     });
 }
 
+/** Get a registered admin user record by email, or null if not found */
+export async function getAdminUser(
+    email: string,
+    env: Env,
+): Promise<{ email: string; name: string; role: string; isActive: boolean; createdAt: string } | null> {
+    const normalized = email.toLowerCase().trim();
+    const stub = getDO(env);
+    const doc = await stub.getDoc<{ email: string; name: string; role: string; isActive: boolean; createdAt: string }>(adminUserKey(normalized));
+    return doc?.data ?? null;
+}
+
+/** List all registered admin users */
+export async function listAdminUsers(
+    env: Env,
+): Promise<Array<{ email: string; name: string; role: string; isActive: boolean; createdAt: string }>> {
+    const stub = getDO(env);
+    const { keys } = await stub.listPrefix('auth:admin:');
+    const results = await Promise.all(
+        (keys as string[]).map(async (k) => {
+            const doc = await stub.getDoc<{ email: string; name: string; role: string; isActive: boolean; createdAt: string }>(k);
+            return doc?.data ?? null;
+        }),
+    );
+    return results.filter((u): u is NonNullable<typeof u> => u !== null);
+}
+
 /**
  * Store a freshly generated OTP for the given email.
  * Returns the OTP so the caller can email it.

@@ -1,10 +1,12 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import { Shield, Zap, Lock } from 'lucide-react';
+import { Shield, Zap, Lock, Mail, ArrowRight, Loader2 } from 'lucide-react';
 
 export function LoginPage() {
     const { user, config, loading } = useAuth();
@@ -12,20 +14,46 @@ export function LoginPage() {
     const [params] = useSearchParams();
     const isDev = params.get('dev') === '1';
 
+    const [email, setEmail] = useState('');
+    const [emailError, setEmailError] = useState('');
+    const [emailLoading, setEmailLoading] = useState(false);
+
     // If already authenticated, redirect to dashboard
     useEffect(() => {
         if (!loading && user) navigate('/', { replace: true });
     }, [loading, user, navigate]);
 
-    function handleLogin() {
+    function handleSSOLogin() {
         if (!config) return;
         if (config.devMode || isDev) {
-            // In dev mode, no real CF Access — just reload so the backend dev-bypass kicks in
             window.location.href = '/';
             return;
         }
-        // Redirect to Cloudflare Access / Google OAuth login
         window.location.href = config.loginUrl;
+    }
+
+    async function handleRequestOtp(e: React.FormEvent) {
+        e.preventDefault();
+        setEmailError('');
+        const trimmed = email.trim().toLowerCase();
+        if (!trimmed || !/^[^@]+@[^@]+\.[^@]+$/.test(trimmed)) {
+            setEmailError('Voer een geldig e-mailadres in.');
+            return;
+        }
+        setEmailLoading(true);
+        try {
+            await fetch('/api/auth/otp/request', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: trimmed }),
+            });
+            // Always navigate regardless of result (prevents email enumeration)
+            navigate(`/otp?email=${encodeURIComponent(trimmed)}`);
+        } catch {
+            setEmailError('Er is een fout opgetreden. Probeer het opnieuw.');
+        } finally {
+            setEmailLoading(false);
+        }
     }
 
     return (
@@ -57,7 +85,7 @@ export function LoginPage() {
                         {/* Google / Cloudflare SSO button */}
                         <Button
                             className="w-full h-12 bg-white hover:bg-slate-50 text-slate-800 font-semibold text-sm shadow-lg transition-all hover:shadow-xl active:scale-[0.98]"
-                            onClick={handleLogin}
+                            onClick={handleSSOLogin}
                             disabled={loading}
                         >
                             <svg className="h-5 w-5 mr-3 flex-shrink-0" viewBox="0 0 24 24">
@@ -73,20 +101,55 @@ export function LoginPage() {
                             <Separator className="bg-slate-700/50" />
                             <span className="absolute inset-0 flex items-center justify-center">
                                 <span className="bg-slate-800 px-3 text-xs text-slate-500 uppercase tracking-wider">
-                                    Beveiligd via
+                                    of via e-mail
                                 </span>
                             </span>
                         </div>
 
+                        {/* ── Email OTP form ── */}
+                        <form onSubmit={handleRequestOtp} className="space-y-3">
+                            <div className="space-y-1.5">
+                                <Label htmlFor="email" className="text-slate-300 text-xs font-medium">
+                                    E-mailadres
+                                </Label>
+                                <div className="relative">
+                                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
+                                    <Input
+                                        id="email"
+                                        type="email"
+                                        autoComplete="email"
+                                        placeholder="uw@emailadres.nl"
+                                        value={email}
+                                        onChange={(e) => { setEmail(e.target.value); setEmailError(''); }}
+                                        className="pl-9 bg-slate-700/50 border-slate-600 text-white placeholder:text-slate-500 focus:border-indigo-500 focus:ring-indigo-500/20"
+                                    />
+                                </div>
+                                {emailError && (
+                                    <p className="text-xs text-red-400">{emailError}</p>
+                                )}
+                            </div>
+                            <Button
+                                type="submit"
+                                className="w-full h-11 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm"
+                                disabled={emailLoading || !email.trim()}
+                            >
+                                {emailLoading ? (
+                                    <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Versturen…</>
+                                ) : (
+                                    <><ArrowRight className="h-4 w-4 mr-2" />Eenmalige code versturen</>
+                                )}
+                            </Button>
+                        </form>
+
                         {/* Trust badges */}
-                        <div className="flex items-center justify-center gap-6 text-slate-500">
+                        <div className="flex items-center justify-center gap-6 text-slate-500 pt-1">
                             <div className="flex items-center gap-1.5 text-xs">
                                 <Shield className="h-3.5 w-3.5 text-indigo-400" />
                                 <span>Cloudflare Zero Trust</span>
                             </div>
                             <div className="flex items-center gap-1.5 text-xs">
                                 <Lock className="h-3.5 w-3.5 text-indigo-400" />
-                                <span>OAuth 2.0</span>
+                                <span>OTP / OAuth 2.0</span>
                             </div>
                         </div>
 

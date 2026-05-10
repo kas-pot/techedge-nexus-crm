@@ -11,6 +11,7 @@ import '@/index.css'
 // Pages
 import { lazy, Suspense } from 'react';
 const LoginPage = lazy(() => import('@/pages/auth/LoginPage').then(m => ({ default: m.LoginPage })));
+const OtpVerifyPage = lazy(() => import('@/pages/auth/OtpVerifyPage').then(m => ({ default: m.OtpVerifyPage })));
 const HomePage = lazy(() => import('@/pages/HomePage').then(m => ({ default: m.HomePage })));
 const MemberListPage = lazy(() => import('@/pages/members/MemberListPage').then(m => ({ default: m.MemberListPage })));
 const TiersPage = lazy(() => import('@/pages/members/TiersPage').then(m => ({ default: m.TiersPage })));
@@ -57,6 +58,15 @@ const router = createBrowserRouter([
     element: (
       <Suspense fallback={<div className="flex items-center justify-center min-h-screen bg-slate-950" />}>
         <LoginPage />
+      </Suspense>
+    ),
+    errorElement: <RouteErrorBoundary />
+  },
+  {
+    path: "/otp",
+    element: (
+      <Suspense fallback={<div className="flex items-center justify-center min-h-screen bg-slate-950" />}>
+        <OtpVerifyPage />
       </Suspense>
     ),
     errorElement: <RouteErrorBoundary />

@@ -24,6 +24,9 @@ import {
   getClientIp,
   getAuthConfig,
   isAdminEmail,
+  getAdminUser,
+  listAdminUsers,
+  registerAdminUser,
   storeOtp,
   verifyOtp,
   sendOtpEmail,
@@ -219,13 +222,8 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     // the email exists — prevents email enumeration attacks.
     const adminExists = await isAdminEmail(email, c.env);
     if (adminExists) {
-      // Look up name for personalisation
-      const stub = (c.env as any).GlobalDurableObject.get(
-        (c.env as any).GlobalDurableObject.idFromName('global')
-      );
-      const adminDoc = await stub.getDoc<{ name: string }>(`auth:admin:${email}`);
-      const name = adminDoc?.data?.name ?? email;
-
+      const adminUser = await getAdminUser(email, c.env);
+      const name = adminUser?.name ?? email;
       const otp = await storeOtp(email, c.env);
       await sendOtpEmail(email, otp, name, c.env);
     }
@@ -272,11 +270,8 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     await clearAttempts(ip, c.env);
 
     // Look up the admin user info
-    const stub = (c.env as any).GlobalDurableObject.get(
-      (c.env as any).GlobalDurableObject.idFromName('global')
-    );
-    const adminDoc = await stub.getDoc<{ name: string; email: string }>(`auth:admin:${email}`);
-    const name = adminDoc?.data?.name ?? email;
+    const adminUser = await getAdminUser(email, c.env);
+    const name = adminUser?.name ?? email;
 
     // Create session
     const sessionToken = await createOtpSession(email, name, c.env);
@@ -302,36 +297,15 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
    * POST /api/auth/admin-users — register a new admin user (protected)
    */
   app.get('/api/auth/admin-users', async (c) => {
-    const stub = (c.env as any).GlobalDurableObject.get(
-      (c.env as any).GlobalDurableObject.idFromName('global')
-    );
-    const { keys } = await stub.listPrefix('auth:admin:');
-    const users = await Promise.all(
-      keys.map(async (k: string) => {
-        const doc = await stub.getDoc<any>(k);
-        return doc?.data ?? null;
-      })
-    );
-    return c.json({ success: true, data: users.filter(Boolean) });
+    const users = await listAdminUsers(c.env);
+    return c.json({ success: true, data: users });
   });
 
   app.post('/api/auth/admin-users', async (c) => {
     const { email, name, role } = await c.req.json<{ email: string; name: string; role: string }>();
     if (!email || !name) return bad(c, 'email and name are required');
-    const stub = (c.env as any).GlobalDurableObject.get(
-      (c.env as any).GlobalDurableObject.idFromName('global')
-    );
-    const normalized = email.toLowerCase().trim();
-    const key = `auth:admin:${normalized}`;
-    const existing = await stub.getDoc<any>(key);
-    await stub.casPut(key, existing?.v ?? 0, {
-      email: normalized,
-      name,
-      role: role ?? 'admin',
-      isActive: true,
-      createdAt: existing?.data?.createdAt ?? new Date().toISOString(),
-    });
-    return c.json({ success: true, data: { email: normalized, name, role } });
+    await registerAdminUser(email, name, role ?? 'admin', c.env);
+    return c.json({ success: true, data: { email: email.toLowerCase().trim(), name, role: role ?? 'admin' } });
   });
 
   // ─── Specialized Batch Gift Card Generation

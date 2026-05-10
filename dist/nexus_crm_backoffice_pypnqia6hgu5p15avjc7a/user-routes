@@ -873,6 +873,167 @@ function getAuthConfig(env) {
     devMode
   };
 }
+var OTP_TTL_MS = 10 * 60 * 1e3;
+var OTP_LENGTH = 6;
+var otpKey = (email) => `auth:otp:${email.toLowerCase().trim()}`;
+var adminUserKey = (email) => `auth:admin:${email.toLowerCase().trim()}`;
+function generateOtp() {
+  const arr = new Uint32Array(1);
+  crypto.getRandomValues(arr);
+  return String(arr[0] % 10 ** OTP_LENGTH).padStart(OTP_LENGTH, "0");
+}
+async function isAdminEmail(email, env) {
+  const normalized = email.toLowerCase().trim();
+  const { teamDomain } = getExtra(env);
+  if (!teamDomain) return true;
+  const stub = getDO(env);
+  const doc = await stub.getDoc(adminUserKey(normalized));
+  return doc ? doc.data.email === normalized && doc.data.isActive : false;
+}
+async function registerAdminUser(email, name, role, env) {
+  const normalized = email.toLowerCase().trim();
+  const stub = getDO(env);
+  const key = adminUserKey(normalized);
+  const existing = await stub.getDoc(key);
+  await stub.casPut(key, existing?.v ?? 0, {
+    email: normalized,
+    name,
+    role,
+    isActive: true,
+    createdAt: existing?.data?.createdAt ?? (/* @__PURE__ */ new Date()).toISOString()
+  });
+}
+async function getAdminUser(email, env) {
+  const normalized = email.toLowerCase().trim();
+  const stub = getDO(env);
+  const doc = await stub.getDoc(adminUserKey(normalized));
+  return doc?.data ?? null;
+}
+async function listAdminUsers(env) {
+  const stub = getDO(env);
+  const { keys } = await stub.listPrefix("auth:admin:");
+  const results = await Promise.all(
+    keys.map(async (k) => {
+      const doc = await stub.getDoc(k);
+      return doc?.data ?? null;
+    })
+  );
+  return results.filter((u) => u !== null);
+}
+async function storeOtp(email, env) {
+  const otp = generateOtp();
+  const normalized = email.toLowerCase().trim();
+  const stub = getDO(env);
+  const key = otpKey(normalized);
+  const existing = await stub.getDoc(key);
+  for (let i = 0; i < 5; i++) {
+    const result = await stub.casPut(key, existing?.v ?? 0, {
+      otp,
+      createdAt: Date.now(),
+      attempts: 0
+    });
+    if (result.ok) break;
+  }
+  return otp;
+}
+async function verifyOtp(email, token, env) {
+  const normalized = email.toLowerCase().trim();
+  const stub = getDO(env);
+  const key = otpKey(normalized);
+  const doc = await stub.getDoc(key);
+  if (!doc) return { valid: false, reason: "Geen actieve code \u2014 vraag een nieuwe aan." };
+  const { otp, createdAt, attempts } = doc.data;
+  if (Date.now() - createdAt > OTP_TTL_MS) {
+    await stub.del(key);
+    return { valid: false, reason: "Code verlopen \u2014 vraag een nieuwe aan." };
+  }
+  if (attempts >= 5) {
+    await stub.del(key);
+    return { valid: false, reason: "Te veel pogingen \u2014 vraag een nieuwe code aan." };
+  }
+  if (token.trim() !== otp) {
+    for (let i = 0; i < 5; i++) {
+      const fresh = await stub.getDoc(key);
+      if (!fresh) break;
+      const res = await stub.casPut(key, fresh.v, { ...fresh.data, attempts: fresh.data.attempts + 1 });
+      if (res.ok) break;
+    }
+    return { valid: false, reason: "Ongeldige code." };
+  }
+  await stub.del(key);
+  return { valid: true };
+}
+async function sendOtpEmail(email, otp, name, env) {
+  const { resendApiKey } = getExtra(env);
+  const html = `
+        <div style="font-family:sans-serif;max-width:480px;margin:0 auto">
+          <div style="background:#4f46e5;padding:24px;border-radius:12px 12px 0 0;text-align:center">
+            <h1 style="color:#fff;margin:0;font-size:22px;font-weight:800">TechEdge Nexus</h1>
+            <p style="color:#c7d2fe;margin:4px 0 0;font-size:13px">Enterprise Loyalty Management</p>
+          </div>
+          <div style="background:#fff;padding:32px;border-radius:0 0 12px 12px;border:1px solid #e5e7eb;border-top:none">
+            <p style="margin:0 0 8px;font-size:15px">Hallo <strong>${name}</strong>,</p>
+            <p style="margin:0 0 24px;color:#6b7280;font-size:14px">
+              Gebruik de onderstaande eenmalige code om in te loggen. De code is <strong>10 minuten</strong> geldig.
+            </p>
+            <div style="background:#f8fafc;border:2px dashed #6366f1;border-radius:10px;padding:20px;text-align:center;margin:0 0 24px">
+              <span style="font-size:40px;font-weight:900;letter-spacing:10px;color:#4f46e5;font-family:monospace">${otp}</span>
+            </div>
+            <p style="margin:0;color:#9ca3af;font-size:12px">
+              Deel deze code nooit met anderen. Als u dit niet heeft aangevraagd, kunt u dit bericht negeren.
+            </p>
+          </div>
+        </div>
+    `;
+  if (!resendApiKey) {
+    console.warn(`[OTP] RESEND_API_KEY not set \u2014 OTP for ${email}: ${otp}`);
+    return;
+  }
+  const res = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${resendApiKey}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      from: "Nexus CRM <noreply@the-pot.nl>",
+      to: [email],
+      subject: `${otp} \u2014 Uw inlogcode voor Nexus CRM`,
+      html
+    })
+  });
+  if (!res.ok) {
+    console.error("[OTP] Email send failed:", await res.text());
+  }
+}
+var SESSION_TTL_MS = 8 * 60 * 60 * 1e3;
+var sessionKey = (token) => `auth:session:${token}`;
+async function createOtpSession(email, name, env) {
+  const token = Array.from(crypto.getRandomValues(new Uint8Array(32))).map((b) => b.toString(16).padStart(2, "0")).join("");
+  const stub = getDO(env);
+  await stub.casPut(sessionKey(token), 0, {
+    email,
+    name,
+    createdAt: Date.now(),
+    expiresAt: Date.now() + SESSION_TTL_MS
+  });
+  return token;
+}
+async function validateOtpSession(token, env) {
+  if (!token) return null;
+  const stub = getDO(env);
+  const doc = await stub.getDoc(sessionKey(token));
+  if (!doc) return null;
+  if (doc.data.expiresAt < Date.now()) {
+    await stub.del(sessionKey(token));
+    return null;
+  }
+  return { email: doc.data.email, name: doc.data.name, sub: doc.data.email };
+}
+async function deleteOtpSession(token, env) {
+  const stub = getDO(env);
+  await stub.del(sessionKey(token));
+}
 
 // worker/user-routes.ts
 var ENTITY_MAP = {
@@ -928,6 +1089,15 @@ function userRoutes(app) {
     if (await isIpBlocked(ip, c.env)) {
       return c.json({ success: false, error: "IP blocked due to too many failed login attempts. Try again in 24 hours." }, 403);
     }
+    const cookieHeader = c.req.header("Cookie") ?? "";
+    const sessionMatch = cookieHeader.match(/nexus_session=([^;]+)/);
+    if (sessionMatch) {
+      const sessionUser = await validateOtpSession(sessionMatch[1], c.env);
+      if (sessionUser) {
+        c.set("authUser", sessionUser);
+        return next();
+      }
+    }
     const token = extractToken(c.req.raw);
     if (!token) {
       const ua = c.req.header("User-Agent") ?? "";
@@ -955,6 +1125,12 @@ function userRoutes(app) {
     if (await isIpBlocked(ip, c.env)) {
       return c.json({ success: false, error: "IP blocked." }, 403);
     }
+    const cookieHeader = c.req.header("Cookie") ?? "";
+    const sessionMatch = cookieHeader.match(/nexus_session=([^;]+)/);
+    if (sessionMatch) {
+      const sessionUser = await validateOtpSession(sessionMatch[1], c.env);
+      if (sessionUser) return c.json({ success: true, data: sessionUser });
+    }
     const token = extractToken(c.req.raw);
     if (!token) {
       return c.json({ success: false, error: "Not authenticated" }, 401);
@@ -970,11 +1146,91 @@ function userRoutes(app) {
       return c.json({ success: false, error: msg }, 401);
     }
   });
-  app.get("/api/auth/logout", (c) => {
+  app.get("/api/auth/logout", async (c) => {
+    const cookieHeader = c.req.header("Cookie") ?? "";
+    const sessionMatch = cookieHeader.match(/nexus_session=([^;]+)/);
+    if (sessionMatch) {
+      await deleteOtpSession(sessionMatch[1], c.env).catch(() => {
+      });
+    }
     const headers = new Headers();
-    headers.set("Set-Cookie", "CF_Authorization=; Path=/; Max-Age=0; SameSite=Lax");
+    headers.append("Set-Cookie", "CF_Authorization=; Path=/; Max-Age=0; SameSite=Lax");
+    headers.append("Set-Cookie", "nexus_session=; Path=/; Max-Age=0; SameSite=Lax; HttpOnly");
     headers.set("Location", "/login");
     return new Response(null, { status: 302, headers });
+  });
+  app.post("/api/auth/otp/request", async (c) => {
+    const ip = getClientIp(c.req.raw);
+    if (await isIpBlocked(ip, c.env)) {
+      return c.json({ success: false, error: "IP blocked." }, 403);
+    }
+    let email;
+    try {
+      const body = await c.req.json();
+      email = (body.email ?? "").trim().toLowerCase();
+    } catch {
+      return bad(c, "Ongeldig verzoek");
+    }
+    if (!email || !/^[^@]+@[^@]+\.[^@]+$/.test(email)) {
+      return bad(c, "Voer een geldig e-mailadres in.");
+    }
+    const adminExists = await isAdminEmail(email, c.env);
+    if (adminExists) {
+      const adminUser = await getAdminUser(email, c.env);
+      const name = adminUser?.name ?? email;
+      const otp = await storeOtp(email, c.env);
+      await sendOtpEmail(email, otp, name, c.env);
+    }
+    return c.json({ success: true, message: "Als dit e-mailadres bekend is, ontvangt u een code." });
+  });
+  app.post("/api/auth/otp/verify", async (c) => {
+    const ip = getClientIp(c.req.raw);
+    if (await isIpBlocked(ip, c.env)) {
+      return c.json({ success: false, error: "IP blocked." }, 403);
+    }
+    let email, token;
+    try {
+      const body = await c.req.json();
+      email = (body.email ?? "").trim().toLowerCase();
+      token = (body.token ?? "").trim();
+    } catch {
+      return bad(c, "Ongeldig verzoek");
+    }
+    if (!email || !token) return bad(c, "E-mailadres en code zijn verplicht.");
+    const result = await verifyOtp(email, token, c.env);
+    if (!result.valid) {
+      const ua = c.req.header("User-Agent") ?? "";
+      const { blocked } = await recordFailedAttempt(ip, ua, c.env);
+      const msg = blocked ? "IP blocked after too many failed attempts." : result.reason ?? "Ongeldige code.";
+      return c.json({ success: false, error: msg }, 401);
+    }
+    await clearAttempts(ip, c.env);
+    const adminUser = await getAdminUser(email, c.env);
+    const name = adminUser?.name ?? email;
+    const sessionToken = await createOtpSession(email, name, c.env);
+    const isProduction = !getAuthConfig(c.env).devMode;
+    const cookieFlags = isProduction ? "; Secure" : "";
+    const cookieValue = `nexus_session=${sessionToken}; Path=/; Max-Age=${8 * 3600}; SameSite=Lax; HttpOnly${cookieFlags}`;
+    return new Response(
+      JSON.stringify({ success: true, data: { email, name, sub: email } }),
+      {
+        status: 200,
+        headers: {
+          "Content-Type": "application/json",
+          "Set-Cookie": cookieValue
+        }
+      }
+    );
+  });
+  app.get("/api/auth/admin-users", async (c) => {
+    const users = await listAdminUsers(c.env);
+    return c.json({ success: true, data: users });
+  });
+  app.post("/api/auth/admin-users", async (c) => {
+    const { email, name, role } = await c.req.json();
+    if (!email || !name) return bad(c, "email and name are required");
+    await registerAdminUser(email, name, role ?? "admin", c.env);
+    return c.json({ success: true, data: { email: email.toLowerCase().trim(), name, role: role ?? "admin" } });
   });
   app.post("/api/gift-cards/batch", async (c) => {
     const { count, value, expiryDate } = await c.req.json();
