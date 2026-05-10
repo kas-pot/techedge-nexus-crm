@@ -5,7 +5,8 @@ import type {
   InterestTag, Leaderboard, ApprovalTask, Partner, Badge,
   SystemSettings, Ad, MarketingTicket, NewsItem, GiftCard, FaqItem, Member,
   ContactSettings, LegalDocument, WifiSettings, WeatherConfig, PushCampaign,
-  SplashScreenConfig, HeroBannerConfig
+  SplashScreenConfig, HeroBannerConfig,
+  ThePotUser, ThePotGame, ThePotChallenge, ThePotSubChallenge
 } from '@shared/types';
 export function useEntities<T>(key: string, path: string, params?: Record<string, string>, limit = 200) {
   const queryParams = new URLSearchParams(params);
@@ -177,4 +178,109 @@ export const usePartnerSync = () => {
       api<{ synced: number, items: Voucher[] }>('/api/vouchers/sync-external', { method: 'POST', body: JSON.stringify(data) }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['vouchers'] }),
   });
+};
+
+// ─── The Pot App — Live D1 Hooks ──────────────────────────────────────────────
+type PotListResponse<T> = { items: T[]; total: number; page: number; limit: number };
+
+export const usePotStats = () => useQuery({
+  queryKey: ['pot-stats'],
+  queryFn: () => api<{ users: number; games: number; challenges: number; subChallenges: number }>('/api/thepot/stats'),
+  staleTime: 30 * 1000,
+});
+
+export const usePotUsers = (search?: string, page = 1) => useQuery({
+  queryKey: ['pot-users', search, page],
+  queryFn: () => {
+    const params = new URLSearchParams({ page: String(page), limit: '50' });
+    if (search) params.set('search', search);
+    return api<PotListResponse<ThePotUser>>(`/api/thepot/users?${params}`);
+  },
+  staleTime: 10 * 1000,
+});
+
+export const usePotUserMutations = () => {
+  const queryClient = useQueryClient();
+  const update = useMutation({
+    mutationFn: ({ id, ...data }: Partial<ThePotUser> & { id: number }) =>
+      api<ThePotUser>(`/api/thepot/users/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['pot-users'] }),
+  });
+  const deactivate = useMutation({
+    mutationFn: (id: number) => api<{ success: boolean }>(`/api/thepot/users/${id}`, { method: 'DELETE' }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['pot-users'] }),
+  });
+  return { update, deactivate };
+};
+
+export const usePotGames = (page = 1) => useQuery({
+  queryKey: ['pot-games', page],
+  queryFn: () => api<PotListResponse<ThePotGame>>(`/api/thepot/games?page=${page}&limit=50`),
+  staleTime: 10 * 1000,
+});
+
+export const usePotGameDetail = (id: number | null) => useQuery({
+  queryKey: ['pot-game', id],
+  queryFn: () => api<ThePotGame & { teams: any[]; rounds: any[] }>(`/api/thepot/games/${id}`),
+  enabled: id != null,
+});
+
+export const usePotGameMutations = () => {
+  const queryClient = useQueryClient();
+  const remove = useMutation({
+    mutationFn: (id: number) => api<{ success: boolean }>(`/api/thepot/games/${id}`, { method: 'DELETE' }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['pot-games'] }),
+  });
+  return { remove };
+};
+
+export const usePotChallenges = () => useQuery({
+  queryKey: ['pot-challenges'],
+  queryFn: () => api<PotListResponse<ThePotChallenge>>('/api/thepot/challenges'),
+  staleTime: 10 * 1000,
+});
+
+export const usePotSubChallenges = (challengeId: string | null) => useQuery({
+  queryKey: ['pot-sub-challenges', challengeId],
+  queryFn: () => api<PotListResponse<ThePotSubChallenge>>(`/api/thepot/challenges/${challengeId}/sub-challenges`),
+  enabled: !!challengeId,
+  staleTime: 10 * 1000,
+});
+
+export const usePotChallengeMutations = () => {
+  const queryClient = useQueryClient();
+  const create = useMutation({
+    mutationFn: (data: { name: string }) =>
+      api<ThePotChallenge>('/api/thepot/challenges', { method: 'POST', body: JSON.stringify(data) }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['pot-challenges'] }),
+  });
+  const update = useMutation({
+    mutationFn: ({ id, ...data }: { id: number; name: string; is_active: number }) =>
+      api<ThePotChallenge>(`/api/thepot/challenges/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['pot-challenges'] }),
+  });
+  const remove = useMutation({
+    mutationFn: (id: number) => api<{ success: boolean }>(`/api/thepot/challenges/${id}`, { method: 'DELETE' }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['pot-challenges'] }),
+  });
+  return { create, update, remove };
+};
+
+export const usePotSubChallengeMutations = (challengeId: string) => {
+  const queryClient = useQueryClient();
+  const create = useMutation({
+    mutationFn: (data: { name: string }) =>
+      api<ThePotSubChallenge>(`/api/thepot/challenges/${challengeId}/sub-challenges`, { method: 'POST', body: JSON.stringify(data) }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['pot-sub-challenges', challengeId] }),
+  });
+  const update = useMutation({
+    mutationFn: ({ id, name }: { id: number; name: string }) =>
+      api<ThePotSubChallenge>(`/api/thepot/sub-challenges/${id}`, { method: 'PUT', body: JSON.stringify({ name }) }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['pot-sub-challenges', challengeId] }),
+  });
+  const remove = useMutation({
+    mutationFn: (id: number) => api<{ success: boolean }>(`/api/thepot/sub-challenges/${id}`, { method: 'DELETE' }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['pot-sub-challenges', challengeId] }),
+  });
+  return { create, update, remove };
 };

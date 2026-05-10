@@ -7,7 +7,7 @@ import {
   Mail, Video, MonitorPlay, Newspaper, Languages,
   Palette, Smartphone, Fingerprint, ScanEye,
   ShieldAlert, BookOpen, HelpCircle, Wifi, Users2, Landmark, CheckSquare, CloudSun,
-  Image as ImageIcon, UserCheck, Cpu, Layout
+  Image as ImageIcon, UserCheck, Cpu, Layout, Gamepad2, Puzzle
 } from "lucide-react";
 import {
   Sidebar,
@@ -96,6 +96,14 @@ const navGroups = [
     items: [
       { title: "Partnership List", icon: Users2, url: "/partnerships/list" },
       { title: "Bank Partnerships", icon: Landmark, url: "/partnerships/banks" },
+    ]
+  },
+  {
+    label: "The Pot App",
+    items: [
+      { title: "Gebruikers", icon: Users, url: "/thepot/users" },
+      { title: "Games", icon: Gamepad2, url: "/thepot/games" },
+      { title: "Challenges", icon: Puzzle, url: "/thepot/challenges" },
     ]
   },
   {

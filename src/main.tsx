@@ -33,6 +33,9 @@ const SettingsPage = lazy(() => import('@/pages/system/SettingsPage').then(m => 
 const MarketingHubPage = lazy(() => import('@/pages/marketing/MarketingHubPage').then(m => ({ default: m.MarketingHubPage })));
 const GiftCardsPage = lazy(() => import('@/pages/loyalty/GiftCardsPage').then(m => ({ default: m.GiftCardsPage })));
 const HelpFAQPage = lazy(() => import('@/pages/system/HelpFAQPage').then(m => ({ default: m.HelpFAQPage })));
+const PotUsersPage = lazy(() => import('@/pages/thepot/PotUsersPage').then(m => ({ default: m.PotUsersPage })));
+const PotGamesPage = lazy(() => import('@/pages/thepot/PotGamesPage').then(m => ({ default: m.PotGamesPage })));
+const PotChallengesPage = lazy(() => import('@/pages/thepot/PotChallengesPage').then(m => ({ default: m.PotChallengesPage })));
 import { TooltipProvider } from '@/components/ui/tooltip';
 
 enableMapSet();
@@ -88,6 +91,9 @@ const router = createBrowserRouter([
   { path: "/system", element: <Suspense fallback={<div>Loading...</div>}><SettingsPage /></Suspense>, errorElement: <RouteErrorBoundary /> },
   { path: "/system/:tab", element: <Suspense fallback={<div>Loading...</div>}><SettingsPage /></Suspense>, errorElement: <RouteErrorBoundary /> },
   { path: "/system/faq", element: <Suspense fallback={<div>Loading...</div>}><HelpFAQPage /></Suspense>, errorElement: <RouteErrorBoundary /> },
+  { path: "/thepot/users", element: <Suspense fallback={<div>Loading...</div>}><PotUsersPage /></Suspense>, errorElement: <RouteErrorBoundary /> },
+  { path: "/thepot/games", element: <Suspense fallback={<div>Loading...</div>}><PotGamesPage /></Suspense>, errorElement: <RouteErrorBoundary /> },
+  { path: "/thepot/challenges", element: <Suspense fallback={<div>Loading...</div>}><PotChallengesPage /></Suspense>, errorElement: <RouteErrorBoundary /> },
 ]);
 createRoot(document.getElementById('root')!).render(
   <QueryClientProvider client={queryClient}>

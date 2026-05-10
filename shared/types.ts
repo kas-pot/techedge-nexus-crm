@@ -292,3 +292,63 @@ export interface SystemSettings {
   splashImageUrl?: string;
   splashBgColor?: string;
 }
+
+// ─── The Pot App — Live D1 Data ───────────────────────────────────────────────
+export interface ThePotUser {
+  id: number;
+  email: string;
+  first_name: string;
+  last_name: string;
+  birth_date?: string;
+  gender?: string;
+  is_email_verified: number;
+  is_active: number;
+  created_at: string;
+  updated_at: string;
+  user_role: string;
+  profile_image?: string;
+}
+
+export interface ThePotGame {
+  id: number;
+  started_at?: string;
+  ended_at?: string;
+  created_at: string;
+  updated_at: string;
+  invited_user_id?: number;
+  team_count?: number;
+  player_count?: number;
+  round4_played: number;
+  challenge_used: number;
+  winner_team_name?: string;
+  user_id?: number;
+  public_id?: string;
+  challenge_id?: number;
+  // Joined
+  user_email?: string;
+  user_first_name?: string;
+  user_last_name?: string;
+  round_count?: number;
+}
+
+export interface ThePotChallenge {
+  id: number;
+  challenge_id: string;
+  name: string;
+  is_active: number;
+  is_default: number;
+  user_id?: number;
+  created_at: string;
+  updated_at: string;
+  sub_challenge_count?: number;
+}
+
+export interface ThePotSubChallenge {
+  id: number;
+  sub_challenge_id: string;
+  challenge_id: string;
+  name: string;
+  is_default: number;
+  created_at: string;
+  updated_at: string;
+}

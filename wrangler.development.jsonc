@@ -4,12 +4,18 @@
 	"main": "worker/index.ts",
 	"compatibility_date": "2025-04-24",
 	"routes": [
-		{ "pattern": "dev-dashboard.the-pot.nl", "custom_domain": true }
+		{
+			"pattern": "dev-dashboard.the-pot.nl",
+			"custom_domain": true
+		}
 	],
 	"assets": {
 		"directory": "dist/client",
 		"not_found_handling": "single-page-application",
-		"run_worker_first": ["/api/*", "!/api/docs/*"]
+		"run_worker_first": [
+			"/api/*",
+			"!/api/docs/*"
+		]
 	},
 	"observability": {
 		"enabled": true
@@ -22,10 +28,19 @@
 			}
 		]
 	},
+	"d1_databases": [
+		{
+			"binding": "THEPOT_DB",
+			"database_name": "thepot-development-db",
+			"database_id": "c74ad2d8-ff52-4a4f-9f7b-9c1a8553617f"
+		}
+	],
 	"migrations": [
 		{
 			"tag": "v1",
-			"new_sqlite_classes": ["GlobalDurableObject"]
+			"new_sqlite_classes": [
+				"GlobalDurableObject"
+			]
 		}
 	]
 }
