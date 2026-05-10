@@ -191,79 +191,79 @@ export function MemberListPage() {
                 <TableBody>
                   {isLoading
                     ? Array.from({ length: 10 }).map((_, i) => (
-                        <TableRow key={i}><TableCell colSpan={7} className="h-16 animate-pulse bg-muted/20" /></TableRow>
-                      ))
+                      <TableRow key={i}><TableCell colSpan={7} className="h-16 animate-pulse bg-muted/20" /></TableRow>
+                    ))
                     : users.map(user => (
-                        <TableRow key={user.id} className="group hover:bg-indigo-50/30 transition-colors border-b">
-                          <TableCell className="pl-6 font-mono text-[11px] text-muted-foreground">{user.id}</TableCell>
-                          <TableCell>
-                            <div className="flex flex-col">
-                              <span className="font-bold text-sm">{user.first_name} {user.last_name}</span>
-                              <span className="text-xs text-muted-foreground">{user.email}</span>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant={user.user_role === 'admin' ? 'default' : 'secondary'} className="flex items-center gap-1 w-fit">
-                              {user.user_role === 'admin' && <Shield className="h-3 w-3" />}
-                              {user.user_role}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-1">
-                              <div className={`h-2 w-2 rounded-full ${user.is_email_verified ? 'bg-emerald-500' : 'bg-slate-300'}`} />
-                              <span className="text-xs">{user.is_email_verified ? 'Ja' : 'Nee'}</span>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              <div className={`h-2 w-2 rounded-full ${user.is_active ? 'bg-emerald-500' : 'bg-red-400'}`} />
-                              <span className="text-sm">{user.is_active ? 'Actief' : 'Inactief'}</span>
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-xs text-muted-foreground">
-                            {new Date(user.created_at).toLocaleDateString('nl-NL')}
-                          </TableCell>
-                          <TableCell className="pr-6 text-right">
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon"><MoreVertical className="h-4 w-4" /></Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" className="w-52">
-                                <DropdownMenuItem onClick={() => openEdit(user)}>
-                                  <Edit className="mr-2 h-4 w-4" /> Bewerken
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => handleToggleActive(user)}>
-                                  {user.is_active
-                                    ? <><UserX className="mr-2 h-4 w-4 text-destructive" /> Deactiveren</>
-                                    : <><UserCheck className="mr-2 h-4 w-4 text-green-600" /> Activeren</>}
-                                </DropdownMenuItem>
-                                <DropdownMenuSeparator />
-                                <AlertDialog>
-                                  <AlertDialogTrigger asChild>
-                                    <DropdownMenuItem className="text-destructive" onSelect={e => e.preventDefault()}>
-                                      <Trash2 className="mr-2 h-4 w-4" /> Deactiveren (definitief)
-                                    </DropdownMenuItem>
-                                  </AlertDialogTrigger>
-                                  <AlertDialogContent>
-                                    <AlertDialogHeader>
-                                      <AlertDialogTitle>Gebruiker deactiveren?</AlertDialogTitle>
-                                      <AlertDialogDescription>
-                                        {user.first_name} {user.last_name} wordt gedeactiveerd. Ze kunnen niet meer inloggen in de app.
-                                      </AlertDialogDescription>
-                                    </AlertDialogHeader>
-                                    <AlertDialogFooter>
-                                      <AlertDialogCancel>Annuleren</AlertDialogCancel>
-                                      <AlertDialogAction className="bg-destructive" onClick={() => deactivate.mutate(user.id)}>
-                                        Bevestigen
-                                      </AlertDialogAction>
-                                    </AlertDialogFooter>
-                                  </AlertDialogContent>
-                                </AlertDialog>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </TableCell>
-                        </TableRow>
-                      ))}
+                      <TableRow key={user.id} className="group hover:bg-indigo-50/30 transition-colors border-b">
+                        <TableCell className="pl-6 font-mono text-[11px] text-muted-foreground">{user.id}</TableCell>
+                        <TableCell>
+                          <div className="flex flex-col">
+                            <span className="font-bold text-sm">{user.first_name} {user.last_name}</span>
+                            <span className="text-xs text-muted-foreground">{user.email}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={user.user_role === 'admin' ? 'default' : 'secondary'} className="flex items-center gap-1 w-fit">
+                            {user.user_role === 'admin' && <Shield className="h-3 w-3" />}
+                            {user.user_role}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1">
+                            <div className={`h-2 w-2 rounded-full ${user.is_email_verified ? 'bg-emerald-500' : 'bg-slate-300'}`} />
+                            <span className="text-xs">{user.is_email_verified ? 'Ja' : 'Nee'}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <div className={`h-2 w-2 rounded-full ${user.is_active ? 'bg-emerald-500' : 'bg-red-400'}`} />
+                            <span className="text-sm">{user.is_active ? 'Actief' : 'Inactief'}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-xs text-muted-foreground">
+                          {new Date(user.created_at).toLocaleDateString('nl-NL')}
+                        </TableCell>
+                        <TableCell className="pr-6 text-right">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon"><MoreVertical className="h-4 w-4" /></Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-52">
+                              <DropdownMenuItem onClick={() => openEdit(user)}>
+                                <Edit className="mr-2 h-4 w-4" /> Bewerken
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleToggleActive(user)}>
+                                {user.is_active
+                                  ? <><UserX className="mr-2 h-4 w-4 text-destructive" /> Deactiveren</>
+                                  : <><UserCheck className="mr-2 h-4 w-4 text-green-600" /> Activeren</>}
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <DropdownMenuItem className="text-destructive" onSelect={e => e.preventDefault()}>
+                                    <Trash2 className="mr-2 h-4 w-4" /> Deactiveren (definitief)
+                                  </DropdownMenuItem>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Gebruiker deactiveren?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      {user.first_name} {user.last_name} wordt gedeactiveerd. Ze kunnen niet meer inloggen in de app.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Annuleren</AlertDialogCancel>
+                                    <AlertDialogAction className="bg-destructive" onClick={() => deactivate.mutate(user.id)}>
+                                      Bevestigen
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    ))}
                   {users.length === 0 && !isLoading && (
                     <TableRow>
                       <TableCell colSpan={7} className="h-64 text-center text-muted-foreground">
