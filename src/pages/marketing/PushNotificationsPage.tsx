@@ -11,10 +11,8 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFo
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
-import { Bell, Plus, Search, Send, BarChart3, Trash2, Smartphone, Users, Clock, Edit, TrendingUp, Image as ImageIcon, Gift, Clock4, MessageSquareText, ChevronRight } from 'lucide-react';
+import { Bell, Plus, Search, Send, BarChart3, Trash2, Smartphone, Users, Clock, Edit, TrendingUp, Image as ImageIcon, Gift, Clock4, MessageSquareText, ChevronRight, Database } from 'lucide-react';
 import { usePushCampaigns, usePushCampaignMutations } from '@/lib/api-hooks';
-import { PUSH_ANALYTICS_DATA } from '@shared/mock-data';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -42,8 +40,20 @@ export function PushNotificationsPage() {
   const [isComposerOpen, setIsComposerOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('all');
   const [search, setSearch] = useState('');
+  const [editingPush, setEditingPush] = useState<any>(null);
+  const [sortKey, setSortKey] = useState('');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const { data, isLoading } = usePushCampaigns();
   const mutations = usePushCampaignMutations();
+
+  function toggleSort(key: string) {
+    if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    else { setSortKey(key); setSortDir('asc'); }
+  }
+  function sortIcon(key: string) {
+    if (sortKey !== key) return ' ⇅';
+    return sortDir === 'asc' ? ' ↑' : ' ↓';
+  }
   const { register, handleSubmit, watch, reset, setValue, formState: { errors } } = useForm<PushFormData>({
     resolver: zodResolver(pushSchema),
     defaultValues: {
@@ -68,11 +78,19 @@ export function PushNotificationsPage() {
         return true;
       });
     }
-    return items.filter(c =>
+    items = items.filter(c =>
       c.name.toLowerCase().includes(search.toLowerCase()) ||
       c.messageTitle.toLowerCase().includes(search.toLowerCase())
     );
-  }, [data?.items, search, activeTab]);
+    if (sortKey) {
+      items = [...items].sort((a: any, b: any) => {
+        const av = a[sortKey] ?? ''; const bv = b[sortKey] ?? '';
+        if (av === bv) return 0;
+        return sortDir === 'asc' ? (av > bv ? 1 : -1) : (av < bv ? 1 : -1);
+      });
+    }
+    return items;
+  }, [data?.items, search, activeTab, sortKey, sortDir]);
   const onSubmit = async (values: PushFormData) => {
     try {
       await mutations.create.mutateAsync({
@@ -116,22 +134,9 @@ export function PushNotificationsPage() {
               <CardTitle className="text-lg font-bold">Engagement Pulse</CardTitle>
               <CardDescription>30-day mobile interaction trends.</CardDescription>
             </CardHeader>
-            <CardContent className="pt-8 h-[300px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={PUSH_ANALYTICS_DATA}>
-                  <defs>
-                    <linearGradient id="colorOpen" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#4F46E5" stopOpacity={0.3} />
-                      <stop offset="95%" stopColor="#4F46E5" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.1} />
-                  <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#94a3b8' }} />
-                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#94a3b8' }} />
-                  <Tooltip contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }} />
-                  <Area type="monotone" dataKey="openRate" stroke="#4F46E5" fillOpacity={1} fill="url(#colorOpen)" strokeWidth={3} name="Open Rate %" />
-                </AreaChart>
-              </ResponsiveContainer>
+            <CardContent className="flex flex-col items-center justify-center h-48 text-muted-foreground gap-2">
+              <Database className="h-8 w-8 opacity-30" />
+              <p className="text-sm">Geen data beschikbaar</p>
             </CardContent>
           </Card>
           <Card className="shadow-soft border-none bg-indigo-600 text-white rounded-[2rem] overflow-hidden flex flex-col justify-between">
@@ -141,16 +146,14 @@ export function PushNotificationsPage() {
             <CardContent className="space-y-6">
               <div className="space-y-1">
                 <span className="text-[10px] uppercase font-black opacity-60 tracking-[0.2em]">Master Open Rate</span>
-                <div className="text-4xl font-black">28.4%</div>
+                <div className="text-4xl font-black">—</div>
               </div>
               <div className="space-y-1">
                 <span className="text-[10px] uppercase font-black opacity-60 tracking-[0.2em]">Total Sent (Cycle)</span>
-                <div className="text-4xl font-black">42.5k</div>
+                <div className="text-4xl font-black">—</div>
               </div>
               <div className="pt-4 border-t border-white/10">
-                <div className="flex items-center gap-2 text-xs font-bold text-emerald-300">
-                  <TrendingUp className="h-4 w-4" /> +12.4% vs previous cycle
-                </div>
+                <div className="text-xs text-white/60">Geen data beschikbaar</div>
               </div>
             </CardContent>
           </Card>
@@ -179,10 +182,10 @@ export function PushNotificationsPage() {
                 <Table>
                   <TableHeader className="bg-slate-50/30">
                     <TableRow>
-                      <TableHead className="pl-8 uppercase text-[10px] font-black tracking-widest text-muted-foreground">Notification</TableHead>
-                      <TableHead className="uppercase text-[10px] font-black tracking-widest text-muted-foreground">Category</TableHead>
-                      <TableHead className="uppercase text-[10px] font-black tracking-widest text-muted-foreground">Targeting</TableHead>
-                      <TableHead className="uppercase text-[10px] font-black tracking-widest text-muted-foreground">Trigger</TableHead>
+                      <TableHead className="pl-8 uppercase text-[10px] font-black tracking-widest text-muted-foreground cursor-pointer select-none hover:text-foreground" onClick={() => toggleSort('messageTitle')}>Notification{sortIcon('messageTitle')}</TableHead>
+                      <TableHead className="uppercase text-[10px] font-black tracking-widest text-muted-foreground cursor-pointer select-none hover:text-foreground" onClick={() => toggleSort('category')}>Category{sortIcon('category')}</TableHead>
+                      <TableHead className="uppercase text-[10px] font-black tracking-widest text-muted-foreground cursor-pointer select-none hover:text-foreground" onClick={() => toggleSort('targetingType')}>Targeting{sortIcon('targetingType')}</TableHead>
+                      <TableHead className="uppercase text-[10px] font-black tracking-widest text-muted-foreground cursor-pointer select-none hover:text-foreground" onClick={() => toggleSort('triggerType')}>Trigger{sortIcon('triggerType')}</TableHead>
                       <TableHead className="text-right pr-8 uppercase text-[10px] font-black tracking-widest text-muted-foreground">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -192,7 +195,7 @@ export function PushNotificationsPage() {
                         <TableRow key={i}><TableCell colSpan={5} className="h-16 animate-pulse bg-muted/10" /></TableRow>
                       ))
                     ) : filteredCampaigns.map((c) => (
-                      <TableRow key={c.id} className="group hover:bg-indigo-50/30 transition-colors">
+                      <TableRow key={c.id} className="group hover:bg-indigo-50/30 transition-colors cursor-pointer" onClick={() => setEditingPush(c)}>
                         <TableCell className="pl-8 py-4">
                           <div className="flex items-center gap-4">
                             <div className="h-10 w-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0 shadow-sm">
@@ -222,8 +225,8 @@ export function PushNotificationsPage() {
                         </TableCell>
                         <TableCell className="text-right pr-8">
                           <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <Button variant="ghost" size="icon" className="h-8 w-8"><Edit className="h-4 w-4" /></Button>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive"><Trash2 className="h-4 w-4" /></Button>
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={e => { e.stopPropagation(); setEditingPush(c); }}><Edit className="h-4 w-4" /></Button>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={e => e.stopPropagation()}><Trash2 className="h-4 w-4" /></Button>
                           </div>
                         </TableCell>
                       </TableRow>
@@ -234,6 +237,39 @@ export function PushNotificationsPage() {
             </Card>
           </TabsContent>
         </Tabs>
+        {/* Edit Push Campaign Sheet */}
+        <Sheet open={!!editingPush} onOpenChange={o => !o && setEditingPush(null)}>
+          <SheetContent className="sm:max-w-md">
+            <SheetHeader>
+              <SheetTitle>Push Notification bewerken</SheetTitle>
+              <SheetDescription>Wijzig de gegevens van "{editingPush?.name}"</SheetDescription>
+            </SheetHeader>
+            <div className="grid gap-6 py-6">
+              <div className="space-y-2">
+                <Label>Naam</Label>
+                <Input defaultValue={editingPush?.name} onChange={e => setEditingPush((c: any) => ({ ...c, name: e.target.value }))} />
+              </div>
+              <div className="space-y-2">
+                <Label>Titel</Label>
+                <Input defaultValue={editingPush?.messageTitle} onChange={e => setEditingPush((c: any) => ({ ...c, messageTitle: e.target.value }))} />
+              </div>
+              <div className="space-y-2">
+                <Label>Bericht</Label>
+                <Textarea defaultValue={editingPush?.messageBody} onChange={e => setEditingPush((c: any) => ({ ...c, messageBody: e.target.value }))} rows={3} />
+              </div>
+            </div>
+            <SheetFooter>
+              <Button variant="ghost" onClick={() => setEditingPush(null)}>Annuleren</Button>
+              <Button className="bg-indigo-600 text-white hover:bg-indigo-700" onClick={async () => {
+                try {
+                  await mutations.update.mutateAsync(editingPush);
+                  setEditingPush(null);
+                  toast.success('Notification bijgewerkt');
+                } catch { toast.error('Bijwerken mislukt'); }
+              }}>Opslaan</Button>
+            </SheetFooter>
+          </SheetContent>
+        </Sheet>
         <Sheet open={isComposerOpen} onOpenChange={setIsComposerOpen}>
           <SheetContent className="sm:max-w-4xl overflow-y-auto">
             <form onSubmit={handleSubmit(onSubmit)}>

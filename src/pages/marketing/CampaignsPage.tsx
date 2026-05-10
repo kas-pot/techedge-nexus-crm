@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from '@/components/ui/sheet';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { Megaphone, Mail, Bell, MessageSquare, Send, BarChart3, Clock, LayoutGrid, List, Plus, Search, ArrowRight } from 'lucide-react';
+import { Megaphone, Mail, Bell, MessageSquare, Send, BarChart3, Clock, LayoutGrid, List, Plus, Search, ArrowRight, Edit } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useCampaigns, useCampaignMutations } from '@/lib/api-hooks';
 import { toast } from 'sonner';
@@ -31,9 +31,28 @@ export function CampaignsPage() {
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('table');
   const [isCreating, setIsCreating] = useState(false);
   const [previewCampaign, setPreviewCampaign] = useState<any>(null);
+  const [editingCampaign, setEditingCampaign] = useState<any>(null);
+  const [sortKey, setSortKey] = useState('');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const { data, isLoading } = useCampaigns(activeChannel === 'all' ? undefined : activeChannel);
   const mutations = useCampaignMutations();
   const campaigns = data?.items || [];
+
+  function toggleSort(key: string) {
+    if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    else { setSortKey(key); setSortDir('asc'); }
+  }
+  function sortIcon(key: string) {
+    if (sortKey !== key) return ' ⇅';
+    return sortDir === 'asc' ? ' ↑' : ' ↓';
+  }
+  const sortedCampaigns = sortKey
+    ? [...campaigns].sort((a: any, b: any) => {
+        const av = a[sortKey] ?? ''; const bv = b[sortKey] ?? '';
+        if (av === bv) return 0;
+        return sortDir === 'asc' ? (av > bv ? 1 : -1) : (av < bv ? 1 : -1);
+      })
+    : campaigns;
   const handleCreate = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
@@ -179,19 +198,19 @@ export function CampaignsPage() {
                   <Table>
                     <TableHeader>
                       <TableRow className="bg-slate-50/50">
-                        <TableHead className="pl-6 font-bold text-xs uppercase tracking-widest text-muted-foreground">Campaign Name</TableHead>
-                        <TableHead className="font-bold text-xs uppercase tracking-widest text-muted-foreground">Channel</TableHead>
-                        <TableHead className="font-bold text-xs uppercase tracking-widest text-muted-foreground">Schedule</TableHead>
-                        <TableHead className="font-bold text-xs uppercase tracking-widest text-muted-foreground">Reach</TableHead>
-                        <TableHead className="font-bold text-xs uppercase tracking-widest text-muted-foreground">Open Rate</TableHead>
-                        <TableHead className="font-bold text-xs uppercase tracking-widest text-muted-foreground">CTR</TableHead>
-                        <TableHead className="font-bold text-xs uppercase tracking-widest text-muted-foreground">Status</TableHead>
+                        <TableHead className="pl-6 font-bold text-xs uppercase tracking-widest text-muted-foreground cursor-pointer select-none hover:text-foreground" onClick={() => toggleSort('name')}>Campaign Name{sortIcon('name')}</TableHead>
+                        <TableHead className="font-bold text-xs uppercase tracking-widest text-muted-foreground cursor-pointer select-none hover:text-foreground" onClick={() => toggleSort('channel')}>Channel{sortIcon('channel')}</TableHead>
+                        <TableHead className="font-bold text-xs uppercase tracking-widest text-muted-foreground cursor-pointer select-none hover:text-foreground" onClick={() => toggleSort('startDate')}>Schedule{sortIcon('startDate')}</TableHead>
+                        <TableHead className="font-bold text-xs uppercase tracking-widest text-muted-foreground cursor-pointer select-none hover:text-foreground" onClick={() => toggleSort('reach')}>Reach{sortIcon('reach')}</TableHead>
+                        <TableHead className="font-bold text-xs uppercase tracking-widest text-muted-foreground cursor-pointer select-none hover:text-foreground" onClick={() => toggleSort('openRate')}>Open Rate{sortIcon('openRate')}</TableHead>
+                        <TableHead className="font-bold text-xs uppercase tracking-widest text-muted-foreground cursor-pointer select-none hover:text-foreground" onClick={() => toggleSort('ctr')}>CTR{sortIcon('ctr')}</TableHead>
+                        <TableHead className="font-bold text-xs uppercase tracking-widest text-muted-foreground cursor-pointer select-none hover:text-foreground" onClick={() => toggleSort('status')}>Status{sortIcon('status')}</TableHead>
                         <TableHead className="text-right pr-6 font-bold text-xs uppercase tracking-widest text-muted-foreground">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {campaigns.map((c) => (
-                        <TableRow key={c.id}>
+                      {sortedCampaigns.map((c) => (
+                        <TableRow key={c.id} className="cursor-pointer hover:bg-indigo-50/30" onClick={() => setEditingCampaign(c)}>
                           <TableCell className="pl-6 font-bold">{c.name}</TableCell>
                           <TableCell>
                             <Badge variant="outline" className={`${channelColors[c.channel]} border-none capitalize`}>
@@ -211,8 +230,8 @@ export function CampaignsPage() {
                           </TableCell>
                           <TableCell className="text-right pr-6">
                             <div className="flex justify-end gap-1">
-                              {c.channel === 'push' ? <Button variant="ghost" size="icon" asChild><Link to="/marketing/push"><ArrowRight className="h-4 w-4" /></Link></Button> : <Button variant="ghost" size="icon" onClick={() => setPreviewCampaign(c)}><Send className="h-4 w-4" /></Button>}
-                              <Button variant="ghost" size="icon"><BarChart3 className="h-4 w-4" /></Button>
+                              {c.channel === 'push' ? <Button variant="ghost" size="icon" asChild onClick={e => e.stopPropagation()}><Link to="/marketing/push"><ArrowRight className="h-4 w-4" /></Link></Button> : <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); setPreviewCampaign(c); }}><Send className="h-4 w-4" /></Button>}
+                              <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); setEditingCampaign(c); }}><Edit className="h-4 w-4" /></Button>
                             </div>
                           </TableCell>
                         </TableRow>
@@ -271,6 +290,41 @@ export function CampaignsPage() {
                 <Button type="submit" className="bg-indigo-600 text-white hover:bg-indigo-700">Schedule Launch</Button>
               </SheetFooter>
             </form>
+          </SheetContent>
+        </Sheet>
+        {/* Edit Campaign Sheet */}
+        <Sheet open={!!editingCampaign} onOpenChange={o => !o && setEditingCampaign(null)}>
+          <SheetContent className="sm:max-w-xl">
+            <SheetHeader>
+              <SheetTitle>Campaign bewerken</SheetTitle>
+              <SheetDescription>Wijzig de instellingen van "{editingCampaign?.name}"</SheetDescription>
+            </SheetHeader>
+            <div className="grid gap-6 py-6">
+              <div className="space-y-2">
+                <Label>Campagne naam</Label>
+                <Input defaultValue={editingCampaign?.name} onChange={e => setEditingCampaign((c: any) => ({ ...c, name: e.target.value }))} />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Startdatum</Label>
+                  <Input type="date" defaultValue={editingCampaign?.startDate?.slice(0, 10)} onChange={e => setEditingCampaign((c: any) => ({ ...c, startDate: e.target.value }))} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Einddatum</Label>
+                  <Input type="date" defaultValue={editingCampaign?.endDate?.slice(0, 10)} onChange={e => setEditingCampaign((c: any) => ({ ...c, endDate: e.target.value }))} />
+                </div>
+              </div>
+            </div>
+            <SheetFooter>
+              <Button variant="ghost" onClick={() => setEditingCampaign(null)}>Annuleren</Button>
+              <Button className="bg-indigo-600 text-white hover:bg-indigo-700" onClick={async () => {
+                try {
+                  await mutations.update.mutateAsync(editingCampaign);
+                  setEditingCampaign(null);
+                  toast.success('Campaign bijgewerkt');
+                } catch { toast.error('Bijwerken mislukt'); }
+              }}>Opslaan</Button>
+            </SheetFooter>
           </SheetContent>
         </Sheet>
         {/* Preview Dialog */}

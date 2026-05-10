@@ -8,7 +8,6 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Plus, Trash2, Save, ArrowLeft } from 'lucide-react';
-import { MOCK_CATEGORIES } from '@shared/mock-data';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
 interface RuleRow {
@@ -20,10 +19,7 @@ interface RuleRow {
 }
 export function EarnPointsPage() {
   const [ruleType, setRuleType] = useState('category');
-  const [rows, setRows] = useState<RuleRow[]>([
-    { id: '1', category: 'Fashion & Accessories', points: 1, amount: 10, reserveRate: '10%' },
-    { id: '2', category: 'F&B Dining', points: 2, amount: 10, reserveRate: '20%' },
-  ]);
+  const [rows, setRows] = useState<RuleRow[]>([]);
   const addRow = () => {
     setRows([...rows, { id: Math.random().toString(), category: '', points: 1, amount: 10, reserveRate: '10%' }]);
   };
@@ -96,7 +92,7 @@ export function EarnPointsPage() {
                         <SelectValue placeholder="Select Category" />
                       </SelectTrigger>
                       <SelectContent>
-                        {MOCK_CATEGORIES.map(cat => (
+                        {['Fashion & Accessories', 'F&B Dining', 'Entertainment', 'Health & Beauty', 'Electronics', 'Home & Living', 'Travel', 'Sports'].map(cat => (
                           <SelectItem key={cat} value={cat}>{cat}</SelectItem>
                         ))}
                       </SelectContent>

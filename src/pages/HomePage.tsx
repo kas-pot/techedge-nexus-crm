@@ -1,26 +1,23 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip, CartesianGrid, XAxis, YAxis, Bar, Line, ComposedChart, LineChart } from 'recharts';
-import { MOCK_DASHBOARD_STATS, WEATHER_PRESETS } from '@shared/mock-data';
-import { Users, TrendingUp, Award, DollarSign, Zap, CreditCard, ChevronRight, Download, Sun, CloudRain, Cloud, Droplets, ArrowRight, History, Ticket, Send, ShieldCheck, Clock } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { WEATHER_PRESETS } from '@shared/mock-data';
+import { Users, TrendingUp, Award, DollarSign, Zap, Download, Sun, CloudRain, Cloud, Droplets, ArrowRight, History, Ticket, Send, ShieldCheck, Clock, Database } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Link } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useWeatherSettings, useEntities } from '@/lib/api-hooks';
 import { formatDistanceToNow } from 'date-fns';
 const stats = [
-  { label: 'Total Members', value: '10,050', change: '+12%', icon: Users, color: 'text-indigo-600', bg: 'bg-indigo-50' },
-  { label: 'Total Revenue (IDR)', value: '6.8B', change: '+15%', icon: DollarSign, color: 'text-indigo-600', bg: 'bg-indigo-50' },
-  { label: 'Active Campaigns', value: '24', change: '+2', icon: TrendingUp, color: 'text-indigo-600', bg: 'bg-indigo-50' },
-  { label: 'Redemptions', value: '2,842', change: '+18%', icon: Award, color: 'text-indigo-600', bg: 'bg-indigo-50' },
+  { label: 'Total Members', value: '—', icon: Users, color: 'text-indigo-600', bg: 'bg-indigo-50' },
+  { label: 'Total Revenue (IDR)', value: '—', icon: DollarSign, color: 'text-indigo-600', bg: 'bg-indigo-50' },
+  { label: 'Active Campaigns', value: '—', icon: TrendingUp, color: 'text-indigo-600', bg: 'bg-indigo-50' },
+  { label: 'Redemptions', value: '—', icon: Award, color: 'text-indigo-600', bg: 'bg-indigo-50' },
 ];
 const WeatherIcons = { sunny: Sun, rainy: CloudRain, cloudy: Cloud, humid: Droplets };
 const WeatherColors = { sunny: "from-amber-400 to-orange-600", rainy: "from-indigo-500 to-blue-700", cloudy: "from-slate-400 to-slate-600", humid: "from-emerald-400 to-teal-600" };
 export function HomePage() {
-  const [activeRange, setActiveRange] = useState('12M');
   const [pulse, setPulse] = useState(false);
   const [recIndex, setRecIndex] = useState(0);
   const { data: weather } = useWeatherSettings();
@@ -35,11 +32,6 @@ export function HomePage() {
     }, 12000);
     return () => { clearInterval(recInterval); clearInterval(pulseInterval); };
   }, [currentPreset.tips.length]);
-  const chartData = useMemo(() => {
-    if (activeRange === '3M') return MOCK_DASHBOARD_STATS.insights.slice(-3);
-    if (activeRange === '6M') return MOCK_DASHBOARD_STATS.insights.slice(-6);
-    return MOCK_DASHBOARD_STATS.insights;
-  }, [activeRange]);
   return (
     <AppLayout container>
       <div className="max-w-7xl mx-auto space-y-8 animate-fade-in pb-12">
@@ -89,9 +81,7 @@ export function HomePage() {
               </CardHeader>
               <CardContent>
                 <div className="text-4xl font-black tracking-tighter">{s.value}</div>
-                <div className="text-[10px] mt-3 flex items-center gap-2 font-bold text-emerald-600">
-                  <TrendingUp className="h-3 w-3" /> {s.change} <span className="text-muted-foreground">cycle variance</span>
-                </div>
+                <div className="text-[10px] mt-3 text-muted-foreground">Geen data beschikbaar</div>
               </CardContent>
             </Card>
           ))}
@@ -103,24 +93,10 @@ export function HomePage() {
                 <CardTitle className="text-xl font-bold">Transaction Velocity</CardTitle>
                 <CardDescription className="font-medium text-xs">Real-time revenue monitoring</CardDescription>
               </div>
-              <div className="flex gap-1 bg-white p-1 rounded-xl border">
-                {['6M', '12M'].map(r => (
-                  <button key={r} onClick={() => setActiveRange(r)} className={cn("px-4 py-2 text-[10px] font-black rounded-lg transition-all", activeRange === r ? "bg-indigo-600 text-white" : "text-muted-foreground")}>{r}</button>
-                ))}
-              </div>
             </CardHeader>
-            <CardContent className="pt-10 h-[450px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.1} />
-                  <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 10, fontWeight: 700}} />
-                  <YAxis yAxisId="left" axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 10}} />
-                  <YAxis yAxisId="right" orientation="right" axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 10}} tickFormatter={(v) => `${(v/1000000).toFixed(0)}M`} />
-                  <Tooltip contentStyle={{ borderRadius: '24px', border: 'none', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }} />
-                  <Bar yAxisId="left" dataKey="transactions" fill="#4F46E5" radius={[10, 10, 0, 0]} barSize={35} name="Volume" />
-                  <Line yAxisId="right" type="monotone" dataKey="revenueIdr" stroke="#F59E0B" strokeWidth={5} dot={{r: 6, fill: '#F59E0B', strokeWidth: 3, stroke: '#fff'}} />
-                </ComposedChart>
-              </ResponsiveContainer>
+            <CardContent className="flex flex-col items-center justify-center h-64 text-muted-foreground gap-2">
+              <Database className="h-8 w-8 opacity-30" />
+              <p className="text-sm">Geen data beschikbaar</p>
             </CardContent>
           </Card>
           <div className="lg:col-span-4 space-y-8">
@@ -138,12 +114,12 @@ export function HomePage() {
                       <div className={cn(
                         "h-10 w-10 rounded-2xl flex items-center justify-center shrink-0 shadow-sm",
                         log.action === 'Created' ? 'bg-indigo-50 text-indigo-600' :
-                        log.action === 'Redeemed' ? 'bg-amber-50 text-amber-600' :
-                        log.action === 'Sent' ? 'bg-blue-50 text-blue-600' : 'bg-slate-50 text-slate-600'
+                          log.action === 'Redeemed' ? 'bg-amber-50 text-amber-600' :
+                            log.action === 'Sent' ? 'bg-blue-50 text-blue-600' : 'bg-slate-50 text-slate-600'
                       )}>
                         {log.entityType === 'voucher' ? <Ticket className="h-5 w-5" /> :
-                         log.entityType === 'campaign' ? <Send className="h-5 w-5" /> :
-                         log.entityType === 'approval' ? <ShieldCheck className="h-5 w-5" /> : <Users className="h-5 w-5" />}
+                          log.entityType === 'campaign' ? <Send className="h-5 w-5" /> :
+                            log.entityType === 'approval' ? <ShieldCheck className="h-5 w-5" /> : <Users className="h-5 w-5" />}
                       </div>
                       <div className="space-y-1">
                         <p className="text-sm font-bold text-slate-800 group-hover:text-indigo-600 transition-colors">{log.action} {log.entityType}</p>

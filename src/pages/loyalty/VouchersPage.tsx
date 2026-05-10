@@ -41,8 +41,8 @@ export function VouchersPage() {
             <Calendar className="h-4 w-4" />
             Expires {new Date(voucher.expiryDate).toLocaleDateString()}
           </div>
-          <div className="flex items-center gap-1.5 text-emerald-600 font-medium">
-            <TrendingUp className="h-4 w-4" /> 1.2k Used
+          <div className="flex items-center gap-1.5 text-muted-foreground font-medium">
+            <TrendingUp className="h-4 w-4" /> —
           </div>
         </div>
         <Button variant="outline" className="w-full group-hover:bg-indigo-600 group-hover:text-white transition-colors" asChild>

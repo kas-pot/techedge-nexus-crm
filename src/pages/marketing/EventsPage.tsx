@@ -3,17 +3,7 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, MapPin, Users, TrendingUp, Star, ArrowRight, Share2 } from 'lucide-react';
-import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip } from 'recharts';
-const eventStats = [
-  { name: 'Mon', rsvps: 120 },
-  { name: 'Tue', rsvps: 210 },
-  { name: 'Wed', rsvps: 180 },
-  { name: 'Thu', rsvps: 450 },
-  { name: 'Fri', rsvps: 390 },
-  { name: 'Sat', rsvps: 600 },
-  { name: 'Sun', rsvps: 520 },
-];
+import { Calendar, MapPin, Users, TrendingUp, Star, ArrowRight, Share2, Database } from 'lucide-react';
 export function EventsPage() {
   return (
     <AppLayout container>
@@ -38,32 +28,20 @@ export function EventsPage() {
               <TrendingUp className="h-4 w-4 text-emerald-500" />
             </CardHeader>
             <CardContent>
-              <div className="h-[200px] w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={eventStats}>
-                    <defs>
-                      <linearGradient id="colorRsvps" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#4F46E5" stopOpacity={0.3}/>
-                        <stop offset="95%" stopColor="#4F46E5" stopOpacity={0}/>
-                      </linearGradient>
-                    </defs>
-                    <XAxis dataKey="name" hide />
-                    <YAxis hide />
-                    <Tooltip />
-                    <Area type="monotone" dataKey="rsvps" stroke="#4F46E5" fillOpacity={1} fill="url(#colorRsvps)" strokeWidth={2} />
-                  </AreaChart>
-                </ResponsiveContainer>
+              <div className="flex flex-col items-center justify-center h-40 text-muted-foreground gap-2">
+                <Database className="h-8 w-8 opacity-30" />
+                <p className="text-sm">Geen data beschikbaar</p>
               </div>
             </CardContent>
           </Card>
           <div className="grid gap-4">
-            <Card className="bg-indigo-600 text-white">
+            <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium opacity-90">Total Attendees</CardTitle>
+                <CardTitle className="text-sm font-medium">Total Attendees</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold">2,842</div>
-                <p className="text-xs opacity-70 mt-1">+14% from last quarter</p>
+                <div className="text-3xl font-bold">—</div>
+                <p className="text-xs text-muted-foreground mt-1">Geen data beschikbaar</p>
               </CardContent>
             </Card>
             <Card>
@@ -71,10 +49,8 @@ export function EventsPage() {
                 <CardTitle className="text-sm font-medium">Average RSVP Rate</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold">68%</div>
-                <div className="flex gap-1 mt-2">
-                  {[1, 2, 3, 4, 5].map(i => <Star key={i} className="h-3 w-3 fill-amber-400 text-amber-400" />)}
-                </div>
+                <div className="text-3xl font-bold">—</div>
+                <p className="text-xs text-muted-foreground mt-1">Geen data beschikbaar</p>
               </CardContent>
             </Card>
           </div>

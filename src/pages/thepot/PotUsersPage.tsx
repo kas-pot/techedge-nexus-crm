@@ -33,6 +33,17 @@ export function PotUsersPage() {
     const [debouncedSearch, setDebouncedSearch] = useState('');
     const [editUser, setEditUser] = useState<ThePotUser | null>(null);
     const [searchTimer, setSearchTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
+    const [sortKey, setSortKey] = useState<keyof ThePotUser | ''>('');
+    const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+
+    function toggleSort(key: keyof ThePotUser) {
+      if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+      else { setSortKey(key); setSortDir('asc'); }
+    }
+    function sortIcon(key: keyof ThePotUser) {
+      if (sortKey !== key) return ' ⇅';
+      return sortDir === 'asc' ? ' ↑' : ' ↓';
+    }
 
     const { data, isLoading, refetch } = usePotUsers(debouncedSearch || undefined);
     const { data: stats } = usePotStats();
@@ -92,6 +103,13 @@ export function PotUsersPage() {
     }
 
     const users: ThePotUser[] = (data as any)?.items ?? [];
+    const sortedUsers = sortKey
+      ? [...users].sort((a, b) => {
+          const av = a[sortKey] ?? ''; const bv = b[sortKey] ?? '';
+          if (av === bv) return 0;
+          return sortDir === 'asc' ? (av > bv ? 1 : -1) : (av < bv ? 1 : -1);
+        })
+      : users;
 
     return (
         <div className="p-6 space-y-6">
@@ -139,13 +157,13 @@ export function PotUsersPage() {
                     <Table>
                         <TableHeader>
                             <TableRow>
-                                <TableHead>ID</TableHead>
-                                <TableHead>Naam</TableHead>
-                                <TableHead>E-mail</TableHead>
-                                <TableHead>Rol</TableHead>
-                                <TableHead>Status</TableHead>
-                                <TableHead>Geverif.</TableHead>
-                                <TableHead>Aangemeld</TableHead>
+                                <TableHead className="cursor-pointer select-none hover:text-foreground" onClick={() => toggleSort('id')}>ID{sortIcon('id')}</TableHead>
+                                <TableHead className="cursor-pointer select-none hover:text-foreground" onClick={() => toggleSort('first_name')}>Naam{sortIcon('first_name')}</TableHead>
+                                <TableHead className="cursor-pointer select-none hover:text-foreground" onClick={() => toggleSort('email')}>E-mail{sortIcon('email')}</TableHead>
+                                <TableHead className="cursor-pointer select-none hover:text-foreground" onClick={() => toggleSort('user_role')}>Rol{sortIcon('user_role')}</TableHead>
+                                <TableHead className="cursor-pointer select-none hover:text-foreground" onClick={() => toggleSort('is_active')}>Status{sortIcon('is_active')}</TableHead>
+                                <TableHead className="cursor-pointer select-none hover:text-foreground" onClick={() => toggleSort('is_email_verified')}>Geverif.{sortIcon('is_email_verified')}</TableHead>
+                                <TableHead className="cursor-pointer select-none hover:text-foreground" onClick={() => toggleSort('created_at')}>Aangemeld{sortIcon('created_at')}</TableHead>
                                 <TableHead className="text-right">Acties</TableHead>
                             </TableRow>
                         </TableHeader>
@@ -158,8 +176,8 @@ export function PotUsersPage() {
                                         ))}
                                     </TableRow>
                                 ))
-                                : users.map(user => (
-                                    <TableRow key={user.id}>
+                                : sortedUsers.map(user => (
+                                    <TableRow key={user.id} className="cursor-pointer hover:bg-muted/50" onClick={() => openEdit(user)}>
                                         <TableCell className="font-mono text-xs">{user.id}</TableCell>
                                         <TableCell className="font-medium">{user.first_name} {user.last_name}</TableCell>
                                         <TableCell className="text-sm text-muted-foreground">{user.email}</TableCell>
@@ -183,13 +201,13 @@ export function PotUsersPage() {
                                         </TableCell>
                                         <TableCell className="text-right">
                                             <div className="flex justify-end gap-2">
-                                                <Button variant="ghost" size="icon" onClick={() => openEdit(user)} title="Bewerken">
+                                                <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); openEdit(user); }} title="Bewerken">
                                                     <Edit className="h-4 w-4" />
                                                 </Button>
                                                 <Button
                                                     variant="ghost"
                                                     size="icon"
-                                                    onClick={() => handleToggleActive(user)}
+                                                    onClick={(e) => { e.stopPropagation(); handleToggleActive(user); }}
                                                     title={user.is_active ? 'Deactiveren' : 'Activeren'}
                                                 >
                                                     {user.is_active ? <UserX className="h-4 w-4 text-destructive" /> : <UserCheck className="h-4 w-4 text-green-500" />}

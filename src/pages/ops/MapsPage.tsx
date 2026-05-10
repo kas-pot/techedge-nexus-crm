@@ -50,7 +50,7 @@ export function MapsPage() {
             <Card className="overflow-hidden border shadow-soft h-[650px] relative rounded-3xl group">
               <div className="absolute top-6 left-6 z-10 flex gap-3">
                 <Badge className="bg-indigo-600 text-white border-none px-4 py-1.5 shadow-lg font-bold">Floor 1: Main Atrium</Badge>
-                <Badge variant="outline" className="bg-white/80 backdrop-blur-md border-slate-200 text-indigo-700 font-bold px-4 py-1.5">Operational: 42 Active POIs</Badge>
+                <Badge variant="outline" className="bg-white/80 backdrop-blur-md border-slate-200 text-indigo-700 font-bold px-4 py-1.5">Operational: — Active POIs</Badge>
               </div>
               <div className="absolute top-6 right-6 z-10 flex flex-col gap-3">
                 <Button size="icon" variant="secondary" className="bg-white/90 backdrop-blur-md shadow-xl border border-slate-200 hover:bg-white rounded-xl"><Maximize2 className="h-5 w-5" /></Button>

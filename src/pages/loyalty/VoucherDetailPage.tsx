@@ -50,10 +50,10 @@ export function VoucherDetailPage() {
         </div>
         <div className="grid gap-6 md:grid-cols-4">
           {[
-            { label: 'Redemption Rate', value: '42%', icon: TrendingUp, color: 'text-indigo-600' },
-            { label: 'Total Issued', value: '1,250', icon: Tag, color: 'text-blue-600' },
-            { label: 'Active Holders', value: '842', icon: Users, color: 'text-emerald-600' },
-            { label: 'Burn Velocity', value: 'High', icon: ShieldCheck, color: 'text-amber-600' },
+            { label: 'Redemption Rate', value: '—', icon: TrendingUp, color: 'text-indigo-600' },
+            { label: 'Total Issued', value: '—', icon: Tag, color: 'text-blue-600' },
+            { label: 'Active Holders', value: '—', icon: Users, color: 'text-emerald-600' },
+            { label: 'Burn Velocity', value: '—', icon: ShieldCheck, color: 'text-amber-600' },
           ].map((stat, i) => (
             <Card key={i} className="shadow-soft border-none">
               <CardContent className="pt-6">

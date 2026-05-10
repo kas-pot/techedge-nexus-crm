@@ -14,9 +14,27 @@ export function ManualApprovalPage() {
   const [activeTab, setActiveTab] = useState('pending');
   const [selectedTask, setSelectedTask] = useState<any>(null);
   const [reviewTab, setReviewTab] = useState('ocr');
+  const [sortKey, setSortKey] = useState('');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const { data, isLoading } = useApprovals(activeTab === 'all' ? undefined : activeTab);
   const mutations = useApprovalMutations();
   const tasks = data?.items || [];
+
+  function toggleSort(key: string) {
+    if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    else { setSortKey(key); setSortDir('asc'); }
+  }
+  function sortIcon(key: string) {
+    if (sortKey !== key) return ' ⇅';
+    return sortDir === 'asc' ? ' ↑' : ' ↓';
+  }
+  const sortedTasks = sortKey
+    ? [...tasks].sort((a: any, b: any) => {
+        const av = a[sortKey] ?? ''; const bv = b[sortKey] ?? '';
+        if (av === bv) return 0;
+        return sortDir === 'asc' ? (av > bv ? 1 : -1) : (av < bv ? 1 : -1);
+      })
+    : tasks;
   const handleDecision = async (status: 'approved' | 'rejected') => {
     if (!selectedTask) return;
     try {
@@ -51,10 +69,10 @@ export function ManualApprovalPage() {
                 <Table>
                   <TableHeader className="bg-slate-50/50">
                     <TableRow>
-                      <TableHead className="pl-8 uppercase text-[10px] font-black tracking-widest text-muted-foreground">Submit Date</TableHead>
-                      <TableHead className="uppercase text-[10px] font-black tracking-widest text-muted-foreground">Member</TableHead>
-                      <TableHead className="uppercase text-[10px] font-black tracking-widest text-muted-foreground">Type</TableHead>
-                      <TableHead className="uppercase text-[10px] font-black tracking-widest text-muted-foreground">Value</TableHead>
+                      <TableHead className="pl-8 uppercase text-[10px] font-black tracking-widest text-muted-foreground cursor-pointer select-none hover:text-foreground" onClick={() => toggleSort('date')}>Submit Date{sortIcon('date')}</TableHead>
+                      <TableHead className="uppercase text-[10px] font-black tracking-widest text-muted-foreground cursor-pointer select-none hover:text-foreground" onClick={() => toggleSort('memberName')}>Member{sortIcon('memberName')}</TableHead>
+                      <TableHead className="uppercase text-[10px] font-black tracking-widest text-muted-foreground cursor-pointer select-none hover:text-foreground" onClick={() => toggleSort('type')}>Type{sortIcon('type')}</TableHead>
+                      <TableHead className="uppercase text-[10px] font-black tracking-widest text-muted-foreground cursor-pointer select-none hover:text-foreground" onClick={() => toggleSort('amount')}>Value{sortIcon('amount')}</TableHead>
                       <TableHead className="uppercase text-[10px] font-black tracking-widest text-muted-foreground">OCR Status</TableHead>
                       <TableHead className="text-right pr-8 uppercase text-[10px] font-black tracking-widest text-muted-foreground">Review</TableHead>
                     </TableRow>
@@ -64,8 +82,8 @@ export function ManualApprovalPage() {
                       [1,2,3].map(i => <TableRow key={i}><TableCell colSpan={6} className="h-16 animate-pulse bg-muted/10" /></TableRow>)
                     ) : tasks.length === 0 ? (
                       <TableRow><TableCell colSpan={6} className="h-64 text-center text-muted-foreground font-medium">No pending requests in this sector.</TableCell></TableRow>
-                    ) : tasks.map((task) => (
-                      <TableRow key={task.id} className="group hover:bg-indigo-50/30 transition-colors">
+                    ) : sortedTasks.map((task) => (
+                      <TableRow key={task.id} className="group hover:bg-indigo-50/30 transition-colors cursor-pointer" onClick={() => setSelectedTask(task)}>
                         <TableCell className="pl-8 font-medium text-xs text-muted-foreground">{task.date}</TableCell>
                         <TableCell className="font-bold text-sm">{task.memberName}</TableCell>
                         <TableCell><Badge variant="secondary" className="capitalize text-[10px] font-black tracking-tighter">{task.type.replace('_', ' ')}</Badge></TableCell>

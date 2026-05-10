@@ -46,6 +46,13 @@ export function MemberListPage() {
   const [searchTimer, setSearchTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
   const [isAdding, setIsAdding] = useState(false);
   const [editingUser, setEditingUser] = useState<ThePotUser | null>(null);
+  const [sortKey, setSortKey] = useState<keyof ThePotUser | ''>('');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+
+  function toggleSort(key: keyof ThePotUser) {
+    if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    else { setSortKey(key); setSortDir('asc'); }
+  }
 
   const { data, isLoading, refetch } = usePotUsers(debouncedSearch || undefined);
   const { data: stats } = usePotStats();
@@ -118,6 +125,20 @@ export function MemberListPage() {
   const users: ThePotUser[] = (data as any)?.items ?? [];
   const total: number = (data as any)?.total ?? 0;
 
+  const sortedUsers = sortKey
+    ? [...users].sort((a, b) => {
+        const av = a[sortKey] ?? '';
+        const bv = b[sortKey] ?? '';
+        if (av === bv) return 0;
+        return sortDir === 'asc' ? (av > bv ? 1 : -1) : (av < bv ? 1 : -1);
+      })
+    : users;
+
+  function sortIcon(key: keyof ThePotUser) {
+    if (sortKey !== key) return ' ⇅';
+    return sortDir === 'asc' ? ' ↑' : ' ↓';
+  }
+
   return (
     <AppLayout container>
       <div className="space-y-6">
@@ -179,12 +200,12 @@ export function MemberListPage() {
               <Table>
                 <TableHeader className="sticky top-0 bg-slate-50/95 backdrop-blur-sm z-10">
                   <TableRow>
-                    <TableHead className="pl-6 font-bold uppercase text-[10px] tracking-widest text-muted-foreground h-12">ID</TableHead>
-                    <TableHead className="font-bold uppercase text-[10px] tracking-widest text-muted-foreground h-12">Gebruiker</TableHead>
-                    <TableHead className="font-bold uppercase text-[10px] tracking-widest text-muted-foreground h-12">Rol</TableHead>
-                    <TableHead className="font-bold uppercase text-[10px] tracking-widest text-muted-foreground h-12">Geverif.</TableHead>
-                    <TableHead className="font-bold uppercase text-[10px] tracking-widest text-muted-foreground h-12">Status</TableHead>
-                    <TableHead className="font-bold uppercase text-[10px] tracking-widest text-muted-foreground h-12">Aangemeld</TableHead>
+                    <TableHead className="pl-6 font-bold uppercase text-[10px] tracking-widest text-muted-foreground h-12 cursor-pointer select-none hover:text-foreground" onClick={() => toggleSort('id')}>ID{sortIcon('id')}</TableHead>
+                    <TableHead className="font-bold uppercase text-[10px] tracking-widest text-muted-foreground h-12 cursor-pointer select-none hover:text-foreground" onClick={() => toggleSort('first_name')}>Gebruiker{sortIcon('first_name')}</TableHead>
+                    <TableHead className="font-bold uppercase text-[10px] tracking-widest text-muted-foreground h-12 cursor-pointer select-none hover:text-foreground" onClick={() => toggleSort('user_role')}>Rol{sortIcon('user_role')}</TableHead>
+                    <TableHead className="font-bold uppercase text-[10px] tracking-widest text-muted-foreground h-12 cursor-pointer select-none hover:text-foreground" onClick={() => toggleSort('is_email_verified')}>Geverif.{sortIcon('is_email_verified')}</TableHead>
+                    <TableHead className="font-bold uppercase text-[10px] tracking-widest text-muted-foreground h-12 cursor-pointer select-none hover:text-foreground" onClick={() => toggleSort('is_active')}>Status{sortIcon('is_active')}</TableHead>
+                    <TableHead className="font-bold uppercase text-[10px] tracking-widest text-muted-foreground h-12 cursor-pointer select-none hover:text-foreground" onClick={() => toggleSort('created_at')}>Aangemeld{sortIcon('created_at')}</TableHead>
                     <TableHead className="pr-6 text-right font-bold uppercase text-[10px] tracking-widest text-muted-foreground h-12">Acties</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -193,8 +214,8 @@ export function MemberListPage() {
                     ? Array.from({ length: 10 }).map((_, i) => (
                       <TableRow key={i}><TableCell colSpan={7} className="h-16 animate-pulse bg-muted/20" /></TableRow>
                     ))
-                    : users.map(user => (
-                      <TableRow key={user.id} className="group hover:bg-indigo-50/30 transition-colors border-b">
+                    : sortedUsers.map(user => (
+                      <TableRow key={user.id} className="group hover:bg-indigo-50/30 transition-colors border-b cursor-pointer" onClick={() => openEdit(user)}>
                         <TableCell className="pl-6 font-mono text-[11px] text-muted-foreground">{user.id}</TableCell>
                         <TableCell>
                           <div className="flex flex-col">
@@ -225,7 +246,7 @@ export function MemberListPage() {
                         </TableCell>
                         <TableCell className="pr-6 text-right">
                           <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
+                            <DropdownMenuTrigger asChild onClick={e => e.stopPropagation()}>
                               <Button variant="ghost" size="icon"><MoreVertical className="h-4 w-4" /></Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-52">
@@ -264,7 +285,7 @@ export function MemberListPage() {
                         </TableCell>
                       </TableRow>
                     ))}
-                  {users.length === 0 && !isLoading && (
+                    {sortedUsers.length === 0 && !isLoading && (
                     <TableRow>
                       <TableCell colSpan={7} className="h-64 text-center text-muted-foreground">
                         Geen gebruikers gevonden.

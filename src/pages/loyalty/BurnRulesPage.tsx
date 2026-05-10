@@ -11,10 +11,7 @@ import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
 export function BurnRulesPage() {
   const [globalRate, setGlobalRate] = useState(100);
-  const [rows, setRows] = useState([
-    { id: '1', category: 'F&B Dining', rate: 80, active: true },
-    { id: '2', category: 'Entertainment', rate: 120, active: true },
-  ]);
+  const [rows, setRows] = useState<{ id: string; category: string; rate: number; active: boolean }[]>([]);
   const handleSave = () => {
     toast.success("Redemption rules updated and deployed!");
   };

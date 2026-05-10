@@ -53,10 +53,7 @@ export function BadgesPage() {
                 <div className="space-y-2">
                   <div className="flex justify-between text-xs font-medium">
                     <span className="text-muted-foreground">Rarity Rank</span>
-                    <span className="text-indigo-600">Top 12%</span>
-                  </div>
-                  <div className="h-1.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                    <div className="h-full bg-indigo-500 rounded-full" style={{ width: '12%' }} />
+                    <span className="text-muted-foreground">—</span>
                   </div>
                 </div>
               </CardContent>
