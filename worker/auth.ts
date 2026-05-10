@@ -418,7 +418,7 @@ export async function storeOtp(email: string, env: Env): Promise<string> {
         // Invalidate any previous unused codes for this email first (only one active code at a time)
         try {
             await db.prepare(
-                `UPDATE user_verification_codes SET is_used = 1 WHERE email = ? AND code_type = 'admin_login' AND is_used = 0`,
+                `UPDATE user_verification_codes SET is_used = 1 WHERE email = ? AND code_type = 'login' AND is_used = 0`,
             ).bind(normalized).run();
         } catch (e) {
             console.error('[OTP] storeOtp UPDATE failed:', e);
@@ -428,7 +428,7 @@ export async function storeOtp(email: string, env: Env): Promise<string> {
         try {
             await db.prepare(
                 `INSERT INTO user_verification_codes (email, code, code_type, expires_at, is_used, created_at)
-                 VALUES (?, ?, 'admin_login', datetime('now', '+10 minutes'), 0, datetime('now'))`,
+                 VALUES (?, ?, 'login', datetime('now', '+10 minutes'), 0, datetime('now'))`,
             ).bind(normalized, otp).run();
         } catch (e) {
             console.error('[OTP] storeOtp INSERT failed:', e);
@@ -468,7 +468,7 @@ export async function verifyOtp(
         // Look up the most recent valid (unused, non-expired) code for this email
         const row = await db.prepare(
             `SELECT id, code FROM user_verification_codes
-             WHERE email = ? AND code_type = 'admin_login' AND is_used = 0 AND expires_at > datetime('now')
+             WHERE email = ? AND code_type = 'login' AND is_used = 0 AND expires_at > datetime('now')
              ORDER BY id DESC LIMIT 1`,
         ).bind(normalized).first<{ id: number; code: string }>();
 
