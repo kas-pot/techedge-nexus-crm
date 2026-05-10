@@ -923,45 +923,71 @@ async function listAdminUsers(env) {
 async function storeOtp(email, env) {
   const otp = generateOtp();
   const normalized = email.toLowerCase().trim();
-  const stub = getDO(env);
-  const key = otpKey(normalized);
-  const existing = await stub.getDoc(key);
-  for (let i = 0; i < 5; i++) {
-    const result = await stub.casPut(key, existing?.v ?? 0, {
-      otp,
-      createdAt: Date.now(),
-      attempts: 0
-    });
-    if (result.ok) break;
+  const db = env.THEPOT_DB;
+  if (db) {
+    await db.prepare(
+      `UPDATE user_verification_codes SET is_used = 1 WHERE email = ? AND code_type = 'admin_login' AND is_used = 0`
+    ).bind(normalized).run();
+    await db.prepare(
+      `INSERT INTO user_verification_codes (email, code, code_type, expires_at, is_used, created_at)
+             VALUES (?, ?, 'admin_login', datetime('now', '+10 minutes'), 0, datetime('now'))`
+    ).bind(normalized, otp).run();
+  } else {
+    const stub = getDO(env);
+    const key = otpKey(normalized);
+    const existing = await stub.getDoc(key);
+    for (let i = 0; i < 5; i++) {
+      const result = await stub.casPut(key, existing?.v ?? 0, {
+        otp,
+        createdAt: Date.now(),
+        attempts: 0
+      });
+      if (result.ok) break;
+    }
   }
   return otp;
 }
 async function verifyOtp(email, token, env) {
   const normalized = email.toLowerCase().trim();
-  const stub = getDO(env);
-  const key = otpKey(normalized);
-  const doc = await stub.getDoc(key);
-  if (!doc) return { valid: false, reason: "Geen actieve code \u2014 vraag een nieuwe aan." };
-  const { otp, createdAt, attempts } = doc.data;
-  if (Date.now() - createdAt > OTP_TTL_MS) {
-    await stub.del(key);
-    return { valid: false, reason: "Code verlopen \u2014 vraag een nieuwe aan." };
-  }
-  if (attempts >= 5) {
-    await stub.del(key);
-    return { valid: false, reason: "Te veel pogingen \u2014 vraag een nieuwe code aan." };
-  }
-  if (token.trim() !== otp) {
-    for (let i = 0; i < 5; i++) {
-      const fresh = await stub.getDoc(key);
-      if (!fresh) break;
-      const res = await stub.casPut(key, fresh.v, { ...fresh.data, attempts: fresh.data.attempts + 1 });
-      if (res.ok) break;
+  const db = env.THEPOT_DB;
+  if (db) {
+    const row = await db.prepare(
+      `SELECT id, code FROM user_verification_codes
+             WHERE email = ? AND code_type = 'admin_login' AND is_used = 0 AND expires_at > datetime('now')
+             ORDER BY id DESC LIMIT 1`
+    ).bind(normalized).first();
+    if (!row) return { valid: false, reason: "Code niet gevonden of verlopen \u2014 vraag een nieuwe aan." };
+    if (row.code !== token.trim()) return { valid: false, reason: "Ongeldige code." };
+    await db.prepare(
+      `UPDATE user_verification_codes SET is_used = 1, used_at = datetime('now') WHERE id = ?`
+    ).bind(row.id).run();
+    return { valid: true };
+  } else {
+    const stub = getDO(env);
+    const key = otpKey(normalized);
+    const doc = await stub.getDoc(key);
+    if (!doc) return { valid: false, reason: "Geen actieve code \u2014 vraag een nieuwe aan." };
+    const { otp, createdAt, attempts } = doc.data;
+    if (Date.now() - createdAt > OTP_TTL_MS) {
+      await stub.del(key);
+      return { valid: false, reason: "Code verlopen \u2014 vraag een nieuwe aan." };
     }
-    return { valid: false, reason: "Ongeldige code." };
+    if (attempts >= 5) {
+      await stub.del(key);
+      return { valid: false, reason: "Te veel pogingen \u2014 vraag een nieuwe code aan." };
+    }
+    if (token.trim() !== otp) {
+      for (let i = 0; i < 5; i++) {
+        const fresh = await stub.getDoc(key);
+        if (!fresh) break;
+        const res = await stub.casPut(key, fresh.v, { ...fresh.data, attempts: fresh.data.attempts + 1 });
+        if (res.ok) break;
+      }
+      return { valid: false, reason: "Ongeldige code." };
+    }
+    await stub.del(key);
+    return { valid: true };
   }
-  await stub.del(key);
-  return { valid: true };
 }
 async function sendOtpEmail(email, otp, name, env) {
   const { resendApiKey } = getExtra(env);
