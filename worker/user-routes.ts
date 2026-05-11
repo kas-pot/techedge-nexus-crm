@@ -33,6 +33,8 @@ import {
   createOtpSession,
   validateOtpSession,
   deleteOtpSession,
+  getSuperAdmin,
+  verifyPin,
 } from './auth';
 const ENTITY_MAP: Record<string, any> = {
   users: UserEntity,
@@ -218,6 +220,12 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       return bad(c, 'Voer een geldig e-mailadres in.');
     }
 
+    // Superadmin check: if this email has PIN auth, skip OTP entirely
+    const superAdmin = await getSuperAdmin(email, c.env).catch(() => null);
+    if (superAdmin) {
+      return c.json({ success: true, auth_method: 'pin', message: 'Voer uw PIN-code in.' });
+    }
+
     // Always store a fresh OTP and send the email — regardless of whether the address
     // is a registered admin. The admin check is enforced at the /verify step.
     // This ensures:
@@ -243,7 +251,71 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       // user can try the verify flow (e.g. if the email arrived on a retry)
     }
 
-    return c.json({ success: true, message: 'Verificatiecode verstuurd. Controleer uw e-mail.' });
+    return c.json({ success: true, auth_method: 'otp', message: 'Verificatiecode verstuurd. Controleer uw e-mail.' });
+  });
+
+  /**
+   * POST /api/auth/pin/verify
+   * Body: { email: string, pin: string }
+   * For superadmin (PIN-auth) users only. Verifies the PIN and issues a session cookie.
+   */
+  app.post('/api/auth/pin/verify', async (c) => {
+    try {
+      const ip = getClientIp(c.req.raw);
+
+      if (await isIpBlocked(ip, c.env)) {
+        return c.json({ success: false, error: 'IP blocked.' }, 403);
+      }
+
+      let email: string, pin: string;
+      try {
+        const body = await c.req.json<{ email?: string; pin?: string }>();
+        email = (body.email ?? '').trim().toLowerCase();
+        pin = (body.pin ?? '').trim();
+      } catch {
+        return bad(c, 'Ongeldig verzoek');
+      }
+
+      if (!email || !pin) return bad(c, 'E-mailadres en PIN zijn verplicht.');
+
+      // Only superadmins may use this endpoint
+      const superAdmin = await getSuperAdmin(email, c.env);
+      if (!superAdmin) {
+        const ua = c.req.header('User-Agent') ?? '';
+        await recordFailedAttempt(ip, ua, c.env);
+        return c.json({ success: false, error: 'Geen toegang.' }, 403);
+      }
+
+      const valid = await verifyPin(pin, superAdmin.pin_hash);
+      if (!valid) {
+        const ua = c.req.header('User-Agent') ?? '';
+        const { blocked } = await recordFailedAttempt(ip, ua, c.env);
+        const msg = blocked ? 'IP blocked after too many failed attempts.' : 'Ongeldige PIN-code.';
+        return c.json({ success: false, error: msg }, 401);
+      }
+
+      await clearAttempts(ip, c.env);
+
+      const sessionToken = await createOtpSession(email, superAdmin.name, c.env);
+
+      const isProduction = !getAuthConfig(c.env).devMode;
+      const cookieFlags = isProduction ? '; Secure' : '';
+      const cookieValue = `nexus_session=${sessionToken}; Path=/; Max-Age=${8 * 3600}; SameSite=Lax; HttpOnly${cookieFlags}`;
+
+      return new Response(
+        JSON.stringify({ success: true, data: { email, name: superAdmin.name, sub: email } }),
+        {
+          status: 200,
+          headers: {
+            'Content-Type': 'application/json',
+            'Set-Cookie': cookieValue,
+          },
+        },
+      );
+    } catch (err) {
+      console.error('[PIN] /api/auth/pin/verify error:', err instanceof Error ? err.message : String(err));
+      return c.json({ success: false, error: 'Er is een interne fout opgetreden. Probeer het opnieuw.' }, 500);
+    }
   });
 
   /**

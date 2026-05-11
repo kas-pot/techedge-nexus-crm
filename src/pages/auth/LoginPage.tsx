@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -6,7 +6,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import { Shield, Zap, Lock, Mail, ArrowRight, Loader2, AlertCircle } from 'lucide-react';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Shield, Zap, Lock, Mail, ArrowRight, Loader2, AlertCircle, KeyRound } from 'lucide-react';
 
 const OAUTH_ERRORS: Record<string, string> = {
     google_not_configured: 'Google OAuth is nog niet geconfigureerd. Gebruik e-mail inloggen.',
@@ -28,13 +29,19 @@ export function LoginPage() {
     const [emailError, setEmailError] = useState('');
     const [emailLoading, setEmailLoading] = useState(false);
 
+    // PIN modal state
+    const [pinEmail, setPinEmail] = useState('');
+    const [pinDigits, setPinDigits] = useState(['', '', '', '']);
+    const [pinError, setPinError] = useState('');
+    const [pinLoading, setPinLoading] = useState(false);
+    const pinRefs = [useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null)];
+
     // If already authenticated, redirect to dashboard
     useEffect(() => {
         if (!loading && user) navigate('/', { replace: true });
     }, [loading, user, navigate]);
 
     function handleSSOLogin() {
-        // Use real Google OAuth route
         window.location.href = '/api/auth/google';
     }
 
@@ -48,17 +55,73 @@ export function LoginPage() {
         }
         setEmailLoading(true);
         try {
-            await fetch('/api/auth/otp/request', {
+            const res = await fetch('/api/auth/otp/request', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email: trimmed }),
             });
-            // Always navigate regardless of result (prevents email enumeration)
-            navigate(`/otp?email=${encodeURIComponent(trimmed)}`);
+            const data = await res.json<{ success: boolean; auth_method?: string; error?: string }>();
+            if (data.auth_method === 'pin') {
+                // Show PIN modal for superadmin users
+                setPinEmail(trimmed);
+                setPinDigits(['', '', '', '']);
+                setPinError('');
+                setTimeout(() => pinRefs[0].current?.focus(), 100);
+            } else {
+                // Regular OTP flow — navigate to verify page
+                navigate(`/otp?email=${encodeURIComponent(trimmed)}`);
+            }
         } catch {
             setEmailError('Er is een fout opgetreden. Probeer het opnieuw.');
         } finally {
             setEmailLoading(false);
+        }
+    }
+
+    function handlePinInput(index: number, value: string) {
+        const digit = value.replace(/\D/g, '').slice(-1);
+        const next = [...pinDigits];
+        next[index] = digit;
+        setPinDigits(next);
+        setPinError('');
+        if (digit && index < 3) {
+            pinRefs[index + 1].current?.focus();
+        }
+    }
+
+    function handlePinKeyDown(index: number, e: React.KeyboardEvent<HTMLInputElement>) {
+        if (e.key === 'Backspace' && !pinDigits[index] && index > 0) {
+            pinRefs[index - 1].current?.focus();
+        }
+    }
+
+    async function handlePinSubmit() {
+        const pin = pinDigits.join('');
+        if (pin.length !== 4) {
+            setPinError('Voer een 4-cijferige PIN in.');
+            return;
+        }
+        setPinLoading(true);
+        setPinError('');
+        try {
+            const res = await fetch('/api/auth/pin/verify', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: pinEmail, pin }),
+            });
+            const data = await res.json<{ success: boolean; error?: string }>();
+            if (data.success) {
+                // Reload to pick up the new session cookie
+                window.location.href = '/';
+            } else {
+                setPinError(data.error ?? 'Ongeldige PIN-code.');
+                setPinDigits(['', '', '', '']);
+                setTimeout(() => pinRefs[0].current?.focus(), 50);
+            }
+        } catch {
+            setPinError('Er is een fout opgetreden. Probeer het opnieuw.');
+        } finally {
+            setPinLoading(false);
         }
     }
 
@@ -166,6 +229,60 @@ export function LoginPage() {
                                 <span>OTP / OAuth 2.0</span>
                             </div>
                         </div>
+
+                        {/* ── PIN modal for superadmin users ── */}
+                        <Dialog open={!!pinEmail} onOpenChange={(open) => { if (!open) setPinEmail(''); }}>
+                            <DialogContent className="bg-slate-800 border-slate-700 text-white sm:max-w-sm">
+                                <DialogHeader>
+                                    <div className="flex justify-center mb-2">
+                                        <div className="w-12 h-12 rounded-2xl bg-indigo-600 flex items-center justify-center">
+                                            <KeyRound className="h-6 w-6 text-white" />
+                                        </div>
+                                    </div>
+                                    <DialogTitle className="text-center text-white">PIN-code invoeren</DialogTitle>
+                                    <DialogDescription className="text-center text-slate-400">
+                                        Voer uw 4-cijferige PIN in voor<br />
+                                        <span className="font-medium text-slate-300">{pinEmail}</span>
+                                    </DialogDescription>
+                                </DialogHeader>
+
+                                <div className="flex justify-center gap-3 py-4">
+                                    {pinDigits.map((digit, i) => (
+                                        <input
+                                            key={i}
+                                            ref={pinRefs[i]}
+                                            type="text"
+                                            inputMode="numeric"
+                                            maxLength={1}
+                                            value={digit}
+                                            onChange={(e) => handlePinInput(i, e.target.value)}
+                                            onKeyDown={(e) => handlePinKeyDown(i, e)}
+                                            className="w-14 h-16 text-center text-2xl font-bold bg-slate-700 border-2 border-slate-600 rounded-xl text-white focus:border-indigo-500 focus:outline-none transition-colors"
+                                            style={{ caretColor: 'transparent' }}
+                                        />
+                                    ))}
+                                </div>
+
+                                {pinError && (
+                                    <div className="flex items-center gap-2 text-red-400 text-sm justify-center">
+                                        <AlertCircle className="h-4 w-4 shrink-0" />
+                                        <span>{pinError}</span>
+                                    </div>
+                                )}
+
+                                <Button
+                                    className="w-full h-11 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold mt-2"
+                                    onClick={handlePinSubmit}
+                                    disabled={pinLoading || pinDigits.join('').length !== 4}
+                                >
+                                    {pinLoading ? (
+                                        <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Verifiëren…</>
+                                    ) : (
+                                        <><KeyRound className="h-4 w-4 mr-2" />Aanmelden</>
+                                    )}
+                                </Button>
+                            </DialogContent>
+                        </Dialog>
 
                         {config?.devMode && (
                             <p className="text-center text-xs text-amber-400 bg-amber-500/10 rounded-lg p-2">

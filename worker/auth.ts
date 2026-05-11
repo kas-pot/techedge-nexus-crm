@@ -574,6 +574,73 @@ export async function sendOtpEmail(email: string, otp: string, name: string, env
     }
 }
 
+// ─── Superadmin PIN Auth ──────────────────────────────────────────────────────
+
+/**
+ * Hash a numeric PIN using PBKDF2-SHA256 with a random 16-byte salt.
+ * Stored format: 'pbkdf2:<saltBase64>:<hashBase64>'
+ */
+export async function hashPin(pin: string): Promise<string> {
+    const encoder = new TextEncoder();
+    const keyMaterial = await crypto.subtle.importKey('raw', encoder.encode(pin), 'PBKDF2', false, ['deriveBits']);
+    const salt = crypto.getRandomValues(new Uint8Array(16));
+    const bits = await crypto.subtle.deriveBits(
+        { name: 'PBKDF2', salt, iterations: 100_000, hash: 'SHA-256' },
+        keyMaterial,
+        256,
+    );
+    const saltB64 = btoa(String.fromCharCode(...salt));
+    const hashB64 = btoa(String.fromCharCode(...new Uint8Array(bits)));
+    return `pbkdf2:${saltB64}:${hashB64}`;
+}
+
+/**
+ * Verify a PIN against a stored hash.
+ * Uses timing-safe comparison to prevent oracle attacks.
+ */
+export async function verifyPin(pin: string, stored: string): Promise<boolean> {
+    const parts = stored.split(':');
+    if (parts.length !== 3 || parts[0] !== 'pbkdf2') return false;
+    const salt = Uint8Array.from(atob(parts[1]), (c) => c.charCodeAt(0));
+    const expectedHash = parts[2];
+
+    const encoder = new TextEncoder();
+    const keyMaterial = await crypto.subtle.importKey('raw', encoder.encode(pin), 'PBKDF2', false, ['deriveBits']);
+    const bits = await crypto.subtle.deriveBits(
+        { name: 'PBKDF2', salt, iterations: 100_000, hash: 'SHA-256' },
+        keyMaterial,
+        256,
+    );
+    const hashB64 = btoa(String.fromCharCode(...new Uint8Array(bits)));
+
+    // Timing-safe comparison
+    if (hashB64.length !== expectedHash.length) return false;
+    let diff = 0;
+    for (let i = 0; i < hashB64.length; i++) diff |= hashB64.charCodeAt(i) ^ expectedHash.charCodeAt(i);
+    return diff === 0;
+}
+
+/**
+ * Look up a superadmin (PIN-auth) record by email.
+ * Returns the name and pin_hash, or null if not found / not a superadmin.
+ */
+export async function getSuperAdmin(
+    email: string,
+    env: Env,
+): Promise<{ name: string; pin_hash: string } | null> {
+    const db = (env as any).THEPOT_DB as D1Database | undefined;
+    if (!db) return null;
+    const normalized = email.toLowerCase().trim();
+    const row = await db
+        .prepare(
+            `SELECT name, pin_hash FROM admins
+             WHERE email = ? AND is_superadmin = 1 AND is_active = 1 AND pin_hash IS NOT NULL`,
+        )
+        .bind(normalized)
+        .first<{ name: string; pin_hash: string }>();
+    return row ?? null;
+}
+
 /**
  * Issue a signed OTP session token (simple HMAC-SHA256 JWT-like structure).
  * Used as a session cookie after successful OTP verification.

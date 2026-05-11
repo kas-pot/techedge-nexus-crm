@@ -1074,6 +1074,34 @@ async function sendOtpEmail(email, otp, name, env) {
     console.error("[OTP] Email send failed:", await res.text());
   }
 }
+async function verifyPin(pin, stored) {
+  const parts = stored.split(":");
+  if (parts.length !== 3 || parts[0] !== "pbkdf2") return false;
+  const salt = Uint8Array.from(atob(parts[1]), (c) => c.charCodeAt(0));
+  const expectedHash = parts[2];
+  const encoder = new TextEncoder();
+  const keyMaterial = await crypto.subtle.importKey("raw", encoder.encode(pin), "PBKDF2", false, ["deriveBits"]);
+  const bits = await crypto.subtle.deriveBits(
+    { name: "PBKDF2", salt, iterations: 1e5, hash: "SHA-256" },
+    keyMaterial,
+    256
+  );
+  const hashB64 = btoa(String.fromCharCode(...new Uint8Array(bits)));
+  if (hashB64.length !== expectedHash.length) return false;
+  let diff = 0;
+  for (let i = 0; i < hashB64.length; i++) diff |= hashB64.charCodeAt(i) ^ expectedHash.charCodeAt(i);
+  return diff === 0;
+}
+async function getSuperAdmin(email, env) {
+  const db = env.THEPOT_DB;
+  if (!db) return null;
+  const normalized = email.toLowerCase().trim();
+  const row = await db.prepare(
+    `SELECT name, pin_hash FROM admins
+             WHERE email = ? AND is_superadmin = 1 AND is_active = 1 AND pin_hash IS NOT NULL`
+  ).bind(normalized).first();
+  return row ?? null;
+}
 var SESSION_TTL_MS = 8 * 60 * 60 * 1e3;
 var sessionKey = (token) => `auth:session:${token}`;
 async function createOtpSession(email, name, env) {
@@ -1228,36 +1256,86 @@ function userRoutes(app) {
     return new Response(null, { status: 302, headers });
   });
   app.post("/api/auth/otp/request", async (c) => {
+    const ip = getClientIp(c.req.raw);
+    if (await isIpBlocked(ip, c.env)) {
+      return c.json({ success: false, error: "IP blocked." }, 403);
+    }
+    let email;
+    try {
+      const body = await c.req.json();
+      email = (body.email ?? "").trim().toLowerCase();
+    } catch {
+      return bad(c, "Ongeldig verzoek");
+    }
+    if (!email || !/^[^@]+@[^@]+\.[^@]+$/.test(email)) {
+      return bad(c, "Voer een geldig e-mailadres in.");
+    }
+    const superAdmin = await getSuperAdmin(email, c.env).catch(() => null);
+    if (superAdmin) {
+      return c.json({ success: true, auth_method: "pin", message: "Voer uw PIN-code in." });
+    }
+    let otp;
+    try {
+      otp = await storeOtp(email, c.env);
+    } catch (storeErr) {
+      console.error("[OTP] storeOtp failed for", email, storeErr);
+      return c.json({ success: false, error: "Kon de verificatiecode niet opslaan. Probeer het opnieuw." }, 500);
+    }
+    const adminUser = await getAdminUser(email, c.env).catch(() => null);
+    const name = adminUser?.name ?? email;
+    try {
+      await sendOtpEmail(email, otp, name, c.env);
+    } catch (emailErr) {
+      console.error("[OTP] sendOtpEmail failed for", email, emailErr);
+    }
+    return c.json({ success: true, auth_method: "otp", message: "Verificatiecode verstuurd. Controleer uw e-mail." });
+  });
+  app.post("/api/auth/pin/verify", async (c) => {
     try {
       const ip = getClientIp(c.req.raw);
       if (await isIpBlocked(ip, c.env)) {
         return c.json({ success: false, error: "IP blocked." }, 403);
       }
-      let email;
+      let email, pin;
       try {
         const body = await c.req.json();
         email = (body.email ?? "").trim().toLowerCase();
+        pin = (body.pin ?? "").trim();
       } catch {
         return bad(c, "Ongeldig verzoek");
       }
-      if (!email || !/^[^@]+@[^@]+\.[^@]+$/.test(email)) {
-        return bad(c, "Voer een geldig e-mailadres in.");
+      if (!email || !pin) return bad(c, "E-mailadres en PIN zijn verplicht.");
+      const superAdmin = await getSuperAdmin(email, c.env);
+      if (!superAdmin) {
+        const ua = c.req.header("User-Agent") ?? "";
+        await recordFailedAttempt(ip, ua, c.env);
+        return c.json({ success: false, error: "Geen toegang." }, 403);
       }
-      const adminExists = await isAdminEmail(email, c.env);
-      if (adminExists) {
-        const adminUser = await getAdminUser(email, c.env);
-        const name = adminUser?.name ?? email;
-        const otp = await storeOtp(email, c.env);
-        try {
-          await sendOtpEmail(email, otp, name, c.env);
-        } catch (emailErr) {
-          console.error("[OTP] sendOtpEmail threw:", emailErr);
+      const valid = await verifyPin(pin, superAdmin.pin_hash);
+      if (!valid) {
+        const ua = c.req.header("User-Agent") ?? "";
+        const { blocked } = await recordFailedAttempt(ip, ua, c.env);
+        const msg = blocked ? "IP blocked after too many failed attempts." : "Ongeldige PIN-code.";
+        return c.json({ success: false, error: msg }, 401);
+      }
+      await clearAttempts(ip, c.env);
+      const sessionToken = await createOtpSession(email, superAdmin.name, c.env);
+      const isProduction = !getAuthConfig(c.env).devMode;
+      const cookieFlags = isProduction ? "; Secure" : "";
+      const cookieValue = `nexus_session=${sessionToken}; Path=/; Max-Age=${8 * 3600}; SameSite=Lax; HttpOnly${cookieFlags}`;
+      return new Response(
+        JSON.stringify({ success: true, data: { email, name: superAdmin.name, sub: email } }),
+        {
+          status: 200,
+          headers: {
+            "Content-Type": "application/json",
+            "Set-Cookie": cookieValue
+          }
         }
-      }
-      return c.json({ success: true, message: "Als dit e-mailadres bekend is, ontvangt u een code." });
+      );
     } catch (err) {
-      console.error("[OTP] /api/auth/otp/request error:", err instanceof Error ? err.message : String(err), err);
-      return c.json({ success: true, message: "Als dit e-mailadres bekend is, ontvangt u een code." });
+      console.error("[PIN] /api/auth/pin/verify error:", err instanceof Error ? err.message : String(err));
+      return c.json({ success: false, error: "Er is een interne fout opgetreden. Probeer het opnieuw." }, 500);
     }
   });
   app.post("/api/auth/otp/verify", async (c) => {
@@ -1279,8 +1357,14 @@ function userRoutes(app) {
       if (!result.valid) {
         const ua = c.req.header("User-Agent") ?? "";
         const { blocked } = await recordFailedAttempt(ip, ua, c.env);
-        const msg = blocked ? "IP blocked after too many failed attempts." : result.reason ?? "Ongeldige code.";
+        const msg = blocked ? "IP blocked after too many failed attempts." : result.reason ?? "Ongeldige of verlopen code.";
         return c.json({ success: false, error: msg }, 401);
+      }
+      const isAdmin = await isAdminEmail(email, c.env);
+      if (!isAdmin) {
+        const ua = c.req.header("User-Agent") ?? "";
+        await recordFailedAttempt(ip, ua, c.env);
+        return c.json({ success: false, error: "Dit e-mailadres heeft geen toegang tot Nexus CRM." }, 403);
       }
       await clearAttempts(ip, c.env);
       const adminUser = await getAdminUser(email, c.env);
