@@ -35,6 +35,7 @@ import {
   deleteOtpSession,
   getSuperAdmin,
   verifyPin,
+  clearIpBlock,
 } from './auth';
 const ENTITY_MAP: Record<string, any> = {
   users: UserEntity,
@@ -148,16 +149,17 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
   app.get('/api/auth/me', async (c) => {
     const ip = getClientIp(c.req.raw);
 
-    if (await isIpBlocked(ip, c.env)) {
-      return c.json({ success: false, error: 'IP blocked.' }, 403);
-    }
-
-    // Check OTP session cookie first
+    // Check session cookie BEFORE IP block — a valid session must always be honoured.
+    // IP blocking only applies to unauthenticated requests to prevent enumeration.
     const cookieHeader = c.req.header('Cookie') ?? '';
     const sessionMatch = cookieHeader.match(/nexus_session=([^;]+)/);
     if (sessionMatch) {
       const sessionUser = await validateOtpSession(sessionMatch[1], c.env);
       if (sessionUser) return c.json({ success: true, data: sessionUser });
+    }
+
+    if (await isIpBlocked(ip, c.env)) {
+      return c.json({ success: false, error: 'IP blocked.' }, 403);
     }
 
     const token = extractToken(c.req.raw);
@@ -263,10 +265,6 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     try {
       const ip = getClientIp(c.req.raw);
 
-      if (await isIpBlocked(ip, c.env)) {
-        return c.json({ success: false, error: 'IP blocked.' }, 403);
-      }
-
       let email: string, pin: string;
       try {
         const body = await c.req.json<{ email?: string; pin?: string }>();
@@ -281,20 +279,28 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       // Only superadmins may use this endpoint
       const superAdmin = await getSuperAdmin(email, c.env);
       if (!superAdmin) {
+        // Don't reward unknown-email probes with IP-block clearing
+        if (await isIpBlocked(ip, c.env)) {
+          return c.json({ success: false, error: 'IP blocked.' }, 403);
+        }
         const ua = c.req.header('User-Agent') ?? '';
         await recordFailedAttempt(ip, ua, c.env);
         return c.json({ success: false, error: 'Geen toegang.' }, 403);
       }
 
+      // For valid superadmin emails: skip IP block check.
+      // PIN + PBKDF2-SHA256 (100k iterations) is the auth factor; IP blocking
+      // must not prevent a legitimate superadmin from ever logging in.
       const valid = await verifyPin(pin, superAdmin.pin_hash);
       if (!valid) {
         const ua = c.req.header('User-Agent') ?? '';
         const { blocked } = await recordFailedAttempt(ip, ua, c.env);
-        const msg = blocked ? 'IP blocked after too many failed attempts.' : 'Ongeldige PIN-code.';
+        const msg = blocked ? 'Te veel pogingen. Probeer later opnieuw.' : 'Ongeldige PIN-code.';
         return c.json({ success: false, error: msg }, 401);
       }
 
-      await clearAttempts(ip, c.env);
+      // Correct PIN — clear any block so the session works immediately
+      await clearIpBlock(ip, c.env);
 
       const sessionToken = await createOtpSession(email, superAdmin.name, c.env);
 

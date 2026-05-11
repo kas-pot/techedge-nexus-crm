@@ -215,6 +215,12 @@ export async function clearAttempts(ip: string, env: Env): Promise<void> {
     await stub.del(ipAttemptKey(ip));
 }
 
+/** Clear both the attempt counter and any active IP block for an address. */
+export async function clearIpBlock(ip: string, env: Env): Promise<void> {
+    const stub = getDO(env);
+    await Promise.all([stub.del(ipAttemptKey(ip)), stub.del(ipBlockKey(ip))]);
+}
+
 // ─── Email Alert ──────────────────────────────────────────────────────────────
 
 async function sendAlertEmail(
