@@ -144,17 +144,30 @@ export function PushNotificationsPage() {
               <CardTitle className="flex items-center gap-2"><BarChart3 className="h-5 w-5" /> Executive View</CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="space-y-1">
-                <span className="text-[10px] uppercase font-black opacity-60 tracking-[0.2em]">Master Open Rate</span>
-                <div className="text-4xl font-black">—</div>
-              </div>
-              <div className="space-y-1">
-                <span className="text-[10px] uppercase font-black opacity-60 tracking-[0.2em]">Total Sent (Cycle)</span>
-                <div className="text-4xl font-black">—</div>
-              </div>
-              <div className="pt-4 border-t border-white/10">
-                <div className="text-xs text-white/60">Geen data beschikbaar</div>
-              </div>
+              {(() => {
+                const allCampaigns = data?.items ?? [];
+                const sent = allCampaigns.filter(c => c.status !== 'draft');
+                const masterOpenRate = sent.length > 0
+                  ? (sent.reduce((sum, c) => sum + (c.openRate ?? 0), 0) / sent.length).toFixed(1)
+                  : null;
+                return (
+                  <>
+                    <div className="space-y-1">
+                      <span className="text-[10px] uppercase font-black opacity-60 tracking-[0.2em]">Master Open Rate</span>
+                      <div className="text-4xl font-black">{masterOpenRate !== null ? `${masterOpenRate}%` : '—'}</div>
+                    </div>
+                    <div className="space-y-1">
+                      <span className="text-[10px] uppercase font-black opacity-60 tracking-[0.2em]">Total Sent (Cycle)</span>
+                      <div className="text-4xl font-black">{sent.length > 0 ? sent.length.toLocaleString() : '—'}</div>
+                    </div>
+                    <div className="pt-4 border-t border-white/10">
+                      <div className="text-xs text-white/60">
+                        {allCampaigns.length > 0 ? `${allCampaigns.length} total campaigns` : 'Geen data beschikbaar'}
+                      </div>
+                    </div>
+                  </>
+                );
+              })()}
             </CardContent>
           </Card>
         </div>

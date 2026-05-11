@@ -6,15 +6,44 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Search, Plus, Tag, Palette, Hash, Filter, MoreVertical, PieChart } from 'lucide-react';
-import { useInterests } from '@/lib/api-hooks';
+import { useInterests, useInterestMutations } from '@/lib/api-hooks';
+import { toast } from 'sonner';
+
+const PRESET_COLORS = ['#4F46E5', '#F59E0B', '#10B981', '#EF4444', '#EC4899'];
+
 export function InterestsPage() {
   const [search, setSearch] = useState('');
+  const [tagName, setTagName] = useState('');
+  const [tagCategory, setTagCategory] = useState('');
+  const [tagColor, setTagColor] = useState(PRESET_COLORS[0]);
   const { data, isLoading } = useInterests();
+  const { create } = useInterestMutations();
   const interests = data?.items || [];
   const filtered = interests.filter(i => 
     i.name.toLowerCase().includes(search.toLowerCase()) || 
     i.category.toLowerCase().includes(search.toLowerCase())
   );
+
+  const uniqueCategories = [...new Set(interests.map(i => i.category).filter(Boolean))].length;
+
+  const handleCreateTag = async () => {
+    if (!tagName.trim()) { toast.error('Tag name is required'); return; }
+    try {
+      await create.mutateAsync({
+        name: tagName.trim(),
+        category: tagCategory.trim() || 'Uncategorized',
+        color: tagColor,
+        count: 0,
+      });
+      setTagName('');
+      setTagCategory('');
+      setTagColor(PRESET_COLORS[0]);
+      toast.success(`Tag "${tagName}" created`);
+    } catch {
+      toast.error('Failed to create tag');
+    }
+  };
+
   return (
     <AppLayout container>
       <div className="space-y-8">
@@ -23,7 +52,7 @@ export function InterestsPage() {
             <h1 className="text-3xl font-bold tracking-tight">Interest Tags</h1>
             <p className="text-muted-foreground">Manage and categorize member preferences for better personalization.</p>
           </div>
-          <Button className="bg-indigo-600 hover:bg-indigo-700">
+          <Button className="bg-indigo-600 hover:bg-indigo-700" onClick={handleCreateTag} disabled={create.isPending}>
             <Plus className="mr-2 h-4 w-4" /> Create New Tag
           </Button>
         </div>
@@ -36,24 +65,28 @@ export function InterestsPage() {
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="tagName">Tag Name</Label>
-                <Input id="tagName" placeholder="e.g., Hiking" />
+                <Input id="tagName" placeholder="e.g., Hiking" value={tagName} onChange={(e) => setTagName(e.target.value)} />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="tagCat">Category</Label>
-                <Input id="tagCat" placeholder="Lifestyle" />
+                <Input id="tagCat" placeholder="Lifestyle" value={tagCategory} onChange={(e) => setTagCategory(e.target.value)} />
               </div>
               <div className="space-y-2">
                 <Label>Color Identity</Label>
-                <div className="flex gap-2">
-                  {['#4F46E5', '#F59E0B', '#10B981', '#EF4444', '#EC4899'].map(c => (
-                    <div key={c} className="h-6 w-6 rounded-full cursor-pointer border-2 border-transparent hover:border-slate-300" style={{ backgroundColor: c }} />
+                <div className="flex gap-2 flex-wrap">
+                  {PRESET_COLORS.map(c => (
+                    <div
+                      key={c}
+                      className="h-6 w-6 rounded-full cursor-pointer border-2 transition-all"
+                      style={{ backgroundColor: c, borderColor: tagColor === c ? c : 'transparent', outline: tagColor === c ? `2px solid ${c}` : 'none', outlineOffset: '2px' }}
+                      onClick={() => setTagColor(c)}
+                    />
                   ))}
-                  <div className="h-6 w-6 rounded-full border-2 border-dashed border-slate-300 flex items-center justify-center cursor-pointer">
-                    <Plus className="h-3 w-3 text-slate-400" />
-                  </div>
                 </div>
               </div>
-              <Button className="w-full">Create Tag</Button>
+              <Button className="w-full" onClick={handleCreateTag} disabled={create.isPending}>
+                {create.isPending ? 'Creating...' : 'Create Tag'}
+              </Button>
             </CardContent>
           </Card>
           <div className="md:col-span-3 space-y-6">
@@ -68,10 +101,6 @@ export function InterestsPage() {
                       value={search}
                       onChange={(e) => setSearch(e.target.value)}
                     />
-                  </div>
-                  <div className="flex gap-2">
-                    <Button variant="outline" size="icon"><Filter className="h-4 w-4" /></Button>
-                    <Button variant="outline" size="icon"><PieChart className="h-4 w-4" /></Button>
                   </div>
                 </div>
               </CardHeader>
@@ -92,11 +121,6 @@ export function InterestsPage() {
                           {interest.name}
                           <span className="ml-1 opacity-60 text-xs font-mono">({interest.count})</span>
                         </Badge>
-                        <div className="absolute -top-1 -right-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Button size="icon" variant="secondary" className="h-5 w-5 rounded-full shadow-lg">
-                            <MoreVertical className="h-3 w-3" />
-                          </Button>
-                        </div>
                       </div>
                     ))
                   )}
@@ -124,7 +148,7 @@ export function InterestsPage() {
                       <Palette className="h-5 w-5" />
                     </div>
                     <div>
-                      <div className="text-2xl font-bold text-amber-900 dark:text-amber-100">8</div>
+                      <div className="text-2xl font-bold text-amber-900 dark:text-amber-100">{uniqueCategories}</div>
                       <div className="text-xs text-amber-700/70 dark:text-amber-300">Interest Categories</div>
                     </div>
                   </div>

@@ -497,6 +497,38 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     }
   });
 
+  // ─── External Voucher Import (Partner Sync) ──────────────────────────────────
+  app.post('/api/vouchers/sync-external', async (c) => {
+    const { partnerId, count = 5 } = await c.req.json();
+    if (!partnerId) return bad(c, 'partnerId is required');
+    const batchSize = Math.min(Math.max(1, Number(count) || 5), 20);
+    const results = [];
+    const expiryDate = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const discountOptions: Array<'percentage' | 'fixed'> = ['percentage', 'fixed'];
+    const discountValues = [10, 15, 20, 25, 50000, 100000, 150000];
+    for (let i = 0; i < batchSize; i++) {
+      const id = crypto.randomUUID();
+      const code = `EXT-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+      const dtype = discountOptions[i % 2];
+      const val = dtype === 'percentage' ? [10, 15, 20, 25, 30][i % 5] : [50000, 100000, 150000][i % 3];
+      const voucher = await VoucherEntity.create(c.env, {
+        id,
+        title: `Partner Reward ${i + 1}`,
+        code,
+        discountType: dtype,
+        value: val,
+        expiryDate,
+        status: 'active',
+        isExternal: true,
+        sourcePartnerId: partnerId,
+        syncDate: new Date().toISOString(),
+      });
+      results.push(voucher);
+    }
+    await logActivity(c.env, 'Synced', 'vouchers_external', partnerId);
+    return ok(c, { synced: results.length, items: results });
+  });
+
   // ─── Specialized Batch Gift Card Generation
   app.post('/api/gift-cards/batch', async (c) => {
     const { count, value, expiryDate } = await c.req.json();
@@ -511,7 +543,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         value: Number(value) || 0,
         balance: Number(value) || 0,
         status: 'active',
-        expiryDate: expiryDate || '2025-12-31'
+        expiryDate: expiryDate || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
       });
       results.push(card);
     }
@@ -709,6 +741,61 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     await inst.patch(data);
     return ok(c, await inst.getState());
   });
+
+  app.get('/api/system/contact', async (c) => ok(c, await ContactSettingsEntity.getGlobal(c.env)));
+  app.put('/api/system/contact', async (c) => {
+    const data = await c.req.json();
+    const inst = new ContactSettingsEntity(c.env, "global");
+    await inst.patch(data);
+    await logActivity(c.env, 'Updated', 'contact_settings', 'global');
+    return ok(c, await inst.getState());
+  });
+
+  app.get('/api/system/wifi', async (c) => ok(c, await WifiEntity.getGlobal(c.env)));
+  app.put('/api/system/wifi', async (c) => {
+    const data = await c.req.json();
+    const inst = new WifiEntity(c.env, "global");
+    await inst.patch(data);
+    await logActivity(c.env, 'Updated', 'wifi_settings', 'global');
+    return ok(c, await inst.getState());
+  });
+
+  app.get('/api/system/splash', async (c) => ok(c, await SplashScreenEntity.getGlobal(c.env)));
+  app.put('/api/system/splash', async (c) => {
+    const data = await c.req.json();
+    const inst = new SplashScreenEntity(c.env, "global");
+    await inst.patch(data);
+    await logActivity(c.env, 'Updated', 'splash_screen', 'global');
+    return ok(c, await inst.getState());
+  });
+
+  app.get('/api/system/banner', async (c) => ok(c, await HeroBannerEntity.getGlobal(c.env)));
+  app.put('/api/system/banner', async (c) => {
+    const data = await c.req.json();
+    const inst = new HeroBannerEntity(c.env, "global");
+    await inst.patch(data);
+    await logActivity(c.env, 'Updated', 'hero_banner', 'global');
+    return ok(c, await inst.getState());
+  });
+
+  app.get('/api/system/terms', async (c) => ok(c, await TermsEntity.getGlobal(c.env)));
+  app.put('/api/system/terms', async (c) => {
+    const data = await c.req.json();
+    const inst = new TermsEntity(c.env, "global");
+    await inst.patch(data);
+    await logActivity(c.env, 'Updated', 'terms', 'global');
+    return ok(c, await inst.getState());
+  });
+
+  app.get('/api/system/privacy', async (c) => ok(c, await PrivacyEntity.getGlobal(c.env)));
+  app.put('/api/system/privacy', async (c) => {
+    const data = await c.req.json();
+    const inst = new PrivacyEntity(c.env, "global");
+    await inst.patch(data);
+    await logActivity(c.env, 'Updated', 'privacy', 'global');
+    return ok(c, await inst.getState());
+  });
+
   app.get('/api/reseed-all', async (c) => {
     let count = 0;
     for (const [type, EntityClass] of Object.entries(ENTITY_MAP)) {

@@ -18,6 +18,8 @@ export function GiftCardsPage() {
   const [search, setSearch] = useState('');
   const [genCount, setGenCount] = useState(10);
   const [genValue, setGenValue] = useState(500000);
+  const defaultExpiry = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+  const [genExpiry, setGenExpiry] = useState(defaultExpiry);
   const [redeemSerial, setRedeemSerial] = useState('');
   const [isRedeemOpen, setIsRedeemOpen] = useState(false);
   const [foundCard, setFoundCard] = useState<any>(null);
@@ -26,7 +28,7 @@ export function GiftCardsPage() {
       await generateMutation.mutateAsync({
         count: genCount,
         value: genValue,
-        expiryDate: '2025-12-31'
+        expiryDate: genExpiry
       });
       toast.success(`${genCount} Gift Cards successfully generated`);
     } catch (e) {
@@ -86,6 +88,10 @@ export function GiftCardsPage() {
               <div className="space-y-2">
                 <Label>Value per Card (IDR)</Label>
                 <Input type="number" value={genValue} onChange={(e) => setGenValue(Number(e.target.value))} />
+              </div>
+              <div className="space-y-2">
+                <Label>Expiry Date</Label>
+                <Input type="date" value={genExpiry} onChange={(e) => setGenExpiry(e.target.value)} />
               </div>
               <Button className="w-full bg-indigo-600 h-11" onClick={handleGenerate} disabled={generateMutation.isPending}>
                 {generateMutation.isPending ? "Generating..." : "Generate Batch"}

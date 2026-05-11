@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/sidebar";
 import { Link, useLocation } from "react-router-dom";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { useAuth } from "@/lib/auth-context";
 const navGroups = [
   {
     label: "Overview",
@@ -134,6 +135,14 @@ const navGroups = [
 ];
 export function AppSidebar(): JSX.Element {
   const location = useLocation();
+  const { user } = useAuth();
+  const displayName = user?.name ?? 'Nexus Admin';
+  const displayEmail = user?.email ?? 'admin@nexus.app';
+  const initials = displayName
+    .split(' ')
+    .slice(0, 2)
+    .map((n) => n[0]?.toUpperCase() ?? '')
+    .join('');
   return (
     <Sidebar variant="sidebar" collapsible="icon">
       <SidebarHeader className="h-16 flex items-center px-4">
@@ -192,10 +201,10 @@ export function AppSidebar(): JSX.Element {
       </SidebarContent>
       <SidebarFooter className="border-t p-4">
         <div className="flex items-center gap-3 px-2">
-          <div className="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 text-xs font-bold shrink-0">JD</div>
+          <div className="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 text-xs font-bold shrink-0">{initials}</div>
           <div className="flex flex-col group-data-[collapsible=icon]:hidden overflow-hidden">
-            <span className="text-sm font-medium leading-none">Jane Doe</span>
-            <span className="text-xs text-muted-foreground truncate">Admin Portal</span>
+            <span className="text-sm font-medium leading-none">{displayName}</span>
+            <span className="text-xs text-muted-foreground truncate">{displayEmail}</span>
           </div>
         </div>
       </SidebarFooter>

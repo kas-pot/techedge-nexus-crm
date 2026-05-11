@@ -402,6 +402,46 @@ var MOCK_FAQ = Array.from({ length: 30 }, (_, i) => ({
   answer: `This is a detailed answer for the knowledge base item #${i + 1}.`,
   category: i % 4 === 0 ? "Points" : i % 4 === 1 ? "Membership" : i % 4 === 2 ? "Technical" : "Security"
 }));
+var MOCK_CONTACT_SETTINGS = {
+  id: "global",
+  email: "pik.experience@agungsedyu.com",
+  phone: "+622150982122",
+  whatsapp: "+628123456789",
+  whatsappUrl: "https://wa.me/628123456789",
+  websiteUrl: "https://amantara.com/",
+  facebookUrl: "https://facebook.com/techedge.nexus",
+  instagramUrl: "https://instagram.com/techedge.nexus"
+};
+var MOCK_TERMS_CONTENT = {
+  id: "terms",
+  title: "Loyalty Program Terms & Conditions",
+  content: `LOYALTY PROGRAM TERMS & CONDITIONS MEMBERSHIP
+1. Acceptance of Terms
+By registering for the TechEdge Nexus Loyalty Program, members agree to be bound by these terms and conditions.
+2. Membership Eligibility
+Membership is open to individuals aged 17 and above. Corporations and legal entities are not eligible for individual membership.
+3. Earning Points
+Points are earned based on qualifying purchases at participating venues. The current earning rate is defined in the Loyalty Rules Engine.
+4. Point Expiration
+Points remain valid for a period of 12 months from the date of earn unless otherwise specified.
+5. Redemption
+Members may redeem points for vouchers, gift cards, or other rewards available in the reward catalog.`,
+  lastUpdated: "2024-06-01"
+};
+var MOCK_PRIVACY_CONTENT = {
+  id: "privacy",
+  title: "Data Privacy Policy",
+  content: `PRIVACY POLICY
+1. Information Collection
+We collect personal information including name, email, and transaction history to provide personalized loyalty services.
+2. Data Usage
+Your data is used to process rewards, improve our services, and send targeted marketing communications if opted-in.
+3. Data Security
+We implement enterprise-grade security measures to protect your personal information from unauthorized access.
+4. Third-Party Sharing
+We do not sell your personal data. Data may be shared with authorized partners only to facilitate reward fulfillment.`,
+  lastUpdated: "2024-06-01"
+};
 var MOCK_WIFI_SETTINGS = {
   id: "global",
   ssid: "TechEdge_Guest_WiFi",
@@ -675,6 +715,30 @@ var LocalizationSettingsEntity = class _LocalizationSettingsEntity extends Entit
     return inst.getState();
   }
 };
+var ContactSettingsEntity = class _ContactSettingsEntity extends Entity {
+  static entityName = "contact_settings";
+  static initialState = MOCK_CONTACT_SETTINGS;
+  static async getGlobal(env) {
+    const inst = new _ContactSettingsEntity(env, "global");
+    return inst.getState();
+  }
+};
+var TermsEntity = class _TermsEntity extends Entity {
+  static entityName = "terms_conditions";
+  static initialState = MOCK_TERMS_CONTENT;
+  static async getGlobal(env) {
+    const inst = new _TermsEntity(env, "global");
+    return inst.getState();
+  }
+};
+var PrivacyEntity = class _PrivacyEntity extends Entity {
+  static entityName = "privacy_policy";
+  static initialState = MOCK_PRIVACY_CONTENT;
+  static async getGlobal(env) {
+    const inst = new _PrivacyEntity(env, "global");
+    return inst.getState();
+  }
+};
 var WifiEntity = class _WifiEntity extends Entity {
   static entityName = "wifi_config";
   static initialState = MOCK_WIFI_SETTINGS;
@@ -820,6 +884,10 @@ async function recordFailedAttempt(ip, userAgent, env) {
 async function clearAttempts(ip, env) {
   const stub = getDO(env);
   await stub.del(ipAttemptKey(ip));
+}
+async function clearIpBlock(ip, env) {
+  const stub = getDO(env);
+  await Promise.all([stub.del(ipAttemptKey(ip)), stub.del(ipBlockKey(ip))]);
 }
 async function sendAlertEmail(ip, userAgent, attempts, env) {
   const { resendApiKey, alertEmail } = getExtra(env);
@@ -1218,14 +1286,14 @@ function userRoutes(app) {
   });
   app.get("/api/auth/me", async (c) => {
     const ip = getClientIp(c.req.raw);
-    if (await isIpBlocked(ip, c.env)) {
-      return c.json({ success: false, error: "IP blocked." }, 403);
-    }
     const cookieHeader = c.req.header("Cookie") ?? "";
     const sessionMatch = cookieHeader.match(/nexus_session=([^;]+)/);
     if (sessionMatch) {
       const sessionUser = await validateOtpSession(sessionMatch[1], c.env);
       if (sessionUser) return c.json({ success: true, data: sessionUser });
+    }
+    if (await isIpBlocked(ip, c.env)) {
+      return c.json({ success: false, error: "IP blocked." }, 403);
     }
     const token = extractToken(c.req.raw);
     if (!token) {
@@ -1293,9 +1361,6 @@ function userRoutes(app) {
   app.post("/api/auth/pin/verify", async (c) => {
     try {
       const ip = getClientIp(c.req.raw);
-      if (await isIpBlocked(ip, c.env)) {
-        return c.json({ success: false, error: "IP blocked." }, 403);
-      }
       let email, pin;
       try {
         const body = await c.req.json();
@@ -1307,6 +1372,9 @@ function userRoutes(app) {
       if (!email || !pin) return bad(c, "E-mailadres en PIN zijn verplicht.");
       const superAdmin = await getSuperAdmin(email, c.env);
       if (!superAdmin) {
+        if (await isIpBlocked(ip, c.env)) {
+          return c.json({ success: false, error: "IP blocked." }, 403);
+        }
         const ua = c.req.header("User-Agent") ?? "";
         await recordFailedAttempt(ip, ua, c.env);
         return c.json({ success: false, error: "Geen toegang." }, 403);
@@ -1315,10 +1383,10 @@ function userRoutes(app) {
       if (!valid) {
         const ua = c.req.header("User-Agent") ?? "";
         const { blocked } = await recordFailedAttempt(ip, ua, c.env);
-        const msg = blocked ? "IP blocked after too many failed attempts." : "Ongeldige PIN-code.";
+        const msg = blocked ? "Te veel pogingen. Probeer later opnieuw." : "Ongeldige PIN-code.";
         return c.json({ success: false, error: msg }, 401);
       }
-      await clearAttempts(ip, c.env);
+      await clearIpBlock(ip, c.env);
       const sessionToken = await createOtpSession(email, superAdmin.name, c.env);
       const isProduction = !getAuthConfig(c.env).devMode;
       const cookieFlags = isProduction ? "; Secure" : "";
@@ -1471,6 +1539,36 @@ function userRoutes(app) {
       return new Response(null, { status: 302, headers: { Location: "/login?error=google_error" } });
     }
   });
+  app.post("/api/vouchers/sync-external", async (c) => {
+    const { partnerId, count = 5 } = await c.req.json();
+    if (!partnerId) return bad(c, "partnerId is required");
+    const batchSize = Math.min(Math.max(1, Number(count) || 5), 20);
+    const results = [];
+    const expiryDate = new Date(Date.now() + 90 * 24 * 60 * 60 * 1e3).toISOString().split("T")[0];
+    const discountOptions = ["percentage", "fixed"];
+    const discountValues = [10, 15, 20, 25, 5e4, 1e5, 15e4];
+    for (let i = 0; i < batchSize; i++) {
+      const id = crypto.randomUUID();
+      const code = `EXT-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+      const dtype = discountOptions[i % 2];
+      const val = dtype === "percentage" ? [10, 15, 20, 25, 30][i % 5] : [5e4, 1e5, 15e4][i % 3];
+      const voucher = await VoucherEntity.create(c.env, {
+        id,
+        title: `Partner Reward ${i + 1}`,
+        code,
+        discountType: dtype,
+        value: val,
+        expiryDate,
+        status: "active",
+        isExternal: true,
+        sourcePartnerId: partnerId,
+        syncDate: (/* @__PURE__ */ new Date()).toISOString()
+      });
+      results.push(voucher);
+    }
+    await logActivity(c.env, "Synced", "vouchers_external", partnerId);
+    return ok(c, { synced: results.length, items: results });
+  });
   app.post("/api/gift-cards/batch", async (c) => {
     const { count, value, expiryDate } = await c.req.json();
     if (!count || count <= 0) return bad(c, "Invalid count");
@@ -1484,7 +1582,7 @@ function userRoutes(app) {
         value: Number(value) || 0,
         balance: Number(value) || 0,
         status: "active",
-        expiryDate: expiryDate || "2025-12-31"
+        expiryDate: expiryDate || new Date(Date.now() + 365 * 24 * 60 * 60 * 1e3).toISOString().split("T")[0]
       });
       results.push(card);
     }
@@ -1677,6 +1775,54 @@ function userRoutes(app) {
     const data = await c.req.json();
     const inst = new WeatherSettingsEntity(c.env, "global");
     await inst.patch(data);
+    return ok(c, await inst.getState());
+  });
+  app.get("/api/system/contact", async (c) => ok(c, await ContactSettingsEntity.getGlobal(c.env)));
+  app.put("/api/system/contact", async (c) => {
+    const data = await c.req.json();
+    const inst = new ContactSettingsEntity(c.env, "global");
+    await inst.patch(data);
+    await logActivity(c.env, "Updated", "contact_settings", "global");
+    return ok(c, await inst.getState());
+  });
+  app.get("/api/system/wifi", async (c) => ok(c, await WifiEntity.getGlobal(c.env)));
+  app.put("/api/system/wifi", async (c) => {
+    const data = await c.req.json();
+    const inst = new WifiEntity(c.env, "global");
+    await inst.patch(data);
+    await logActivity(c.env, "Updated", "wifi_settings", "global");
+    return ok(c, await inst.getState());
+  });
+  app.get("/api/system/splash", async (c) => ok(c, await SplashScreenEntity.getGlobal(c.env)));
+  app.put("/api/system/splash", async (c) => {
+    const data = await c.req.json();
+    const inst = new SplashScreenEntity(c.env, "global");
+    await inst.patch(data);
+    await logActivity(c.env, "Updated", "splash_screen", "global");
+    return ok(c, await inst.getState());
+  });
+  app.get("/api/system/banner", async (c) => ok(c, await HeroBannerEntity.getGlobal(c.env)));
+  app.put("/api/system/banner", async (c) => {
+    const data = await c.req.json();
+    const inst = new HeroBannerEntity(c.env, "global");
+    await inst.patch(data);
+    await logActivity(c.env, "Updated", "hero_banner", "global");
+    return ok(c, await inst.getState());
+  });
+  app.get("/api/system/terms", async (c) => ok(c, await TermsEntity.getGlobal(c.env)));
+  app.put("/api/system/terms", async (c) => {
+    const data = await c.req.json();
+    const inst = new TermsEntity(c.env, "global");
+    await inst.patch(data);
+    await logActivity(c.env, "Updated", "terms", "global");
+    return ok(c, await inst.getState());
+  });
+  app.get("/api/system/privacy", async (c) => ok(c, await PrivacyEntity.getGlobal(c.env)));
+  app.put("/api/system/privacy", async (c) => {
+    const data = await c.req.json();
+    const inst = new PrivacyEntity(c.env, "global");
+    await inst.patch(data);
+    await logActivity(c.env, "Updated", "privacy", "global");
     return ok(c, await inst.getState());
   });
   app.get("/api/reseed-all", async (c) => {

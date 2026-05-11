@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -9,12 +9,31 @@ import { Slider } from '@/components/ui/slider';
 import { ArrowLeft, Save, Plus, Trash2, Zap, Calculator, Flame, Info } from 'lucide-react';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
+import { useSystemSettings, useSettingsMutation } from '@/lib/api-hooks';
 export function BurnRulesPage() {
   const [globalRate, setGlobalRate] = useState(100);
   const [rows, setRows] = useState<{ id: string; category: string; rate: number; active: boolean }[]>([]);
-  const handleSave = () => {
-    toast.success("Redemption rules updated and deployed!");
+  const [simValue, setSimValue] = useState(50);
+  const { data: settings } = useSystemSettings();
+  const settingsMutation = useSettingsMutation();
+
+  useEffect(() => {
+    if (settings) {
+      const burnRules = (settings as any).burnRules;
+      if (burnRules?.globalRate) setGlobalRate(burnRules.globalRate);
+      if (Array.isArray(burnRules?.overrides)) setRows(burnRules.overrides);
+    }
+  }, [settings]);
+
+  const handleSave = async () => {
+    try {
+      await settingsMutation.mutateAsync({ burnRules: { globalRate, overrides: rows } } as any);
+      toast.success('Redemption rules updated and deployed!');
+    } catch {
+      toast.error('Failed to save rules');
+    }
   };
+  const pointsRequired = Math.round(globalRate * simValue);
   return (
     <AppLayout container>
       <div className="space-y-6 animate-fade-in">
@@ -30,8 +49,8 @@ export function BurnRulesPage() {
               <p className="text-muted-foreground">Configure point-to-value conversion for rewards and redemptions.</p>
             </div>
           </div>
-          <Button className="bg-indigo-600 hover:bg-indigo-700 shadow-indigo-100" onClick={handleSave}>
-            <Save className="mr-2 h-4 w-4" /> Deploy Rules
+          <Button className="bg-indigo-600 hover:bg-indigo-700 shadow-indigo-100" onClick={handleSave} disabled={settingsMutation.isPending}>
+            <Save className="mr-2 h-4 w-4" /> {settingsMutation.isPending ? 'Saving...' : 'Deploy Rules'}
           </Button>
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -123,12 +142,12 @@ export function BurnRulesPage() {
                     <Label className="text-slate-300 font-bold uppercase tracking-widest text-[10px]">Reward Value ($)</Label>
                     <div className="relative">
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 font-bold">$</span>
-                      <Input className="bg-slate-800 border-slate-700 h-12 pl-8 text-xl font-bold" defaultValue="50.00" type="number" />
+                      <Input className="bg-slate-800 border-slate-700 h-12 pl-8 text-xl font-bold" value={simValue} onChange={(e) => setSimValue(Number(e.target.value))} type="number" />
                     </div>
                   </div>
                   <div className="space-y-1 text-right">
                     <div className="text-[10px] uppercase font-bold text-slate-400 tracking-widest">Points Required</div>
-                    <div className="text-4xl font-black text-indigo-400">5,000 <span className="text-sm font-medium opacity-50">XP</span></div>
+                    <div className="text-4xl font-black text-indigo-400">{pointsRequired.toLocaleString()} <span className="text-sm font-medium opacity-50">XP</span></div>
                   </div>
                 </div>
               </CardContent>

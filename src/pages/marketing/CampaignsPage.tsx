@@ -34,6 +34,7 @@ export function CampaignsPage() {
   const [editingCampaign, setEditingCampaign] = useState<any>(null);
   const [sortKey, setSortKey] = useState('');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+  const [search, setSearch] = useState('');
   const { data, isLoading } = useCampaigns(activeChannel === 'all' ? undefined : activeChannel);
   const mutations = useCampaignMutations();
   const campaigns = data?.items || [];
@@ -46,13 +47,18 @@ export function CampaignsPage() {
     if (sortKey !== key) return ' ⇅';
     return sortDir === 'asc' ? ' ↑' : ' ↓';
   }
-  const sortedCampaigns = sortKey
+  const sortedCampaigns = (sortKey
     ? [...campaigns].sort((a: any, b: any) => {
       const av = a[sortKey] ?? ''; const bv = b[sortKey] ?? '';
       if (av === bv) return 0;
       return sortDir === 'asc' ? (av > bv ? 1 : -1) : (av < bv ? 1 : -1);
     })
-    : campaigns;
+    : campaigns
+  ).filter(c =>
+    !search ||
+    c.name.toLowerCase().includes(search.toLowerCase()) ||
+    c.status.toLowerCase().includes(search.toLowerCase())
+  );
   const handleCreate = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
@@ -127,6 +133,8 @@ export function CampaignsPage() {
               <input
                 placeholder="Search campaigns..."
                 className="w-full bg-white border border-input rounded-md py-2 pl-9 pr-4 text-sm outline-none focus:ring-2 focus:ring-indigo-500"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
               />
             </div>
           </div>

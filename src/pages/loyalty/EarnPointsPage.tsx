@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -10,6 +10,7 @@ import { Separator } from '@/components/ui/separator';
 import { Plus, Trash2, Save, ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
+import { useSystemSettings, useSettingsMutation } from '@/lib/api-hooks';
 interface RuleRow {
   id: string;
   category: string;
@@ -20,14 +21,29 @@ interface RuleRow {
 export function EarnPointsPage() {
   const [ruleType, setRuleType] = useState('category');
   const [rows, setRows] = useState<RuleRow[]>([]);
+  const { data: settings } = useSystemSettings();
+  const settingsMutation = useSettingsMutation();
+
+  useEffect(() => {
+    if (settings) {
+      if ((settings as any).earnRuleType) setRuleType((settings as any).earnRuleType);
+      if (Array.isArray((settings as any).earnRules)) setRows((settings as any).earnRules);
+    }
+  }, [settings]);
+
   const addRow = () => {
     setRows([...rows, { id: Math.random().toString(), category: '', points: 1, amount: 10, reserveRate: '10%' }]);
   };
   const removeRow = (id: string) => {
     setRows(rows.filter(r => r.id !== id));
   };
-  const handleSave = () => {
-    toast.success("Rules saved successfully!");
+  const handleSave = async () => {
+    try {
+      await settingsMutation.mutateAsync({ earnRules: rows, earnRuleType: ruleType } as any);
+      toast.success('Rules saved successfully!');
+    } catch {
+      toast.error('Failed to save rules');
+    }
   };
   return (
     <AppLayout container>
@@ -42,8 +58,8 @@ export function EarnPointsPage() {
               <p className="text-muted-foreground">Configure how members earn points based on their spending.</p>
             </div>
           </div>
-          <Button className="bg-indigo-600 hover:bg-indigo-700" onClick={handleSave}>
-            <Save className="mr-2 h-4 w-4" /> Save Changes
+          <Button className="bg-indigo-600 hover:bg-indigo-700" onClick={handleSave} disabled={settingsMutation.isPending}>
+            <Save className="mr-2 h-4 w-4" /> {settingsMutation.isPending ? 'Saving...' : 'Save Changes'}
           </Button>
         </div>
         <Card>
