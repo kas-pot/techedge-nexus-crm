@@ -150,9 +150,9 @@ export function GiftCardsPage() {
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="flex gap-2">
-                <Input 
-                  placeholder="NXS-XXXXXXXX" 
-                  value={redeemSerial} 
+                <Input
+                  placeholder="NXS-XXXXXXXX"
+                  value={redeemSerial}
                   onChange={(e) => setRedeemSerial(e.target.value.toUpperCase())}
                   className="h-12 text-lg font-mono"
                 />
@@ -169,8 +169,8 @@ export function GiftCardsPage() {
                     <span className="text-sm font-medium">{foundCard.status}</span>
                   </div>
                   <Separator />
-                  <Button 
-                    className="w-full bg-indigo-600 h-11" 
+                  <Button
+                    className="w-full bg-indigo-600 h-11"
                     onClick={handleRedeem}
                     disabled={foundCard.status !== 'active' || updateMutation.isPending}
                   >

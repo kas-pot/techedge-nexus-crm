@@ -19,8 +19,8 @@ export function InterestsPage() {
   const { data, isLoading } = useInterests();
   const { create } = useInterestMutations();
   const interests = data?.items || [];
-  const filtered = interests.filter(i => 
-    i.name.toLowerCase().includes(search.toLowerCase()) || 
+  const filtered = interests.filter(i =>
+    i.name.toLowerCase().includes(search.toLowerCase()) ||
     i.category.toLowerCase().includes(search.toLowerCase())
   );
 
@@ -95,9 +95,9 @@ export function InterestsPage() {
                 <div className="flex items-center justify-between">
                   <div className="relative w-full max-w-md">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input 
-                      placeholder="Search tags or categories..." 
-                      className="pl-9" 
+                    <Input
+                      placeholder="Search tags or categories..."
+                      className="pl-9"
                       value={search}
                       onChange={(e) => setSearch(e.target.value)}
                     />
@@ -113,7 +113,7 @@ export function InterestsPage() {
                   ) : (
                     filtered.map((interest) => (
                       <div key={interest.id} className="group relative">
-                        <Badge 
+                        <Badge
                           style={{ backgroundColor: `${interest.color}15`, color: interest.color, borderColor: `${interest.color}30` }}
                           className="px-4 py-2 text-sm font-semibold border-2 hover:brightness-95 cursor-default flex items-center gap-2"
                         >
