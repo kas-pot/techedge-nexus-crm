@@ -6,8 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Shield, Zap, Lock, Mail, ArrowRight, Loader2, AlertCircle, KeyRound } from 'lucide-react';
+import { Shield, Zap, Lock, Mail, ArrowRight, Loader2, AlertCircle, KeyRound, ArrowLeft } from 'lucide-react';
 
 const OAUTH_ERRORS: Record<string, string> = {
     google_not_configured: 'Google OAuth is nog niet geconfigureerd. Gebruik e-mail inloggen.',
@@ -22,24 +21,38 @@ export function LoginPage() {
     const { user, config, loading } = useAuth();
     const navigate = useNavigate();
     const [params] = useSearchParams();
-    const isDev = params.get('dev') === '1';
     const oauthError = params.get('error');
 
+    // Email step
     const [email, setEmail] = useState('');
     const [emailError, setEmailError] = useState('');
     const [emailLoading, setEmailLoading] = useState(false);
 
-    // PIN modal state
+    // PIN step — separate from Dialog to avoid portal/stacking issues
+    const [step, setStep] = useState<'email' | 'pin'>('email');
     const [pinEmail, setPinEmail] = useState('');
-    const [pinDigits, setPinDigits] = useState(['', '', '', '']);
+    const [pinDigits, setPinDigits] = useState<string[]>(['', '', '', '']);
     const [pinError, setPinError] = useState('');
     const [pinLoading, setPinLoading] = useState(false);
-    const pinRefs = [useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null)];
+
+    // Individual refs — never inside an array literal (hooks order rules)
+    const pinRef0 = useRef<HTMLInputElement>(null);
+    const pinRef1 = useRef<HTMLInputElement>(null);
+    const pinRef2 = useRef<HTMLInputElement>(null);
+    const pinRef3 = useRef<HTMLInputElement>(null);
+    const pinRefs = [pinRef0, pinRef1, pinRef2, pinRef3] as const;
 
     // If already authenticated, redirect to dashboard
     useEffect(() => {
         if (!loading && user) navigate('/', { replace: true });
     }, [loading, user, navigate]);
+
+    // Auto-focus first PIN box when step changes to 'pin'
+    useEffect(() => {
+        if (step === 'pin') {
+            setTimeout(() => pinRef0.current?.focus(), 80);
+        }
+    }, [step]);
 
     function handleSSOLogin() {
         window.location.href = '/api/auth/google';
@@ -60,13 +73,13 @@ export function LoginPage() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email: trimmed }),
             });
-            const data = await res.json<{ success: boolean; auth_method?: string; error?: string }>();
+            const data: { success: boolean; auth_method?: string; error?: string } = await res.json();
             if (data.auth_method === 'pin') {
-                // Show PIN modal for superadmin users
+                // Switch to inline PIN step (no Dialog/portal needed)
                 setPinEmail(trimmed);
                 setPinDigits(['', '', '', '']);
                 setPinError('');
-                setTimeout(() => pinRefs[0].current?.focus(), 100);
+                setStep('pin');
             } else {
                 // Regular OTP flow — navigate to verify page
                 navigate(`/otp?email=${encodeURIComponent(trimmed)}`);
@@ -84,8 +97,13 @@ export function LoginPage() {
         next[index] = digit;
         setPinDigits(next);
         setPinError('');
-        if (digit && index < 3) {
-            pinRefs[index + 1].current?.focus();
+        if (digit) {
+            if (index < 3) {
+                pinRefs[index + 1].current?.focus();
+            } else {
+                // Last digit filled — auto-submit
+                handlePinSubmitWith(next);
+            }
         }
     }
 
@@ -93,14 +111,18 @@ export function LoginPage() {
         if (e.key === 'Backspace' && !pinDigits[index] && index > 0) {
             pinRefs[index - 1].current?.focus();
         }
+        if (e.key === 'Enter') {
+            handlePinSubmitWith(pinDigits);
+        }
     }
 
-    async function handlePinSubmit() {
-        const pin = pinDigits.join('');
+    async function handlePinSubmitWith(digits: string[]) {
+        const pin = digits.join('');
         if (pin.length !== 4) {
-            setPinError('Voer een 4-cijferige PIN in.');
+            setPinError('Voer alle 4 cijfers in.');
             return;
         }
+        if (pinLoading) return;
         setPinLoading(true);
         setPinError('');
         try {
@@ -109,20 +131,23 @@ export function LoginPage() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email: pinEmail, pin }),
             });
-            const data = await res.json<{ success: boolean; error?: string }>();
+            const data: { success: boolean; error?: string } = await res.json();
             if (data.success) {
-                // Reload to pick up the new session cookie
                 window.location.href = '/';
             } else {
                 setPinError(data.error ?? 'Ongeldige PIN-code.');
                 setPinDigits(['', '', '', '']);
-                setTimeout(() => pinRefs[0].current?.focus(), 50);
+                setTimeout(() => pinRef0.current?.focus(), 50);
             }
         } catch {
             setPinError('Er is een fout opgetreden. Probeer het opnieuw.');
         } finally {
             setPinLoading(false);
         }
+    }
+
+    async function handlePinSubmit() {
+        await handlePinSubmitWith(pinDigits);
     }
 
     return (
@@ -144,109 +169,24 @@ export function LoginPage() {
                 </div>
 
                 <Card className="border-slate-700/50 bg-slate-800/60 backdrop-blur-xl shadow-2xl">
-                    <CardHeader className="text-center pb-2">
-                        <CardTitle className="text-xl text-white font-bold">Welkom terug</CardTitle>
-                        <CardDescription className="text-slate-400">
-                            Meld u aan met uw organisatieaccount
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent className="pt-4 space-y-5">
-                        {/* OAuth error */}
-                        {oauthError && OAUTH_ERRORS[oauthError] && (
-                            <div className="flex items-start gap-2.5 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs">
-                                <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
-                                <span>{OAUTH_ERRORS[oauthError]}</span>
-                            </div>
-                        )}
-
-                        {/* Google OAuth button */}
-                        <Button
-                            className="w-full h-12 bg-white hover:bg-slate-50 text-slate-800 font-semibold text-sm shadow-lg transition-all hover:shadow-xl active:scale-[0.98]"
-                            onClick={handleSSOLogin}
-                            disabled={loading}
-                        >
-                            <svg className="h-5 w-5 mr-3 flex-shrink-0" viewBox="0 0 24 24">
-                                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" />
-                                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
-                            </svg>
-                            Aanmelden met Google
-                        </Button>
-
-                        <div className="relative">
-                            <Separator className="bg-slate-700/50" />
-                            <span className="absolute inset-0 flex items-center justify-center">
-                                <span className="bg-slate-800 px-3 text-xs text-slate-500 uppercase tracking-wider">
-                                    of via e-mail
-                                </span>
-                            </span>
-                        </div>
-
-                        {/* ── Email OTP form ── */}
-                        <form onSubmit={handleRequestOtp} className="space-y-3">
-                            <div className="space-y-1.5">
-                                <Label htmlFor="email" className="text-slate-300 text-xs font-medium">
-                                    E-mailadres
-                                </Label>
-                                <div className="relative">
-                                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
-                                    <Input
-                                        id="email"
-                                        type="email"
-                                        autoComplete="email"
-                                        placeholder="uw@emailadres.nl"
-                                        value={email}
-                                        onChange={(e) => { setEmail(e.target.value); setEmailError(''); }}
-                                        className="pl-9 bg-slate-700/50 border-slate-600 text-white placeholder:text-slate-500 focus:border-indigo-500 focus:ring-indigo-500/20"
-                                    />
-                                </div>
-                                {emailError && (
-                                    <p className="text-xs text-red-400">{emailError}</p>
-                                )}
-                            </div>
-                            <Button
-                                type="submit"
-                                className="w-full h-11 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm"
-                                disabled={emailLoading || !email.trim()}
-                            >
-                                {emailLoading ? (
-                                    <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Versturen…</>
-                                ) : (
-                                    <><ArrowRight className="h-4 w-4 mr-2" />Eenmalige code versturen</>
-                                )}
-                            </Button>
-                        </form>
-
-                        {/* Trust badges */}
-                        <div className="flex items-center justify-center gap-6 text-slate-500 pt-1">
-                            <div className="flex items-center gap-1.5 text-xs">
-                                <Shield className="h-3.5 w-3.5 text-indigo-400" />
-                                <span>Cloudflare Zero Trust</span>
-                            </div>
-                            <div className="flex items-center gap-1.5 text-xs">
-                                <Lock className="h-3.5 w-3.5 text-indigo-400" />
-                                <span>OTP / OAuth 2.0</span>
-                            </div>
-                        </div>
-
-                        {/* ── PIN modal for superadmin users ── */}
-                        <Dialog open={!!pinEmail} onOpenChange={(open) => { if (!open) setPinEmail(''); }}>
-                            <DialogContent className="bg-slate-800 border-slate-700 text-white sm:max-w-sm">
-                                <DialogHeader>
-                                    <div className="flex justify-center mb-2">
-                                        <div className="w-12 h-12 rounded-2xl bg-indigo-600 flex items-center justify-center">
-                                            <KeyRound className="h-6 w-6 text-white" />
-                                        </div>
+                    {step === 'pin' ? (
+                        /* ── PIN step — inline, no Dialog/portal ── */
+                        <>
+                            <CardHeader className="text-center pb-2">
+                                <div className="flex justify-center mb-3">
+                                    <div className="w-14 h-14 rounded-2xl bg-indigo-600 flex items-center justify-center shadow-lg">
+                                        <KeyRound className="h-7 w-7 text-white" />
                                     </div>
-                                    <DialogTitle className="text-center text-white">PIN-code invoeren</DialogTitle>
-                                    <DialogDescription className="text-center text-slate-400">
-                                        Voer uw 4-cijferige PIN in voor<br />
-                                        <span className="font-medium text-slate-300">{pinEmail}</span>
-                                    </DialogDescription>
-                                </DialogHeader>
-
-                                <div className="flex justify-center gap-3 py-4">
+                                </div>
+                                <CardTitle className="text-xl text-white font-bold">PIN-code invoeren</CardTitle>
+                                <CardDescription className="text-slate-400">
+                                    Voer uw 4-cijferige PIN in voor<br />
+                                    <span className="font-medium text-slate-300">{pinEmail}</span>
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent className="pt-2 space-y-5">
+                                {/* 4 PIN digit boxes */}
+                                <div className="flex justify-center gap-3 pt-2">
                                     {pinDigits.map((digit, i) => (
                                         <input
                                             key={i}
@@ -257,8 +197,9 @@ export function LoginPage() {
                                             value={digit}
                                             onChange={(e) => handlePinInput(i, e.target.value)}
                                             onKeyDown={(e) => handlePinKeyDown(i, e)}
-                                            className="w-14 h-16 text-center text-2xl font-bold bg-slate-700 border-2 border-slate-600 rounded-xl text-white focus:border-indigo-500 focus:outline-none transition-colors"
+                                            className="w-16 h-20 text-center text-3xl font-bold bg-slate-700 border-2 border-slate-600 rounded-2xl text-white focus:border-indigo-500 focus:outline-none transition-colors select-none"
                                             style={{ caretColor: 'transparent' }}
+                                            autoComplete="off"
                                         />
                                     ))}
                                 </div>
@@ -271,7 +212,7 @@ export function LoginPage() {
                                 )}
 
                                 <Button
-                                    className="w-full h-11 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold mt-2"
+                                    className="w-full h-11 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold"
                                     onClick={handlePinSubmit}
                                     disabled={pinLoading || pinDigits.join('').length !== 4}
                                 >
@@ -281,15 +222,114 @@ export function LoginPage() {
                                         <><KeyRound className="h-4 w-4 mr-2" />Aanmelden</>
                                     )}
                                 </Button>
-                            </DialogContent>
-                        </Dialog>
 
-                        {config?.devMode && (
-                            <p className="text-center text-xs text-amber-400 bg-amber-500/10 rounded-lg p-2">
-                                ⚠️ Dev-modus actief — Cloudflare Access niet geconfigureerd
-                            </p>
-                        )}
-                    </CardContent>
+                                <button
+                                    type="button"
+                                    onClick={() => { setStep('email'); setPinDigits(['', '', '', '']); setPinError(''); }}
+                                    className="w-full flex items-center justify-center gap-1.5 text-xs text-slate-500 hover:text-slate-300 transition-colors pt-1"
+                                >
+                                    <ArrowLeft className="h-3.5 w-3.5" />
+                                    Terug naar e-mailadres
+                                </button>
+                            </CardContent>
+                        </>
+                    ) : (
+                        /* ── Email step ── */
+                        <>
+                            <CardHeader className="text-center pb-2">
+                                <CardTitle className="text-xl text-white font-bold">Welkom terug</CardTitle>
+                                <CardDescription className="text-slate-400">
+                                    Meld u aan met uw organisatieaccount
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent className="pt-4 space-y-5">
+                                {/* OAuth error */}
+                                {oauthError && OAUTH_ERRORS[oauthError] && (
+                                    <div className="flex items-start gap-2.5 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs">
+                                        <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                                        <span>{OAUTH_ERRORS[oauthError]}</span>
+                                    </div>
+                                )}
+
+                                {/* Google OAuth button */}
+                                <Button
+                                    className="w-full h-12 bg-white hover:bg-slate-50 text-slate-800 font-semibold text-sm shadow-lg transition-all hover:shadow-xl active:scale-[0.98]"
+                                    onClick={handleSSOLogin}
+                                    disabled={loading}
+                                >
+                                    <svg className="h-5 w-5 mr-3 flex-shrink-0" viewBox="0 0 24 24">
+                                        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                                        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                                        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" />
+                                        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+                                    </svg>
+                                    Aanmelden met Google
+                                </Button>
+
+                                <div className="relative">
+                                    <Separator className="bg-slate-700/50" />
+                                    <span className="absolute inset-0 flex items-center justify-center">
+                                        <span className="bg-slate-800 px-3 text-xs text-slate-500 uppercase tracking-wider">
+                                            of via e-mail
+                                        </span>
+                                    </span>
+                                </div>
+
+                                {/* Email OTP form */}
+                                <form onSubmit={handleRequestOtp} className="space-y-3">
+                                    <div className="space-y-1.5">
+                                        <Label htmlFor="email" className="text-slate-300 text-xs font-medium">
+                                            E-mailadres
+                                        </Label>
+                                        <div className="relative">
+                                            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
+                                            <Input
+                                                id="email"
+                                                type="email"
+                                                autoComplete="email"
+                                                placeholder="uw@emailadres.nl"
+                                                value={email}
+                                                onChange={(e) => { setEmail(e.target.value); setEmailError(''); }}
+                                                className="pl-9 bg-slate-700/50 border-slate-600 text-white placeholder:text-slate-500 focus:border-indigo-500 focus:ring-indigo-500/20"
+                                            />
+                                        </div>
+                                        {emailError && (
+                                            <p className="text-xs text-red-400">{emailError}</p>
+                                        )}
+                                    </div>
+                                    <Button
+                                        type="submit"
+                                        className="w-full h-11 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm"
+                                        disabled={emailLoading || !email.trim()}
+                                    >
+                                        {emailLoading ? (
+                                            <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Controleren…</>
+                                        ) : (
+                                            <><ArrowRight className="h-4 w-4 mr-2" />Doorgaan</>
+                                        )}
+                                    </Button>
+                                </form>
+
+                                {/* Trust badges */}
+                                <div className="flex items-center justify-center gap-6 text-slate-500 pt-1">
+                                    <div className="flex items-center gap-1.5 text-xs">
+                                        <Shield className="h-3.5 w-3.5 text-indigo-400" />
+                                        <span>Cloudflare Zero Trust</span>
+                                    </div>
+                                    <div className="flex items-center gap-1.5 text-xs">
+                                        <Lock className="h-3.5 w-3.5 text-indigo-400" />
+                                        <span>OTP / OAuth 2.0</span>
+                                    </div>
+                                </div>
+
+                                {config?.devMode && (
+                                    <p className="text-center text-xs text-amber-400 bg-amber-500/10 rounded-lg p-2">
+                                        ⚠️ Dev-modus actief — Cloudflare Access niet geconfigureerd
+                                    </p>
+                                )}
+                            </CardContent>
+                        </>
+                    )}
                 </Card>
 
                 <p className="text-center text-xs text-slate-600 mt-6">
